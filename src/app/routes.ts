@@ -23,6 +23,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminNewsletter from './pages/AdminNewsletter';
 import ForgotPassword from './pages/ForgotPassword';
 
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -42,6 +43,9 @@ export const router = createBrowserRouter([
       { path: 'checkout/:bookingId', Component: CheckOut },
       { path: 'contact', Component: Contact },
       { path: 'about', Component: About },
+      // Admin routes as children of Layout
+      { path: 'admin', Component: AdminDashboard },
+      { path: 'admin/newsletters', Component: AdminNewsletter },
     ],
   },
   {
@@ -63,13 +67,5 @@ export const router = createBrowserRouter([
   {
     path: '/payment-failed/:bookingId',
     Component: PaymentFailed,
-  },
-  {
-    path: '/admin',
-    Component: AdminDashboard,
-  },
-  {
-    path: '/admin/newsletters',
-    Component: AdminNewsletter,
   },
 ]);
