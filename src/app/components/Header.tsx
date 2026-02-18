@@ -20,8 +20,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Navigation Bar */}
         <nav className="flex items-center justify-between lg:justify-center">
-          
-         {/* Desktop Navigation (Kept Same) */}
+          {/* Desktop Navigation (Kept Same) */}
           <div className="hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold">
             <Link to="/" className="hover:text-white transition-colors">Home</Link>
             <Link to="/rooms" className="hover:text-white transition-colors">Accommodation</Link>
@@ -39,6 +38,10 @@ const Header = () => {
             ) : (
               <Link to="/login" className="hover:text-white transition-colors">Login&Signup</Link>
             )}
+            {/* Refresh Button */}
+            <Button variant="outline" className="ml-4" onClick={() => window.location.reload()} title="Refresh Website">
+              Refresh
+            </Button>
           </div>
         </nav>
 
@@ -68,9 +71,11 @@ const Header = () => {
               ) : (
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Login&Signup</Link>
               )}
-              
+              {/* Refresh Button for Mobile */}
+              <Button variant="outline" className="w-full max-w-xs" onClick={() => window.location.reload()} title="Refresh Website">
+                Refresh
+              </Button>
               <div className="w-full h-px bg-white/10 my-4 max-w-xs" />
-              
               {user ? (
                 <Button onClick={handleLogout} variant="ghost" className="text-white text-lg">Logout</Button>
               ) : (
