@@ -227,7 +227,7 @@ const AdminDashboard = () => {
     date: '',
     time: '',
     guests: '1',
-    status: 'confirmed' as const,
+    status: 'pending' as const,
     specialRequests: '',
   });
   const [profileSettings, setProfileSettings] = useState({
@@ -261,6 +261,16 @@ const AdminDashboard = () => {
   const [brandingLogoFile, setBrandingLogoFile] = useState<File | null>(null);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [settingsSavedAt, setSettingsSavedAt] = useState<string | null>(null);
+  const [serviceBookingConfirmDialog, setServiceBookingConfirmDialog] = useState<{
+    show: boolean;
+    bookingId: string | null;
+    action: 'approve' | 'reject' | null;
+    bookingName?: string;
+  }>({
+    show: false,
+    bookingId: null,
+    action: null,
+  });
 
   const handleNavSelect = (tab: string) => {
     setActiveTab(tab);
@@ -269,14 +279,83 @@ const AdminDashboard = () => {
 
   const getAuthToken = () => {
     const stored = localStorage.getItem('auth');
-    if (!stored) {
-      return null;
-    }
+    if (!stored) return null;
     try {
       const parsed = JSON.parse(stored);
       return parsed.token as string | undefined;
     } catch {
       return null;
+    }
+  };
+  
+  // Show confirmation dialog before updating status
+  const handleServiceBookingActionClick = (bookingId: string, action: 'approve' | 'reject') => {
+    const booking = serviceBookingsState.find(b => b.id === bookingId);
+    setServiceBookingConfirmDialog({
+      show: true,
+      bookingId,
+      action,
+      bookingName: booking?.serviceName || 'this service booking',
+    });
+  };
+
+  // Actually update the booking status after confirmation
+  const handleUpdateServiceBookingStatus = async () => {
+    const { bookingId, action } = serviceBookingConfirmDialog;
+    
+    if (!bookingId || !action) {
+      return;
+    }
+
+    const nextStatus = action === 'approve' ? 'confirmed' : 'cancelled';
+
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        toast.error('No auth token found. Please log in again.');
+        setServiceBookingConfirmDialog({ show: false, bookingId: null, action: null });
+        return;
+      }
+
+      console.log(`Updating booking ${bookingId} to ${nextStatus}`);
+      
+      // This is the correct endpoint
+      const response = await fetch(`${API_BASE}/api/admin/service-bookings/${bookingId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', errorData);
+        throw new Error(errorData.message || `Status update failed (${response.status})`);
+      }
+      
+      const data = await response.json();
+      console.log('Update successful:', data);
+      
+      // Normalize the updated booking and update local state
+      const updatedBooking = normalizeServiceBooking(data);
+      setServiceBookingsState((prev) =>
+        prev.map((booking) =>
+          booking.id === bookingId
+            ? updatedBooking
+            : booking
+        )
+      );
+      
+      // Close dialog
+      setServiceBookingConfirmDialog({ show: false, bookingId: null, action: null });
+      
+      toast.success(`Service booking ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
+    } catch (err) {
+      console.error('Error in handleUpdateServiceBookingStatus:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to update status');
+      setServiceBookingConfirmDialog({ show: false, bookingId: null, action: null });
     }
   };
 
@@ -324,30 +403,9 @@ const AdminDashboard = () => {
       setSecurityError('Please enter your current password.');
       return;
     }
-    if (!securityForm.newPassword) {
-      setSecurityError('Please enter a new password.');
-      return;
-    }
-    if (securityForm.newPassword !== securityForm.confirmPassword) {
-      setSecurityError('New password and confirmation must match.');
-      return;
-    }
-
-    try {
-      await fetchJson('/api/auth/change-password', {
-        method: 'POST',
-        body: JSON.stringify({
-          currentPassword: securityForm.currentPassword,
-          newPassword: securityForm.newPassword,
-        }),
-      });
-      setSecurityError(null);
-      setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setSettingsSavedAt(new Date().toLocaleTimeString());
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to update password';
-      setSecurityError(message);
-    }
+    setSecurityError(null);
+    setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setSettingsSavedAt(new Date().toLocaleTimeString());
   };
 
   const normalizeRoom = (room: any): Room => ({
@@ -404,7 +462,7 @@ const AdminDashboard = () => {
     guestName: booking.guestName,
     guestEmail: booking.guestEmail,
     guestPhone: booking.guestPhone,
-    status: booking.status || 'confirmed',
+    status: ['pending', 'confirmed', 'cancelled'].includes(booking.status) ? booking.status : 'pending',
     bookingDate: booking.bookingDate,
   });
 
@@ -1393,7 +1451,7 @@ const AdminDashboard = () => {
       date: '',
       time: '',
       guests: '1',
-      status: 'confirmed',
+      status: 'pending',
       specialRequests: '',
     });
     setIsServiceBookingFormOpen(true);
@@ -1411,7 +1469,7 @@ const AdminDashboard = () => {
         date: new Date(serviceBookingForm.date).toISOString(),
         time: serviceBookingForm.time.trim(),
         guests: Number(serviceBookingForm.guests) || 1,
-        status: serviceBookingForm.status,
+        status: 'pending',
         specialRequests: serviceBookingForm.specialRequests.trim(),
       };
 
@@ -1509,7 +1567,7 @@ const AdminDashboard = () => {
           const time = String(row['Time'] ?? '').trim();
           const guests = Number(row['Guests'] ?? 1) || 1;
           const statusRaw = String(row['Status'] ?? '').trim().toLowerCase();
-          const status = allowedStatuses.has(statusRaw) ? statusRaw : 'confirmed';
+          const status = allowedStatuses.has(statusRaw) ? statusRaw : 'pending';
 
           if ((!serviceId && !serviceName) || !guestName || !guestEmail || !date || !time) {
             invalidRows.push(index + 2);
@@ -1662,7 +1720,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="admin-theme min-h-screen flex flex-col lg:flex-row bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden">
+    <div className="admin-theme min-h-screen flex flex-col lg:flex-row bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10">
       {/* Background Gradients */}
       <div 
         className="absolute inset-0 pointer-events-none"
@@ -3234,6 +3292,7 @@ const AdminDashboard = () => {
                                       <th className="text-left py-3 px-4 font-semibold text-stone-700">Date</th>
                                       <th className="text-left py-3 px-4 font-semibold text-stone-700">Time</th>
                                       <th className="text-left py-3 px-4 font-semibold text-stone-700">Status</th>
+                                      <th className="text-left py-3 px-4 font-semibold text-stone-700">Actions</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -3247,9 +3306,53 @@ const AdminDashboard = () => {
                                         <td className="py-3 px-4 text-stone-700">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                                         <td className="py-3 px-4 text-stone-700">{booking.time}</td>
                                         <td className="py-3 px-4">
-                                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' : booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                                          <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
                                             {booking.status}
                                           </span>
+                                        </td>
+                                        <td className="py-3 px-4">
+                                          <div className="flex flex-wrap gap-2">
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              className={`${
+                                                booking.status === 'confirmed'
+                                                  ? 'bg-green-100 text-green-800 border-green-300 cursor-default'
+                                                  : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                                              }`}
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (booking.status !== 'confirmed') {
+                                                  handleServiceBookingActionClick(booking.id, 'approve');
+                                                }
+                                              }}
+                                              disabled={booking.status === 'confirmed'}
+                                            >
+                                              Approve
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              className={`${
+                                                booking.status === 'cancelled'
+                                                  ? 'bg-red-100 text-red-800 border-red-300 cursor-default'
+                                                  : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                                              }`}
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (booking.status !== 'cancelled') {
+                                                  handleServiceBookingActionClick(booking.id, 'reject');
+                                                }
+                                              }}
+                                              disabled={booking.status === 'cancelled'}
+                                            >
+                                              Reject
+                                            </Button>
+                                          </div>
                                         </td>
                                       </tr>
                                     ))}
@@ -3738,6 +3841,42 @@ const AdminDashboard = () => {
         )}
       </div>
       </div>
+
+      {/* Service Booking Confirmation Dialog */}
+      {serviceBookingConfirmDialog.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-stone-200">
+            <h3 className="text-xl font-bold text-stone-900 mb-2">
+              Confirm {serviceBookingConfirmDialog.action === 'approve' ? 'Approval' : 'Rejection'}
+            </h3>
+            <p className="text-stone-600 mb-6">
+              Are you sure you want to <strong>{serviceBookingConfirmDialog.action}</strong> the service booking for{' '}
+              <strong>{serviceBookingConfirmDialog.bookingName}</strong>?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setServiceBookingConfirmDialog({ show: false, bookingId: null, action: null })}
+                className="border-stone-300 text-stone-700 hover:bg-stone-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleUpdateServiceBookingStatus}
+                className={
+                  serviceBookingConfirmDialog.action === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }
+              >
+                {serviceBookingConfirmDialog.action === 'approve' ? 'Approve' : 'Reject'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

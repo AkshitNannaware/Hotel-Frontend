@@ -187,7 +187,7 @@ const Profile = () => {
           time: booking.time,
           guests: booking.guests,
           specialRequests: booking.specialRequests || '',
-          status: booking.status || 'confirmed',
+          status: booking.status || 'pending',
           bookingDate: new Date(booking.bookingDate || Date.now()),
         }));
         setServiceBookingsState(normalized);
