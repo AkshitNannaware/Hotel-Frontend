@@ -921,6 +921,15 @@ const Profile = () => {
                             <span className="font-medium text-[#d7d0bf]">Special requests:</span> {booking.specialRequests}
                           </div>
                         )}
+
+                        {booking.status === 'pending' && (
+                          <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-xs text-amber-800 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              Waiting for admin approval. Your booking will be confirmed or cancelled once reviewed.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

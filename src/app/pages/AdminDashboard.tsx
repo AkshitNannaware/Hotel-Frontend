@@ -691,10 +691,6 @@ const AdminDashboard = () => {
         return 'bg-blue-100 text-blue-800';
       case 'checked-out':
         return 'bg-stone-200 text-stone-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'pending':
-        return 'bg-amber-100 text-amber-800';
       default:
         return 'bg-stone-100 text-stone-800';
     }
@@ -2920,8 +2916,8 @@ const AdminDashboard = () => {
                   >
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
-                    <option value="checked-in">Checked-in</option>
-                    <option value="checked-out">Checked-out</option>
+                    <option value="checked-in">Check-in</option>
+                    <option value="checked-out">Check-out</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
                   <Input
@@ -3307,52 +3303,44 @@ const AdminDashboard = () => {
                                         <td className="py-3 px-4 text-stone-700">{booking.time}</td>
                                         <td className="py-3 px-4">
                                           <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-                                            {booking.status}
+                                            {booking.status === 'check-in' ? 'Check-in' : booking.status === 'checked-out' ? 'Check-out' : booking.status}
                                           </span>
                                         </td>
                                         <td className="py-3 px-4">
-                                          <div className="flex flex-wrap gap-2">
-                                            <Button
-                                              type="button"
-                                              size="sm"
-                                              variant="outline"
-                                              className={`${
-                                                booking.status === 'confirmed'
-                                                  ? 'bg-green-100 text-green-800 border-green-300 cursor-default'
-                                                  : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                                              }`}
-                                              onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                if (booking.status !== 'confirmed') {
+                                          {booking.status === 'pending' ? (
+                                            <div className="flex flex-wrap gap-2">
+                                              <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                className={`bg-green-50 text-green-700 border-green-200 hover:bg-green-100`}
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
                                                   handleServiceBookingActionClick(booking.id, 'approve');
-                                                }
-                                              }}
-                                              disabled={booking.status === 'confirmed'}
-                                            >
-                                              Approve
-                                            </Button>
-                                            <Button
-                                              type="button"
-                                              size="sm"
-                                              variant="outline"
-                                              className={`${
-                                                booking.status === 'cancelled'
-                                                  ? 'bg-red-100 text-red-800 border-red-300 cursor-default'
-                                                  : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
-                                              }`}
-                                              onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                if (booking.status !== 'cancelled') {
+                                                }}
+                                              >
+                                                Approve
+                                              </Button>
+                                              <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                className={`bg-red-50 text-red-700 border-red-200 hover:bg-red-100`}
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
                                                   handleServiceBookingActionClick(booking.id, 'reject');
-                                                }
-                                              }}
-                                              disabled={booking.status === 'cancelled'}
-                                            >
-                                              Reject
-                                            </Button>
-                                          </div>
+                                                }}
+                                              >
+                                                Reject
+                                              </Button>
+                                            </div>
+                                          ) : booking.status === 'confirmed' ? (
+                                            <span className="inline-block px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold">Approved</span>
+                                          ) : booking.status === 'cancelled' ? (
+                                            <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-semibold">Rejected</span>
+                                          ) : null}
                                         </td>
                                       </tr>
                                     ))}
