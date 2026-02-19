@@ -2157,16 +2157,18 @@ const AdminDashboard = () => {
             </div>
 
             {isRoomFormOpen && (
-              <form onSubmit={handleRoomSubmit} className="bg-white rounded-3xl p-6 shadow-sm mb-8">
+              <form onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">Add Room</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Room name"
                     value={roomForm.name}
                     onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
                     required
                   />
                   <select
-                    className="h-9 rounded-md border border-stone-200 px-3 text-sm"
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                     value={roomForm.type}
                     onChange={(event) => setRoomForm({ ...roomForm, type: event.target.value })}
                   >
@@ -2176,6 +2178,7 @@ const AdminDashboard = () => {
                     <option value="Deluxe">Deluxe</option>
                   </select>
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     type="number"
                     placeholder="Price per night"
                     value={roomForm.price}
@@ -2183,11 +2186,13 @@ const AdminDashboard = () => {
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Image URLs (optional, comma separated)"
                     value={roomForm.images}
                     onChange={(event) => setRoomForm({ ...roomForm, images: event.target.value })}
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     type="number"
                     placeholder="Max guests"
                     value={roomForm.maxGuests ?? ''}
@@ -2196,19 +2201,19 @@ const AdminDashboard = () => {
                     }
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     type="number"
                     placeholder="Size (sqm)"
                     value={roomForm.size}
                     onChange={(event) => setRoomForm({ ...roomForm, size: event.target.value })}
                   />
                 </div>
-                
-                {/* File Upload Section */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                  <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
                     Upload Room Images (optional)
                   </label>
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"
                     multiple
@@ -2217,10 +2222,9 @@ const AdminDashboard = () => {
                         setRoomImageFiles(Array.from(event.target.files));
                       }
                     }}
-                    className="cursor-pointer"
                   />
                   {roomImageFiles.length > 0 && (
-                    <div className="mt-2 text-sm text-stone-600">
+                    <div className="mt-2 text-xs text-[#b6b6b6]">
                       <p className="font-medium">Selected files ({roomImageFiles.length}):</p>
                       <ul className="list-disc list-inside mt-1">
                         {roomImageFiles.map((file, idx) => (
@@ -2230,35 +2234,33 @@ const AdminDashboard = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-stone-700 mb-2">
+                  <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
                     Upload Room Video (optional)
                   </label>
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
                     type="file"
                     accept="video/mp4,video/webm,video/ogg"
                     onChange={(event) => setRoomVideoFile(event.target.files?.[0] || null)}
-                    className="cursor-pointer"
                   />
                   {roomVideoFile && (
-                    <p className="mt-2 text-sm text-stone-600">Selected: {roomVideoFile.name}</p>
+                    <p className="mt-2 text-xs text-[#b6b6b6]">Selected: {roomVideoFile.name}</p>
                   )}
                 </div>
-                
                 <Textarea
+                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
                   placeholder="Description"
                   value={roomForm.description}
                   onChange={(event) => setRoomForm({ ...roomForm, description: event.target.value })}
-                  className="mb-4"
                 />
                 <Input
+                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
                   placeholder="Amenities (comma separated)"
                   value={roomForm.amenities}
                   onChange={(event) => setRoomForm({ ...roomForm, amenities: event.target.value })}
-                  className="mb-4"
                 />
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mt-4">
                   <label className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
@@ -2266,14 +2268,15 @@ const AdminDashboard = () => {
                       onChange={(event) =>
                         setRoomForm({ ...roomForm, available: event.target.checked })
                       }
+                      className="accent-amber-400"
                     />
                     Available
                   </label>
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]">
+                    <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
                       Cancel
                     </Button>
-                    <Button type="submit" className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]">
+                    <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
                       {editingRoomId ? 'Update Room' : 'Add Room'}
                     </Button>
                   </div>
@@ -2410,20 +2413,19 @@ const AdminDashboard = () => {
             {isServiceFormOpen && (
               <form
                 onSubmit={handleServiceSubmit}
-                className="bg-[#fbf8f2] rounded-2xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.14)] mb-8 border border-[#e7d6b9] text-[#1c1f1a]"
+                className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]"
               >
-                <h3 className="text-lg font-serif mb-4">
-                  {editingServiceId ? 'Edit Service' : 'Add Service'}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingServiceId ? 'Edit Service' : 'Add Service'}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Service name"
                     value={serviceForm.name}
                     onChange={(event) => setServiceForm({ ...serviceForm, name: event.target.value })}
                     required
                   />
                   <select
-                    className="h-9 rounded-lg border border-[#d6c2a1] bg-white px-3 text-sm"
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                     value={serviceForm.category}
                     onChange={(event) =>
                       setServiceForm({
@@ -2438,63 +2440,67 @@ const AdminDashboard = () => {
                     <option value="bar">Bar & lounge</option>
                   </select>
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Price range"
                     value={serviceForm.priceRange}
                     onChange={(event) => setServiceForm({ ...serviceForm, priceRange: event.target.value })}
                   />
                   <div className="space-y-1">
-                    <label className="text-xs text-[#6b6256]">Image URL (optional)</label>
+                    <label className="text-xs text-[#e6e6e6]">Image URL (optional)</label>
                     <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                       placeholder="https://..."
                       value={serviceForm.image}
                       onChange={(event) => setServiceForm({ ...serviceForm, image: event.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs text-[#6b6256]">Upload image (optional)</label>
+                    <label className="text-xs text-[#e6e6e6]">Upload image (optional)</label>
                     <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
                       type="file"
                       accept="image/*"
                       onChange={(event) => setServiceImageFile(event.target.files?.[0] || null)}
                     />
                     {serviceImageFile && (
-                      <p className="text-xs text-[#6b6256]">Selected: {serviceImageFile.name}</p>
+                      <p className="text-xs text-[#b6b6b6]">Selected: {serviceImageFile.name}</p>
                     )}
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs text-[#6b6256]">Upload video (optional)</label>
+                    <label className="text-xs text-[#e6e6e6]">Upload video (optional)</label>
                     <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
                       type="file"
                       accept="video/mp4,video/webm,video/ogg"
                       onChange={(event) => setServiceVideoFile(event.target.files?.[0] || null)}
                     />
                     {serviceVideoFile && (
-                      <p className="text-xs text-[#6b6256]">Selected: {serviceVideoFile.name}</p>
+                      <p className="text-xs text-[#b6b6b6]">Selected: {serviceVideoFile.name}</p>
                     )}
                   </div>
                 </div>
                 <Textarea
+                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
                   placeholder="Description"
                   value={serviceForm.description}
                   onChange={(event) => setServiceForm({ ...serviceForm, description: event.target.value })}
-                  className="mb-4"
                 />
                 <Input
+                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
                   placeholder="Available times (comma separated)"
                   value={serviceForm.availableTimes}
                   onChange={(event) => setServiceForm({ ...serviceForm, availableTimes: event.target.value })}
-                  className="mb-4"
                 />
-                <div className="flex gap-2 justify-end">
+                <div className="flex gap-2 justify-end mt-4">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setIsServiceFormOpen(false)}
-                    className="border-[#d6c2a1] text-[#5e4a1f] hover:bg-[#f3e6cf]"
+                    className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-amber-500 hover:bg-amber-400 text-stone-900">
+                  <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
                     {editingServiceId ? 'Update' : 'Add'}
                   </Button>
                 </div>
@@ -3303,7 +3309,7 @@ const AdminDashboard = () => {
                                         <td className="py-3 px-4 text-stone-700">{booking.time}</td>
                                         <td className="py-3 px-4">
                                           <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-                                            {booking.status === 'check-in' ? 'Check-in' : booking.status === 'checked-out' ? 'Check-out' : booking.status}
+                                            {booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Approved' : booking.status === 'cancelled' ? 'Rejected' : booking.status}
                                           </span>
                                         </td>
                                         <td className="py-3 px-4">
@@ -3363,36 +3369,51 @@ const AdminDashboard = () => {
           <div>
             <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Payment Management</h1>
             <div className="bg-white rounded-3xl p-8 shadow-sm">
-              {bookingsState.length === 0 ? (
+              {usersState.length === 0 ? (
                 <div className="text-center py-16 text-stone-600">No payment records yet.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-stone-200">
-                        <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Guest</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Amount</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Status</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Date</th>
+                        <th className="text-left py-3 px-4 text-stone-600">User</th>
+                        <th className="text-left py-3 px-4 text-stone-600">Room Amount</th>
+                        <th className="text-left py-3 px-4 text-stone-600">Service Amount</th>
+                        <th className="text-left py-3 px-4 text-stone-600">Total Amount</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {bookingsState.map((booking) => (
-                        <tr key={booking.id} className="border-b border-stone-100">
-                          <td className="py-4 px-4">{booking.id}</td>
-                          <td className="py-4 px-4">{booking.guestName}</td>
-                          <td className="py-4 px-4">${booking.totalPrice.toFixed(2)}</td>
-                          <td className="py-4 px-4">
-                            <span className="px-3 py-1 bg-stone-100 text-stone-800 rounded-full text-sm">
-                              {booking.paymentStatus || 'pending'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            {new Date(booking.bookingDate || booking.checkIn).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
+                      {usersState.map((user) => {
+                        // Sum room bookings for this user
+                        const userRoomBookings = bookingsState.filter(b => b.userId === user.id);
+                        const roomTotal = userRoomBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+                        // Sum service bookings for this user (if any price field is available)
+                        // If you have a price field in service bookings, use it. Otherwise, you may need to add it.
+                        // For now, we assume no price field, so set to 0.
+                        // If you have a price, e.g., booking.price or booking.totalPrice, use that instead of 0 below.
+                        const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
+                        // Try to use priceRange as a number if possible, else 0
+                        const serviceTotal = userServiceBookings.reduce((sum, sb) => {
+                          // Try to parse priceRange as a number
+                          let price = 0;
+                          if (sb.priceRange) {
+                            // If priceRange is a single number string, use it
+                            const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
+                            if (match) price = parseFloat(match[0]);
+                          }
+                          return sum + price;
+                        }, 0);
+                        const total = roomTotal + serviceTotal;
+                        if (roomTotal === 0 && serviceTotal === 0) return null; // Skip users with no payments
+                        return (
+                          <tr key={user.id} className="border-b border-stone-100">
+                            <td className="py-4 px-4">{user.name} <span className="block text-xs text-stone-400">{user.email}</span></td>
+                            <td className="py-4 px-4">${roomTotal.toFixed(2)}</td>
+                            <td className="py-4 px-4">${serviceTotal.toFixed(2)}</td>
+                            <td className="py-4 px-4 font-bold">${total.toFixed(2)}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
