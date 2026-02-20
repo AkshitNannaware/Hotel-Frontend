@@ -42,21 +42,21 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#3f4a40] text-[#efece6] px-4">
       <div className="w-full max-w-lg">
-        <div className="bg-white/90 rounded-[2.5rem] shadow-2xl p-12 border border-[#ececec] backdrop-blur-md">
+        <div className="bg-[#232b23]/95 rounded-3xl shadow-2xl p-12 border border-[#5b6659]">
           <div className="text-center mb-8">
-            <h1 className="text-4xl mb-2 font-bold tracking-tight">Welcome Back</h1>
-            <p className="text-stone-500 text-lg">Sign in to continue your journey</p>
+            <h1 className="text-4xl mb-2 font-bold tracking-tight" style={{ fontFamily: 'Playfair Display, serif' }}>Welcome Back</h1>
+            <p className="text-[#cfc9bb] text-lg">Sign in to continue your journey</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex gap-2 p-1 bg-stone-100 rounded-xl mb-8">
+            <div className="flex gap-2 p-1 bg-[#2f3a32] rounded-xl mb-8">
               <button
                 type="button"
                 onClick={() => setLoginMethod('email')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-lg font-medium transition-all ${
-                  loginMethod === 'email' ? 'bg-white shadow-md' : 'text-stone-600 hover:text-stone-900'
+                  loginMethod === 'email' ? 'bg-[#3f4a40] shadow-md text-[#efece6]' : 'text-[#cfc9bb] hover:text-[#efece6]'
                 }`}
               >
                 <Mail className="w-4 h-4" />
@@ -66,7 +66,7 @@ const Login = () => {
                 type="button"
                 onClick={() => setLoginMethod('phone')}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-lg font-medium transition-all ${
-                  loginMethod === 'phone' ? 'bg-white shadow-md' : 'text-stone-600 hover:text-stone-900'
+                  loginMethod === 'phone' ? 'bg-[#3f4a40] shadow-md text-[#efece6]' : 'text-[#cfc9bb] hover:text-[#efece6]'
                 }`}
               >
                 <Phone className="w-4 h-4" />
@@ -76,34 +76,34 @@ const Login = () => {
 
             {loginMethod === 'email' ? (
               <div>
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email" className="text-[#efece6]">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400"
+                  className="mt-2 h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400"
                   required
                 />
               </div>
             ) : (
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone" className="text-[#efece6]">Phone Number</Label>
                 <Input
                   id="phone"
                   type="tel"
                   placeholder="Enter your phone number"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400"
+                  className="mt-2 h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400"
                   required
                 />
               </div>
             )}
 
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-[#efece6]">Password</Label>
               <div className="relative mt-2">
                 <Input
                   id="password"
@@ -111,13 +111,13 @@ const Login = () => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-14 pr-12 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400"
+                  className="h-14 pr-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#b6b6b6] hover:text-[#efece6]"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -125,23 +125,23 @@ const Login = () => {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer text-base">
-                <input type="checkbox" className="w-5 h-5 rounded border-stone-300" />
-                <span className="text-stone-600">Remember me</span>
+              <label className="flex items-center gap-2 cursor-pointer text-base text-[#efece6]">
+                <input type="checkbox" className="w-5 h-5 rounded border-[#3a463a] bg-[#232b23]" />
+                <span className="text-[#cfc9bb]">Remember me</span>
               </label>
-              <Link to="/forgot-password" className="text-stone-900 hover:underline text-base">
+              <Link to="/forgot-password" className="text-[#efece6] hover:underline text-base">
                 Forgot password?
               </Link>
             </div>
 
-            <Button type="submit" className="w-full h-12 rounded-xl text-base">
+            <Button type="submit" className="w-full h-12 rounded-xl text-base bg-[#243026] border border-[#5b6659] text-[#efece6] hover:bg-white/10">
               Sign In
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-stone-600">
+          <div className="mt-6 text-center text-sm text-[#cfc9bb]">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-stone-900 hover:underline">
+            <Link to="/signup" className="text-[#efece6] hover:underline">
               Sign up
             </Link>
           </div>
