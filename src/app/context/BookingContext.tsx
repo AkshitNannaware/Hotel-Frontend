@@ -23,7 +23,7 @@ export interface Booking extends BookingDetails {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
-  status: 'pending' | 'confirmed' | 'check-in' | 'check-out' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'check-in' | 'check-out' | 'checked-in' | 'checked-out' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'failed';
   idVerified: 'pending' | 'approved' | 'rejected';
   idProofUrl?: string;
@@ -206,6 +206,10 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateBookingStatus = async (bookingId: string, status: Booking['status']) => {
+    // Map UI status to backend expected status
+    let backendStatus = status;
+    if (status === 'check-in') backendStatus = 'checked-in';
+    if (status === 'check-out') backendStatus = 'checked-out';
     const token = getAuthToken();
     const response = await fetch(`${API_BASE}/api/bookings/${bookingId}/status`, {
       method: 'PATCH',
@@ -213,7 +217,7 @@ export const BookingProvider = ({ children }: { children: ReactNode }) => {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: backendStatus }),
     });
 
     if (!response.ok) {

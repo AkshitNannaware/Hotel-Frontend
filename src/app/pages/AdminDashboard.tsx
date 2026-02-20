@@ -2170,131 +2170,151 @@ const AdminDashboard = () => {
             </div>
 
             {isRoomFormOpen && (
-              <form onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
-                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingRoomId ? 'Update Room' : 'Add Room'}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Room name"
-                    value={roomForm.name}
-                    onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
-                    required
-                  />
-                  <select
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
-                    value={roomForm.type}
-                    onChange={(event) => setRoomForm({ ...roomForm, type: event.target.value })}
+              <>
+                {/* Modal Backdrop */}
+                <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setIsRoomFormOpen(false)} />
+                {/* Modal Form */}
+                <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
+                  <form
+                    onSubmit={handleRoomSubmit}
+                    className="relative w-full max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-2xl border border-[#3a463a] text-[#f5f1e8] animate-fadeIn"
+                    style={{ maxHeight: '90vh', overflowY: 'auto' }}
+                    onClick={e => e.stopPropagation()}
                   >
-                    <option value="Single">Single</option>
-                    <option value="Double">Double</option>
-                    <option value="Suite">Suite</option>
-                    <option value="Deluxe">Deluxe</option>
-                  </select>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Price per night"
-                    value={roomForm.price}
-                    onChange={(event) => setRoomForm({ ...roomForm, price: event.target.value })}
-                    required
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Image URLs (optional, comma separated)"
-                    value={roomForm.images}
-                    onChange={(event) => setRoomForm({ ...roomForm, images: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Max guests"
-                    value={roomForm.maxGuests ?? ''}
-                    onChange={(event) =>
-                      setRoomForm((prev) => ({ ...prev, maxGuests: event.target.value }))
-                    }
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Size (sqm)"
-                    value={roomForm.size}
-                    onChange={(event) => setRoomForm({ ...roomForm, size: event.target.value })}
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
-                    Upload Room Images (optional)
-                  </label>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    multiple
-                    onChange={(event) => {
-                      if (event.target.files) {
-                        setRoomImageFiles(Array.from(event.target.files));
-                      }
-                    }}
-                  />
-                  {roomImageFiles.length > 0 && (
-                    <div className="mt-2 text-xs text-[#b6b6b6]">
-                      <p className="font-medium">Selected files ({roomImageFiles.length}):</p>
-                      <ul className="list-disc list-inside mt-1">
-                        {roomImageFiles.map((file, idx) => (
-                          <li key={idx}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</li>
-                        ))}
-                      </ul>
+                    <button
+                      type="button"
+                      className="absolute top-4 right-4 text-[#b6b6b6] hover:text-[#fff] text-xl font-bold focus:outline-none"
+                      onClick={() => setIsRoomFormOpen(false)}
+                      aria-label="Close"
+                    >
+                      ×
+                    </button>
+                    <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingRoomId ? 'Update Room' : 'Add Room'}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Room name"
+                        value={roomForm.name}
+                        onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
+                        required
+                      />
+                      <select
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                        value={roomForm.type}
+                        onChange={(event) => setRoomForm({ ...roomForm, type: event.target.value })}
+                      >
+                        <option value="Single">Single</option>
+                        <option value="Double">Double</option>
+                        <option value="Suite">Suite</option>
+                        <option value="Deluxe">Deluxe</option>
+                      </select>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        placeholder="Price per night"
+                        value={roomForm.price}
+                        onChange={(event) => setRoomForm({ ...roomForm, price: event.target.value })}
+                        required
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Image URLs (optional, comma separated)"
+                        value={roomForm.images}
+                        onChange={(event) => setRoomForm({ ...roomForm, images: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        placeholder="Max guests"
+                        value={roomForm.maxGuests ?? ''}
+                        onChange={(event) =>
+                          setRoomForm((prev) => ({ ...prev, maxGuests: event.target.value }))
+                        }
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        placeholder="Size (sqm)"
+                        value={roomForm.size}
+                        onChange={(event) => setRoomForm({ ...roomForm, size: event.target.value })}
+                      />
                     </div>
-                  )}
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
-                    Upload Room Video (optional)
-                  </label>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
-                    type="file"
-                    accept="video/mp4,video/webm,video/ogg"
-                    onChange={(event) => setRoomVideoFile(event.target.files?.[0] || null)}
-                  />
-                  {roomVideoFile && (
-                    <p className="mt-2 text-xs text-[#b6b6b6]">Selected: {roomVideoFile.name}</p>
-                  )}
-                </div>
-                <Textarea
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Description"
-                  value={roomForm.description}
-                  onChange={(event) => setRoomForm({ ...roomForm, description: event.target.value })}
-                />
-                <Input
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Amenities (comma separated)"
-                  value={roomForm.amenities}
-                  onChange={(event) => setRoomForm({ ...roomForm, amenities: event.target.value })}
-                />
-                <div className="flex items-center justify-between mt-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={roomForm.available}
-                      onChange={(event) =>
-                        setRoomForm({ ...roomForm, available: event.target.checked })
-                      }
-                      className="accent-amber-400"
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
+                        Upload Room Images (optional)
+                      </label>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        multiple
+                        onChange={(event) => {
+                          if (event.target.files) {
+                            setRoomImageFiles(Array.from(event.target.files));
+                          }
+                        }}
+                      />
+                      {roomImageFiles.length > 0 && (
+                        <div className="mt-2 text-xs text-[#b6b6b6]">
+                          <p className="font-medium">Selected files ({roomImageFiles.length}):</p>
+                          <ul className="list-disc list-inside mt-1">
+                            {roomImageFiles.map((file, idx) => (
+                              <li key={idx}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
+                        Upload Room Video (optional)
+                      </label>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
+                        type="file"
+                        accept="video/mp4,video/webm,video/ogg"
+                        onChange={(event) => setRoomVideoFile(event.target.files?.[0] || null)}
+                      />
+                      {roomVideoFile && (
+                        <p className="mt-2 text-xs text-[#b6b6b6]">Selected: {roomVideoFile.name}</p>
+                      )}
+                    </div>
+                    <Textarea
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Description"
+                      value={roomForm.description}
+                      onChange={(event) => setRoomForm({ ...roomForm, description: event.target.value })}
                     />
-                    Available
-                  </label>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
-                      {editingRoomId ? 'Update Room' : 'Add Room'}
-                    </Button>
-                  </div>
+                    <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Amenities (comma separated)"
+                      value={roomForm.amenities}
+                      onChange={(event) => setRoomForm({ ...roomForm, amenities: event.target.value })}
+                    />
+                    <div className="flex items-center justify-between mt-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={roomForm.available}
+                          onChange={(event) =>
+                            setRoomForm({ ...roomForm, available: event.target.checked })
+                          }
+                          className="accent-amber-400"
+                        />
+                        Available
+                      </label>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
+                          Cancel
+                        </Button>
+                        <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
+                          {editingRoomId ? 'Update Room' : 'Add Room'}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              </>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
