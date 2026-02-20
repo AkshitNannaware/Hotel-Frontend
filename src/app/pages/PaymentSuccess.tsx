@@ -11,23 +11,39 @@ const PaymentSuccess = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const payAtCheckin = searchParams.get('payAtCheckin') === 'true';
-  const { bookings, updateBookingStatus, updatePaymentStatus } = useBooking();
-  const booking = bookings.find(b => b.id === bookingId);
+  const { bookings, updateBookingStatus, updatePaymentStatus, refreshBookings } = useBooking();
+  const [booking, setBooking] = React.useState<any | null>(
+    bookings.find(b => b.id === bookingId) || null
+  );
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [room, setRoom] = React.useState<Room | null>(null);
   const [roomLoadError, setRoomLoadError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    // If booking is not found in context, fetch from backend
+    if (!bookingId) return;
     if (!booking) {
+      (async () => {
+        try {
+          const token = localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')!).token : null;
+          const res = await fetch(`${API_BASE}/api/bookings/${bookingId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setBooking({ ...data, id: data._id || data.id });
+            // Optionally refresh context
+            refreshBookings && refreshBookings();
+          }
+        } catch {}
+      })();
       return;
     }
-
+    // If booking is found, sync statuses as before
     const syncStatuses = async () => {
       if (booking.status !== 'confirmed') {
         await updateBookingStatus(booking.id, 'confirmed');
       }
-
-      // Update payment status based on payment method
       if (payAtCheckin) {
         if (booking.paymentStatus !== 'pending') {
           await updatePaymentStatus(booking.id, 'pending');
@@ -38,11 +54,8 @@ const PaymentSuccess = () => {
         }
       }
     };
-
-    syncStatuses().catch(() => {
-      // ignore status sync errors
-    });
-  }, [booking?.id, booking?.status, booking?.paymentStatus, payAtCheckin, updateBookingStatus, updatePaymentStatus]);
+    syncStatuses().catch(() => {});
+  }, [bookingId, booking, payAtCheckin, updateBookingStatus, updatePaymentStatus, refreshBookings, API_BASE]);
 
   React.useEffect(() => {
     const loadRoom = async () => {
@@ -181,7 +194,7 @@ const PaymentSuccess = () => {
                 )}
                 <div className="mt-6 pt-4 border-t border-[#4b5246] flex items-center justify-between text-[#efece6]">
                   <span>Total Payment</span>
-                  <span className="text-xl">${booking.totalPrice.toFixed(2)}</span>
+                  <span className="text-xl">₹{booking.totalPrice.toFixed(2)}</span>
                 </div>
                 {payAtCheckin && (
                   <div className="mt-3 flex items-center gap-2 text-xs text-[#c9c3b6]">

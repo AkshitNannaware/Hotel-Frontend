@@ -65,7 +65,7 @@ const PaymentFailed = () => {
             <div className="text-xl mb-4">{booking.id}</div>
             
             <div className="text-sm text-stone-600 mb-1">Amount</div>
-            <div className="text-2xl">${booking.totalPrice.toFixed(2)}</div>
+            <div className="text-2xl">₹{booking.totalPrice.toFixed(2)}</div>
           </div>
 
           <div className="space-y-3 mb-8">

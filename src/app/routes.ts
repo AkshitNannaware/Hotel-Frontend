@@ -34,6 +34,7 @@ export const router = createBrowserRouter([
       { path: 'room/:id', Component: RoomDetails },
       { path: 'booking', Component: Booking },
       { path: 'payment/:bookingId', Component: Payment },
+      { path: 'payment/service/:serviceBookingId', Component: Payment },
       { path: 'services', Component: Services },
       { path: 'offers', Component: Offers },
       { path: 'book-service/:serviceId', Component: ServiceBooking },
@@ -65,7 +66,15 @@ export const router = createBrowserRouter([
     Component: PaymentSuccess,
   },
   {
+    path: '/payment-success/service/:serviceBookingId',
+    Component: PaymentSuccess,
+  },
+  {
     path: '/payment-failed/:bookingId',
+    Component: PaymentFailed,
+  },
+  {
+    path: '/payment-failed/service/:serviceBookingId',
     Component: PaymentFailed,
   },
 ]);

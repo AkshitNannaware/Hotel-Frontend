@@ -729,6 +729,10 @@ const Profile = () => {
                   <div className="space-y-4">
                     {bookings.map((booking) => {
                       const room = roomsState.find(r => r.id === booking.roomId);
+                      // Find all confirmed service bookings for this room booking
+                      const relatedServices = serviceBookingsState.filter(s => s.roomBookingId === booking.id && s.status === 'confirmed');
+                      const allPaid = booking.paymentStatus === 'paid' && relatedServices.every(s => s.paymentStatus === 'paid');
+                      const total = booking.totalPrice + relatedServices.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
                       return (
                         <div key={booking.id} className="border border-[#4b5246] rounded-xl p-4 hover:shadow-lg transition-shadow bg-[#343a30]">
                           <div className="flex flex-col lg:flex-row gap-4">
@@ -746,7 +750,7 @@ const Profile = () => {
                                   <h3 className="font-semibold text-[#efece6]">{room?.name || 'Room'}</h3>
                                   <p className="text-xs text-[#c9c3b6]">ID: {booking.id.slice(0, 8)}</p>
                                 </div>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[booking.status]}`}>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[booking.status]}`}> 
                                   {booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('-', ' ')}
                                 </span>
                               </div>
@@ -766,7 +770,7 @@ const Profile = () => {
                                 </div>
                                 <div>
                                   <p className="text-[#c9c3b6]">Total</p>
-                                  <p className="font-bold text-emerald-600">${booking.totalPrice.toFixed(2)}</p>
+                                  <p className="font-bold text-emerald-600">₹{total.toFixed(2)}</p>
                                 </div>
                               </div>
 
@@ -782,7 +786,7 @@ const Profile = () => {
                                     Check In
                                   </Button>
                                 )}
-                                {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
+                                {booking.status === 'checked-in' && !allPaid && (
                                   <Button
                                     size="sm"
                                     onClick={() => navigate(`/payment/${booking.id}`)}
@@ -791,14 +795,13 @@ const Profile = () => {
                                     Pay Now
                                   </Button>
                                 )}
-                                {booking.status === 'checked-in' && booking.paymentStatus === 'paid' && (
+                                {booking.status === 'checked-in' && allPaid && (
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    disabled
-                                    className="rounded-lg border-emerald-200 text-emerald-700"
+                                    onClick={() => navigate(`/checkout/${booking.id}`)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
                                   >
-                                    Paid
+                                    Check Out
                                   </Button>
                                 )}
                                 {booking.idVerified === 'approved' && booking.paymentStatus !== 'paid' && booking.status === 'confirmed' && (
@@ -892,7 +895,7 @@ const Profile = () => {
                             <h3 className="font-semibold text-[#efece6]">{booking.serviceName}</h3>
                             <p className="text-xs text-[#c9c3b6]">Category: {booking.category}</p>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[booking.status]}`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[booking.status]}`}> 
                             {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                           </span>
                         </div>
@@ -930,6 +933,25 @@ const Profile = () => {
                             </p>
                           </div>
                         )}
+
+                        {/* Pay Now button for unpaid service bookings */}
+                        {booking.status === 'confirmed' && booking.paymentStatus !== 'paid' && (
+                          <Button
+                            className="mt-3 bg-[#d7d0bf] hover:bg-[#e5ddca] text-[#1f241f] rounded-lg"
+                            onClick={() => navigate(`/payment/service/${booking.id}`)}
+                          >
+                            Pay Now
+                          </Button>
+                        )}
+                        {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (
+                          <Button
+                            className="mt-3 rounded-lg border-emerald-200 text-emerald-700"
+                            variant="outline"
+                            disabled
+                          >
+                            Paid
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -951,30 +973,70 @@ const Profile = () => {
                   <p className="text-sm text-[#c9c3b6] mt-1">View your transaction records</p>
                 </div>
 
-                {bookings.filter(b => b.paymentStatus === 'paid').length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-[#343a30] rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CreditCard className="w-8 h-8 text-[#d7d0bf]" />
-                    </div>
-                    <h3 className="text-lg font-medium text-[#efece6] mb-2">No payments yet</h3>
-                    <p className="text-[#c9c3b6]">Your payment history will appear here</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="bg-[#343a30] rounded-xl p-4 text-[#efece6] mb-4">
-                      <p className="text-sm text-[#c9c3b6] mb-1">Total Spent</p>
-                      <p className="text-2xl font-bold">
-                        ${bookings.filter(b => b.paymentStatus === 'paid').reduce((sum, b) => sum + b.totalPrice, 0).toFixed(2)}
-                      </p>
-                      <p className="text-xs text-[#c9c3b6] mt-1">
-                        Across {bookings.filter(b => b.paymentStatus === 'paid').length} transactions
-                      </p>
-                    </div>
+                {/* Combine room and service bookings for payments */}
+                {(() => {
+                  const paidRoomBookings = bookings.filter(b => b.paymentStatus === 'paid');
+                  const paidServiceBookings = serviceBookingsState.filter(s => s.status === 'confirmed' && s.paymentStatus === 'paid');
+                  const unpaidRoomBookings = bookings.filter(b => b.paymentStatus !== 'paid');
+                  const unpaidServiceBookings = serviceBookingsState.filter(s => s.status === 'confirmed' && s.paymentStatus !== 'paid');
+                  const totalPaid = paidRoomBookings.reduce((sum, b) => sum + b.totalPrice, 0) + paidServiceBookings.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
+                  const totalTransactions = paidRoomBookings.length + paidServiceBookings.length;
 
-                    <div className="space-y-3">
-                      {bookings.filter(b => b.paymentStatus === 'paid').map((booking) => {
-                        const room = roomsState.find(r => r.id === booking.roomId);
-                        return (
+                  if (totalTransactions === 0) {
+                    return (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-[#343a30] rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CreditCard className="w-8 h-8 text-[#d7d0bf]" />
+                        </div>
+                        <h3 className="text-lg font-medium text-[#efece6] mb-2">No payments yet</h3>
+                        <p className="text-[#c9c3b6]">Your payment history will appear here</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      <div className="bg-[#343a30] rounded-xl p-4 text-[#efece6] mb-4">
+                        <p className="text-sm text-[#c9c3b6] mb-1">Total Spent</p>
+                        <p className="text-2xl font-bold">
+                          ₹{totalPaid.toFixed(2)}
+                        </p>
+                        <p className="text-xs text-[#c9c3b6] mt-1">
+                          Across {totalTransactions} transactions
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        {/* Paid Room Bookings */}
+                        {paidRoomBookings.map((booking) => {
+                          const room = roomsState.find(r => r.id === booking.roomId);
+                          return (
+                            <div key={booking.id} className="border border-[#4b5246] rounded-xl p-4 hover:shadow-md transition-shadow bg-[#343a30]">
+                              <div className="flex justify-between items-start">
+                                <div className="flex gap-3">
+                                  <div className="w-10 h-10 bg-[#2f3530] rounded-lg flex items-center justify-center">
+                                    <CreditCard className="w-5 h-5 text-[#d7d0bf]" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-medium text-[#efece6]">{room?.name || 'Room Booking'}</h3>
+                                    <p className="text-xs text-[#c9c3b6] mt-1">
+                                      {format(booking.checkIn, 'MMM dd')} - {format(booking.checkOut, 'MMM dd, yyyy')}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-emerald-600">₹{booking.totalPrice.toFixed(2)}</p>
+                                  <span className="inline-flex items-center px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium mt-1">
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Paid
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* Paid Service Bookings */}
+                        {paidServiceBookings.map((booking) => (
                           <div key={booking.id} className="border border-[#4b5246] rounded-xl p-4 hover:shadow-md transition-shadow bg-[#343a30]">
                             <div className="flex justify-between items-start">
                               <div className="flex gap-3">
@@ -982,14 +1044,14 @@ const Profile = () => {
                                   <CreditCard className="w-5 h-5 text-[#d7d0bf]" />
                                 </div>
                                 <div>
-                                  <h3 className="font-medium text-[#efece6]">{room?.name || 'Room Booking'}</h3>
+                                  <h3 className="font-medium text-[#efece6]">{booking.serviceName}</h3>
                                   <p className="text-xs text-[#c9c3b6] mt-1">
-                                    {format(booking.checkIn, 'MMM dd')} - {format(booking.checkOut, 'MMM dd, yyyy')}
+                                    {format(booking.date, 'MMM dd, yyyy')} at {booking.time}
                                   </p>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-lg font-bold text-emerald-600">${booking.totalPrice.toFixed(2)}</p>
+                                <p className="text-lg font-bold text-emerald-600">₹{(booking.totalPrice || 0).toFixed(2)}</p>
                                 <span className="inline-flex items-center px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-medium mt-1">
                                   <CheckCircle2 className="w-3 h-3 mr-1" />
                                   Paid
@@ -997,11 +1059,62 @@ const Profile = () => {
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
+                        ))}
+                        {/* Unpaid Room Bookings */}
+                        {unpaidRoomBookings.map((booking) => {
+                          const room = roomsState.find(r => r.id === booking.roomId);
+                          return (
+                            <div key={booking.id} className="border border-[#4b5246] rounded-xl p-4 hover:shadow-md transition-shadow bg-[#343a30]">
+                              <div className="flex justify-between items-start">
+                                <div className="flex gap-3">
+                                  <div className="w-10 h-10 bg-[#2f3530] rounded-lg flex items-center justify-center">
+                                    <CreditCard className="w-5 h-5 text-[#d7d0bf]" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-medium text-[#efece6]">{room?.name || 'Room Booking'}</h3>
+                                    <p className="text-xs text-[#c9c3b6] mt-1">
+                                      {format(booking.checkIn, 'MMM dd')} - {format(booking.checkOut, 'MMM dd, yyyy')}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-red-600">₹{booking.totalPrice.toFixed(2)}</p>
+                                  <Button className="mt-1" onClick={() => navigate(`/payment/${booking.id}`)}>
+                                    Pay Now
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* Unpaid Service Bookings */}
+                        {unpaidServiceBookings.map((booking) => (
+                          <div key={booking.id} className="border border-[#4b5246] rounded-xl p-4 hover:shadow-md transition-shadow bg-[#343a30]">
+                            <div className="flex justify-between items-start">
+                              <div className="flex gap-3">
+                                <div className="w-10 h-10 bg-[#2f3530] rounded-lg flex items-center justify-center">
+                                  <CreditCard className="w-5 h-5 text-[#d7d0bf]" />
+                                </div>
+                                <div>
+                                  <h3 className="font-medium text-[#efece6]">{booking.serviceName}</h3>
+                                  <p className="text-xs text-[#c9c3b6] mt-1">
+                                    {format(booking.date, 'MMM dd, yyyy')} at {booking.time}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-lg font-bold text-red-600">₹{(booking.totalPrice || 0).toFixed(2)}</p>
+                                <Button className="mt-1" onClick={() => navigate(`/payment/service/${booking.id}`)}>
+                                  Pay Now
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
