@@ -28,7 +28,8 @@ import {
   Wifi,
   Car,
   Coffee,
-  Waves
+  Waves,
+  RefreshCw as RefreshIcon
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -1766,7 +1767,15 @@ const AdminDashboard = () => {
             }`}
           >
             <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
+            <span>Home</span>
+          </button>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]"
+          >
+            <RefreshIcon className="w-5 h-5" />
+            <span>Refresh</span>
           </button>
 
           <button
@@ -1791,18 +1800,6 @@ const AdminDashboard = () => {
           >
             <Bell className="w-5 h-5" />
             <span>Manage Services</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('offers')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'offers'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Tag className="w-5 h-5" />
-            <span>Manage Offers</span>
           </button>
 
           <button
@@ -1839,58 +1836,6 @@ const AdminDashboard = () => {
           >
             <DollarSign className="w-5 h-5" />
             <span>Payments</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('guests')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'guests'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Users className="w-5 h-5" />
-            <span>Guests</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('contacts')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'contacts'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span>Contact Messages</span>
-            {contactStatsState && contactStatsState.new > 0 && (
-              <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {contactStatsState.new}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => {
-              setIsSidebarOpen(false);
-              navigate('/admin/newsletters');
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]"
-          >
-            <Mail className="w-5 h-5" />
-            <span>Newsletter</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('settings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              activeTab === 'settings'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
           </button>
         </nav>
 

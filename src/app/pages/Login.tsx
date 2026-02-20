@@ -20,10 +20,22 @@ const Login = () => {
     e.preventDefault();
     const identifier = loginMethod === 'email' ? email : phone;
     const success = await login(identifier, password);
-    
     if (success) {
       toast.success('Login successful!');
-      navigate('/');
+      // Check user role from localStorage (set by AuthContext)
+      const auth = localStorage.getItem('auth');
+      let isAdmin = false;
+      if (auth) {
+        try {
+          const parsed = JSON.parse(auth);
+          isAdmin = parsed.user?.role === 'admin';
+        } catch {}
+      }
+      if (isAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     } else {
       toast.error('Invalid credentials');
     }
@@ -137,10 +149,6 @@ const Login = () => {
               Sign up
             </Link>
           </div>
-
-          {/* <div className="mt-6 pt-6 border-t border-stone-200 text-center text-xs text-stone-500">
-            Demo credentials: admin@hotel.com / admin (for admin access)
-          </div> */}
         </div>
       </div>
     </div>

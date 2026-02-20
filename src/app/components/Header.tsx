@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Hotel, User, Menu, X, LogIn, LogOut } from 'lucide-react';
+import { Hotel, User, Menu, X, LogIn, LogOut, Bell } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../context/AuthContext';
 
@@ -42,6 +42,9 @@ const Header = () => {
             <Button variant="outline" className="ml-4" onClick={() => window.location.reload()} title="Refresh Website">
               Refresh
             </Button>
+            <Link to="/notifications" className="hover:text-white transition-colors flex items-center gap-1">
+             <Bell className="w-5 h-5" />
+            </Link>
           </div>
         </nav>
 
@@ -69,7 +72,12 @@ const Header = () => {
                   <Link to="/profile?tab=profile" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Profile</Link>
                 </>
               ) : (
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Login&Signup</Link>
+                <>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Login&Signup</Link>
+                  <Link to="/notifications" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light flex items-center gap-2">
+                    <Bell className="w-6 h-6" /> Notifications
+                  </Link>
+                </>
               )}
               {/* Refresh Button for Mobile */}
               <Button variant="outline" className="w-full max-w-xs" onClick={() => window.location.reload()} title="Refresh Website">
