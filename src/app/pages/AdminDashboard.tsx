@@ -3190,11 +3190,14 @@ const AdminDashboard = () => {
             </div>
 
             {isServiceBookingFormOpen && (
-              <form onSubmit={handleSaveServiceBooking} className="bg-white rounded-2xl p-6 shadow-sm mb-8 border border-stone-200">
-                <h3 className="text-lg font-bold text-stone-900 mb-4">Add Service Booking</h3>
+              <form
+                onSubmit={handleSaveServiceBooking}
+                className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]"
+              >
+                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">Add Service Booking</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                     value={serviceBookingForm.serviceId}
                     onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, serviceId: event.target.value, time: '' })}
                     required
@@ -3207,12 +3210,14 @@ const AdminDashboard = () => {
                     ))}
                   </select>
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Guest Name"
                     value={serviceBookingForm.guestName}
                     onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestName: event.target.value })}
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Guest Email"
                     type="email"
                     value={serviceBookingForm.guestEmail}
@@ -3220,12 +3225,14 @@ const AdminDashboard = () => {
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Guest Phone"
                     value={serviceBookingForm.guestPhone}
                     onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestPhone: event.target.value })}
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Date"
                     type="date"
                     value={serviceBookingForm.date}
@@ -3234,7 +3241,7 @@ const AdminDashboard = () => {
                   />
                   {serviceBookingTimes.length > 0 ? (
                     <select
-                      className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                       value={serviceBookingForm.time}
                       onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, time: event.target.value })}
                       required
@@ -3248,6 +3255,7 @@ const AdminDashboard = () => {
                     </select>
                   ) : (
                     <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                       placeholder="Time (e.g., 7:00 PM)"
                       value={serviceBookingForm.time}
                       onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, time: event.target.value })}
@@ -3255,6 +3263,7 @@ const AdminDashboard = () => {
                     />
                   )}
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Guests"
                     type="number"
                     min="1"
@@ -3263,7 +3272,7 @@ const AdminDashboard = () => {
                     required
                   />
                   <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                     value={serviceBookingForm.status}
                     onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, status: event.target.value as any })}
                   >
@@ -3273,17 +3282,25 @@ const AdminDashboard = () => {
                   </select>
                 </div>
                 <Textarea
+                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
                   placeholder="Special Requests"
                   value={serviceBookingForm.specialRequests}
                   onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, specialRequests: event.target.value })}
-                  className="mb-4"
                 />
-                <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="outline" onClick={() => setIsServiceBookingFormOpen(false)}>
+                <div className="flex gap-2 justify-end mt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsServiceBookingFormOpen(false)}
+                    className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Save Booking
+                  <Button
+                    type="submit"
+                    className="bg-amber-500 hover:bg-amber-600 text-[#232b23] font-semibold shadow-md"
+                  >
+                    Add
                   </Button>
                 </div>
               </form>
