@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useLocation } from 'react-router';
 import { Hotel, User, Menu, X, LogIn, LogOut, Bell } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../context/AuthContext';
@@ -15,38 +15,59 @@ const Header = () => {
     setMobileMenuOpen(false);
   };
 
+  const location = useLocation();
+
+  // Hide main nav links on /admin route
+  const isAdminDashboard = location.pathname.startsWith('/admin');
+
   return (
     <header className="absolute top-0 left-0 right-0 z-50 w-full">
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Navigation Bar */}
-        <nav className="flex items-center justify-between lg:justify-center">
-          {/* Desktop Navigation (Kept Same) */}
-          <div className="hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold">
-            <Link to="/" className="hover:text-white transition-colors">Home</Link>
-            <Link to="/rooms" className="hover:text-white transition-colors">Accommodation</Link>
-            <Link to="/services" className="hover:text-white transition-colors">Services</Link>
-            <Link to="/offers" className="hover:text-white transition-colors">Offers</Link>
-            <Link to="/about" className="hover:text-white transition-colors">About Us</Link>
-            <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
-            {user ? (
-              <>
-                {user.role === 'admin' && (
-                  <Link to="/admin" className="hover:text-white transition-colors">Admin Dashboard</Link>
-                )}
-                <Link to="/profile?tab=profile" className="hover:text-white transition-colors">Profile</Link>
-              </>
-            ) : (
-              <Link to="/login" className="hover:text-white transition-colors">Login&Signup</Link>
-            )}
-            {/* Refresh Button */}
-            <Button variant="outline" className="ml-4" onClick={() => window.location.reload()} title="Refresh Website">
+        {/* Admin Dashboard Header */}
+        {isAdminDashboard ? (
+          <nav className="flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold">
+            <Link to="/admin" className="hover:text-white transition-colors">Home</Link>
+            <Link to="/admin?tab=rooms" className="hover:text-white transition-colors">Manage Rooms</Link>
+            <Link to="/admin?tab=services" className="hover:text-white transition-colors">Manage Services</Link>
+            <Link to="/admin?tab=bookings" className="hover:text-white transition-colors">Bookings</Link>
+            <Link to="/admin?tab=service-bookings" className="hover:text-white transition-colors">Service Bookings</Link>
+            <Link to="/admin?tab=payments" className="hover:text-white transition-colors">Payments</Link>
+            <Button variant="outline" className="ml-4" onClick={() => window.location.reload()} title="Refresh">
               Refresh
             </Button>
-            <Link to="/notifications" className="hover:text-white transition-colors flex items-center gap-1">
-             <Bell className="w-5 h-5" />
-            </Link>
-          </div>
-        </nav>
+          </nav>
+        ) : (
+          <nav className="flex items-center justify-between lg:justify-center">
+            {/* Desktop Navigation (Kept Same) */}
+            <>
+              <div className="hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold">
+                <Link to="/" className="hover:text-white transition-colors">Home</Link>
+                <Link to="/rooms" className="hover:text-white transition-colors">Accommodation</Link>
+                <Link to="/services" className="hover:text-white transition-colors">Services</Link>
+                <Link to="/offers" className="hover:text-white transition-colors">Offers</Link>
+                <Link to="/about" className="hover:text-white transition-colors">About Us</Link>
+                <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+                {user ? (
+                  <>
+                    {user.role === 'admin' && (
+                      <Link to="/admin" className="hover:text-white transition-colors">Admin Dashboard</Link>
+                    )}
+                    <Link to="/profile?tab=profile" className="hover:text-white transition-colors">Profile</Link>
+                  </>
+                ) : (
+                  <Link to="/login" className="hover:text-white transition-colors">Login&Signup</Link>
+                )}
+              </div>
+              {/* Refresh Button */}
+              <Button variant="outline" className="ml-4" onClick={() => window.location.reload()} title="Refresh Website">
+                Refresh
+              </Button>
+              <Link to="/notifications" className="hover:text-white transition-colors flex items-center gap-1">
+                <Bell className="w-5 h-5" />
+              </Link>
+            </>
+          </nav>
+        )}
 
         {/* Full Screen Mobile Menu Overlay */}
         {mobileMenuOpen && (
