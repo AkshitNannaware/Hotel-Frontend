@@ -131,7 +131,7 @@ const CheckIn = () => {
       }
     }
 
-    await updateBookingStatus(booking.id, 'checked-in');
+    await updateBookingStatus(booking.id, 'check-in');
     setStep(2);
     toast.success('Check-in successful!');
   };

@@ -68,8 +68,8 @@ const BookingDetails = () => {
       case 'confirmed': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'checked-in': return 'bg-blue-100 text-blue-800';
-      case 'checked-out': return 'bg-stone-100 text-stone-800';
+      case 'check-in': return 'bg-blue-100 text-blue-800';
+      case 'check-out': return 'bg-stone-100 text-stone-800';
       default: return 'bg-stone-100 text-stone-800';
     }
   };
@@ -327,7 +327,7 @@ const BookingDetails = () => {
                     Check In
                   </Button>
                 )}
-                {booking.status === 'checked-in' && (
+                {booking.status === 'check-in' && (
                   <Button
                     onClick={() => navigate(`/checkout/${booking.id}`)}
                     className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700"

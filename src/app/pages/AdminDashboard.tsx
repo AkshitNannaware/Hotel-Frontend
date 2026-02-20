@@ -139,10 +139,23 @@ type AdminServiceBooking = {
 
 const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
 
+import { useLocation } from 'react-router';
 const AdminDashboard = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state && location.state.tab) {
+      return location.state.tab;
+    }
+    return 'dashboard';
+  });
+    // Update activeTab if location.state changes
+    React.useEffect(() => {
+      if (location.state && location.state.tab) {
+        setActiveTab(location.state.tab);
+      }
+    }, [location.state]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [roomsState, setRoomsState] = useState<Room[]>([]);
   const [bookingsState, setBookingsState] = useState<AdminBooking[]>([]);
@@ -679,7 +692,7 @@ const AdminDashboard = () => {
     confirmedBookings: bookingsState.filter(b => b.status === 'confirmed').length,
     totalRevenue: bookingsState.reduce((sum, b) => sum + b.totalPrice, 0),
     occupancyRate: roomsState.length
-      ? Number(((bookingsState.filter(b => b.status === 'confirmed' || b.status === 'checked-in').length / roomsState.length) * 100).toFixed(1))
+      ? Number(((bookingsState.filter(b => b.status === 'confirmed' || b.status === 'check-in').length / roomsState.length) * 100).toFixed(1))
       : 0,
   };
 
@@ -687,9 +700,9 @@ const AdminDashboard = () => {
     switch (status) {
       case 'confirmed':
         return 'bg-green-100 text-green-800';
-      case 'checked-in':
+      case 'check-in':
         return 'bg-blue-100 text-blue-800';
-      case 'checked-out':
+      case 'check-out':
         return 'bg-stone-200 text-stone-800';
       default:
         return 'bg-stone-100 text-stone-800';
@@ -2434,8 +2447,8 @@ const AdminDashboard = () => {
                       })
                     }
                   >
-                    <option value="dining">In-room dining</option>
-                    <option value="restaurant">Restaurant</option>
+                    <option value="dining">Room Service (In-room dining)</option>
+                    <option value="restaurant">Bite Book (Restaurant)</option>
                     <option value="spa">Spa & wellness</option>
                     <option value="bar">Bar & lounge</option>
                   </select>
@@ -2818,8 +2831,8 @@ const AdminDashboard = () => {
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="confirmed">Confirmed</option>
-                  <option value="checked-in">Checked-in</option>
-                  <option value="checked-out">Checked-out</option>
+                  <option value="check-in">Check-in</option>
+                  <option value="check-out">Check-out</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
                 <Button
@@ -2866,11 +2879,11 @@ const AdminDashboard = () => {
             </div>
 
             {isBookingFormOpen && (
-              <form onSubmit={handleSaveBooking} className="bg-white rounded-2xl p-6 shadow-sm mb-8 border border-stone-200">
-                <h3 className="text-lg font-bold text-stone-900 mb-4">Add Booking</h3>
+              <form onSubmit={handleSaveBooking} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">Add Booking</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                     value={bookingForm.roomId}
                     onChange={(event) => setBookingForm({ ...bookingForm, roomId: event.target.value })}
                     required
@@ -2883,12 +2896,14 @@ const AdminDashboard = () => {
                     ))}
                   </select>
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Guest Name"
                     value={bookingForm.guestName}
                     onChange={(event) => setBookingForm({ ...bookingForm, guestName: event.target.value })}
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Guest Email"
                     type="email"
                     value={bookingForm.guestEmail}
@@ -2896,12 +2911,14 @@ const AdminDashboard = () => {
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Guest Phone"
                     value={bookingForm.guestPhone}
                     onChange={(event) => setBookingForm({ ...bookingForm, guestPhone: event.target.value })}
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Check-In Date"
                     type="date"
                     value={bookingForm.checkIn}
@@ -2909,6 +2926,7 @@ const AdminDashboard = () => {
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Check-Out Date"
                     type="date"
                     value={bookingForm.checkOut}
@@ -2916,17 +2934,18 @@ const AdminDashboard = () => {
                     required
                   />
                   <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                     value={bookingForm.status}
                     onChange={(event) => setBookingForm({ ...bookingForm, status: event.target.value as any })}
                   >
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
-                    <option value="checked-in">Check-in</option>
-                    <option value="checked-out">Check-out</option>
+                    <option value="check-in">Check-in</option>
+                    <option value="check-out">Check-out</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Total Amount"
                     type="number"
                     step="0.01"
@@ -2935,7 +2954,7 @@ const AdminDashboard = () => {
                     required
                   />
                   <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
                     value={bookingIdProofType}
                     onChange={(event) => setBookingIdProofType(event.target.value)}
                   >
@@ -2944,20 +2963,20 @@ const AdminDashboard = () => {
                     <option value="government-id">Government ID</option>
                   </select>
                   <div className="md:col-span-2">
-                    <label className="text-sm text-stone-600 block mb-2">Upload ID proof (optional)</label>
+                    <label className="block text-sm font-medium text-[#e6e6e6] mb-2">Upload ID proof (optional)</label>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,application/pdf"
                       onChange={(event) => setBookingIdProofFile(event.target.files?.[0] || null)}
-                      className="w-full text-sm text-stone-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200"
+                      className="w-full text-sm text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
                     />
                   </div>
                 </div>
-                <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="outline" onClick={() => setIsBookingFormOpen(false)}>
+                <div className="flex items-center justify-between mt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsBookingFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
                     Save Booking
                   </Button>
                 </div>

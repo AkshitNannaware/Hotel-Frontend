@@ -715,24 +715,24 @@ const Payment = () => {
               <div className="rounded-2xl border border-[#4b5246] bg-[#343a30] p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm uppercase tracking-[0.2em] text-[#c9c3b6]">Stay details</h3>
-                  <span className="text-xs text-[#c9c3b6]">₹{booking.totalPrice.toFixed(2)}</span>
+                  <span className="text-xs text-[#c9c3b6]">₹{booking?.totalPrice !== undefined ? booking.totalPrice.toFixed(2) : 'N/A'}</span>
                 </div>
                 <div className="space-y-2 text-sm text-[#d7d0bf]">
                   <div className="flex justify-between">
                     <span>Arrive</span>
-                    <span>{new Date(booking.checkIn).toLocaleDateString()}</span>
+                    <span>{booking?.checkIn ? new Date(booking.checkIn).toLocaleDateString() : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Depart</span>
-                    <span>{new Date(booking.checkOut).toLocaleDateString()}</span>
+                    <span>{booking?.checkOut ? new Date(booking.checkOut).toLocaleDateString() : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Nights</span>
-                    <span>{Math.max(1, Math.round((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / 86400000))}</span>
+                    <span>{booking?.checkIn && booking?.checkOut ? Math.max(1, Math.round((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / 86400000)) : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Guests</span>
-                    <span>{booking.guests}</span>
+                    <span>{booking?.guests ?? 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Room Type</span>

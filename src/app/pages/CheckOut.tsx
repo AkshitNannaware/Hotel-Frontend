@@ -89,7 +89,7 @@ const CheckOut = () => {
       toast.error('Please pay the pending amount before checking out.');
       return;
     }
-    updateBookingStatus(booking.id, 'checked-out');
+    updateBookingStatus(booking.id, 'check-out');
     setStep(2);
     toast.success('Check-out successful!');
   };

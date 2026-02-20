@@ -23,7 +23,7 @@ export interface Booking extends BookingDetails {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
-  status: 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'check-in' | 'check-out' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'failed';
   idVerified: 'pending' | 'approved' | 'rejected';
   idProofUrl?: string;

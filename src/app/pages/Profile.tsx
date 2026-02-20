@@ -379,8 +379,8 @@ const Profile = () => {
   const statusColors = {
     'pending': 'bg-amber-100 text-amber-800',
     'confirmed': 'bg-emerald-100 text-emerald-800',
-    'checked-in': 'bg-blue-100 text-blue-800',
-    'checked-out': 'bg-[#343a30] text-[#efece6]',
+    'check-in': 'bg-blue-100 text-blue-800',
+    'check-out': 'bg-[#343a30] text-[#efece6]',
     'cancelled': 'bg-red-100 text-red-800',
   };
 
@@ -695,8 +695,8 @@ const Profile = () => {
                     <div className="bg-[#2a3027] p-4 rounded-xl text-[#efece6] hover:shadow-lg transition-shadow">
                       <div className="text-2xl font-bold mb-1">
                         {isAdmin
-                          ? adminBookingsState.filter(b => b.status === 'checked-out').length
-                          : bookings.filter(b => b.status === 'checked-out').length}
+                          ? adminBookingsState.filter(b => b.status === 'check-out').length
+                          : bookings.filter(b => b.status === 'check-out').length}
                       </div>
                       <p className="text-sm text-[#c9c3b6]">Completed Stays</p>
                     </div>
@@ -786,7 +786,7 @@ const Profile = () => {
                                     Check In
                                   </Button>
                                 )}
-                                {booking.status === 'checked-in' && !allPaid && (
+                                {booking.status === 'check-in' && !allPaid && (
                                   <Button
                                     size="sm"
                                     onClick={() => navigate(`/payment/${booking.id}`)}
@@ -795,7 +795,7 @@ const Profile = () => {
                                     Pay Now
                                   </Button>
                                 )}
-                                {booking.status === 'checked-in' && allPaid && (
+                                {booking.status === 'check-in' && allPaid && (
                                   <Button
                                     size="sm"
                                     onClick={() => navigate(`/checkout/${booking.id}`)}
@@ -1131,8 +1131,8 @@ const Profile = () => {
                     const room = roomsState.find(r => r.id === booking.roomId);
                     const notificationStyles = {
                       'confirmed': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-                      'checked-in': { bg: 'bg-blue-100', text: 'text-blue-700' },
-                      'checked-out': { bg: 'bg-[#343a30]', text: 'text-[#efece6]' },
+                      'check-in': { bg: 'bg-blue-100', text: 'text-blue-700' },
+                      'check-out': { bg: 'bg-[#343a30]', text: 'text-[#efece6]' },
                       'cancelled': { bg: 'bg-red-100', text: 'text-red-700' },
                       'pending': { bg: 'bg-amber-100', text: 'text-amber-700' }
                     };
@@ -1154,8 +1154,8 @@ const Profile = () => {
                           </div>
                           <p className="text-sm text-[#c9c3b6] mb-1">
                             {booking.status === 'confirmed' && `Your reservation for ${room?.name} has been confirmed.`}
-                            {booking.status === 'checked-in' && `Welcome to ${room?.name}. Enjoy your stay!`}
-                            {booking.status === 'checked-out' && `Thank you for staying at ${room?.name}.`}
+                            {booking.status === 'check-in' && `Welcome to ${room?.name}. Enjoy your stay!`}
+                            {booking.status === 'check-out' && `Thank you for staying at ${room?.name}.`}
                             {booking.status === 'cancelled' && `Your booking for ${room?.name} has been cancelled.`}
                             {booking.status === 'pending' && `Your booking request for ${room?.name} is being processed.`}
                           </p>
