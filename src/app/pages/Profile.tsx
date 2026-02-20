@@ -21,6 +21,9 @@ type ServiceBooking = {
   specialRequests: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   bookingDate: Date;
+  roomBookingId?: string;
+  paymentStatus?: string;
+  totalPrice?: number;
 };
 
 const Profile = () => {
