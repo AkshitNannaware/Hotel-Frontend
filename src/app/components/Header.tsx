@@ -46,7 +46,7 @@ const Header = () => {
                 <Link to="/services" className="hover:text-white transition-colors">Services</Link>
                 <Link to="/offers" className="hover:text-white transition-colors">Offers</Link>
                 <Link to="/about" className="hover:text-white transition-colors">About Us</Link>
-                <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+                {/* <Link to="/contact" className="hover:text-white transition-colors">Contact</Link> */}
                 {user ? (
                   <>
                     {user.role === 'admin' && (
