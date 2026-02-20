@@ -123,29 +123,29 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
-        <Button variant="ghost" className="mb-6" onClick={() => navigate('/login')}>
+    <div className="min-h-screen flex items-center justify-center bg-[#3f4a40] text-[#efece6] px-4">
+      <div className="w-full max-w-md bg-[#232b23]/95 rounded-3xl shadow-2xl p-10 border border-[#5b6659]">
+        <Button variant="ghost" className="mb-6 text-[#efece6] hover:bg-[#2e362e]" onClick={() => navigate('/login')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Login
         </Button>
 
-        <h1 className="text-3xl mb-2">Forgot Password</h1>
-        <p className="text-stone-600 mb-6">
+        <h1 className="text-3xl mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Forgot Password</h1>
+        <p className="text-[#cfc9bb] mb-6">
           Enter your email or phone number. We will send an OTP to verify your identity.
         </p>
 
         <div className="space-y-5">
           <div>
-            <Label htmlFor="identifier">Email or Phone</Label>
+            <Label htmlFor="identifier" className="text-[#efece6]">Email or Phone</Label>
             <div className="relative mt-2">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#b6b6b6]" />
               <Input
                 id="identifier"
                 type="text"
                 value={identifier}
                 onChange={(event) => setIdentifier(event.target.value)}
-                className="pl-10 h-12"
+                className="pl-10 h-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                 disabled={step !== 'request'}
                 required
               />
@@ -154,15 +154,15 @@ const ForgotPassword = () => {
 
           {step === 'verify' && (
             <div>
-              <Label htmlFor="otp">OTP</Label>
+              <Label htmlFor="otp" className="text-[#efece6]">OTP</Label>
               <div className="relative mt-2">
-                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#b6b6b6]" />
                 <Input
                   id="otp"
                   type="text"
                   value={otp}
                   onChange={(event) => setOtp(event.target.value)}
-                  className="pl-10 h-12"
+                  className="pl-10 h-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                   required
                 />
               </div>
@@ -172,30 +172,30 @@ const ForgotPassword = () => {
           {step === 'reset' && (
             <>
               <div>
-                <Label htmlFor="new-password">New Password</Label>
+                <Label htmlFor="new-password" className="text-[#efece6]">New Password</Label>
                 <div className="relative mt-2">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#b6b6b6]" />
                   <Input
                     id="new-password"
                     type="password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
-                    className="pl-10 h-12"
+                    className="pl-10 h-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Label htmlFor="confirm-password" className="text-[#efece6]">Confirm Password</Label>
                 <div className="relative mt-2">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#b6b6b6]" />
                   <Input
                     id="confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
-                    className="pl-10 h-12"
+                    className="pl-10 h-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     required
                   />
                 </div>
@@ -204,20 +204,20 @@ const ForgotPassword = () => {
           )}
 
           {step === 'request' && (
-            <Button type="button" className="w-full h-12 rounded-xl" disabled={isSending} onClick={requestOtp}>
+            <Button type="button" className="w-full h-12 rounded-xl bg-[#243026] border border-[#5b6659] text-[#efece6] hover:bg-white/10" disabled={isSending} onClick={requestOtp}>
               {isSending ? 'Sending OTP...' : 'Send OTP'}
             </Button>
           )}
 
           {step === 'verify' && (
             <div className="space-y-3">
-              <Button type="button" className="w-full h-12 rounded-xl" disabled={isSending} onClick={verifyOtp}>
+              <Button type="button" className="w-full h-12 rounded-xl bg-[#243026] border border-[#5b6659] text-[#efece6] hover:bg-white/10" disabled={isSending} onClick={verifyOtp}>
                 {isSending ? 'Verifying...' : 'Verify OTP'}
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="w-full h-12 rounded-xl"
+                className="w-full h-12 rounded-xl bg-[#2e362e] border border-[#3a463a] text-[#efece6] hover:bg-white/10"
                 disabled={isSending}
                 onClick={requestOtp}
               >
@@ -227,7 +227,7 @@ const ForgotPassword = () => {
           )}
 
           {step === 'reset' && (
-            <Button type="button" className="w-full h-12 rounded-xl" disabled={isSending} onClick={resetPassword}>
+            <Button type="button" className="w-full h-12 rounded-xl bg-[#243026] border border-[#5b6659] text-[#efece6] hover:bg-white/10" disabled={isSending} onClick={resetPassword}>
               {isSending ? 'Updating...' : 'Update Password'}
             </Button>
           )}
