@@ -118,9 +118,9 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
+      <div className="w-full max-w-lg bg-white/90 rounded-[2.5rem] shadow-2xl p-12 border border-[#ececec] backdrop-blur-md">
         <h1 className="text-3xl font-bold text-center mb-2">Create Account</h1>
-        <p className="text-center text-stone-600 mb-8">
+        <p className="text-center text-stone-500 mb-8 text-lg">
           Join us for exclusive benefits
         </p>
 
@@ -133,7 +133,7 @@ const Signup = () => {
               value={formData.name}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`mt-2 h-12 ${errors.name ? 'border-red-500' : ''}`}
+              className={`mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.name ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
@@ -148,7 +148,7 @@ const Signup = () => {
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`mt-2 h-12 ${errors.email ? 'border-red-500' : ''}`}
+              className={`mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.email ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             {errors.email && (
@@ -165,7 +165,7 @@ const Signup = () => {
               value={formData.phone}
               onChange={handlePhoneChange}
               onBlur={handleBlur}
-              className={`mt-2 h-12 ${errors.phone ? 'border-red-500' : ''}`}
+              className={`mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.phone ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             {errors.phone && (
@@ -182,7 +182,7 @@ const Signup = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
-                className="h-12 pr-12"
+                className="h-14 pr-12 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400"
                 disabled={isLoading}
               />
               <button
@@ -204,9 +204,7 @@ const Signup = () => {
               value={formData.confirmPassword}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`mt-2 h-12 ${
-                errors.confirmPassword ? 'border-red-500' : ''
-              }`}
+              className={`mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.confirmPassword ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             {errors.confirmPassword && (

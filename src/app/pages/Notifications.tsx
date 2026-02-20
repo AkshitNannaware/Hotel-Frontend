@@ -1,102 +1,112 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, CheckCircle, User, ShoppingCart, Package, Store } from 'lucide-react';
-import { Button } from '../components/ui/button';
+import React, { useState } from 'react';
+import { FaBell, FaCheck, FaTimes, FaUserPlus, FaShoppingCart, FaClipboardList } from 'react-icons/fa';
 
-function timeAgo(dateStr: string): string {
-  const date = new Date(dateStr);
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return 'Just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
-  return date.toLocaleDateString();
+interface Notification {
+  id: string;
+  type: 'sale' | 'order' | 'user';
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
 }
 
-function getNotificationIcon(type: string) {
-  switch (type) {
-    case 'order':
-      return <ShoppingCart className="w-6 h-6 text-blue-500" />;
-    case 'sale':
-      return <CheckCircle className="w-6 h-6 text-yellow-500" />;
-    case 'inventory':
-      return <Package className="w-6 h-6 text-green-500" />;
-    case 'franchise':
-      return <Store className="w-6 h-6 text-purple-500" />;
-    case 'user':
-      return <User className="w-6 h-6 text-pink-500" />;
-    default:
-      return <Bell className="w-6 h-6 text-gray-400" />;
-  }
-}
+const notificationIcons = {
+  sale: <FaShoppingCart color="#eab308" size={20} />,
+  order: <FaClipboardList color="#22c55e" size={20} />,
+  user: <FaUserPlus color="#3b82f6" size={20} />,
+};
 
+const initialNotifications: Notification[] = [
+  {
+    id: '1',
+    type: 'sale',
+    title: 'New Sale Created',
+    description: 'Sale INV-20260219-454 completed successfully',
+    time: '21 hours ago',
+    read: false,
+  },
+  {
+    id: '2',
+    type: 'order',
+    title: 'New Order Received',
+    description: 'Order ORD-MLT4VRP0-K4FX has been created',
+    time: '1 day ago',
+    read: false,
+  },
+  {
+    id: '3',
+    type: 'user',
+    title: 'New User Added',
+    description: 'Akshit (akshit@gmail.com) has been added as manager',
+    time: '1 day ago',
+    read: true,
+  },
+];
 
-const Notifications = () => {
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+const Notifications: React.FC = () => {
+  const [notifications, setNotifications] = useState(initialNotifications);
 
-  useEffect(() => {
-    async function fetchNotifications() {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')!).token : null;
-        const res = await fetch('/api/notifications', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const data = await res.json();
-        setNotifications(data);
-      } catch {
-        setNotifications([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchNotifications();
-  }, []);
+  const markAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  };
+
+  const deleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-[#0f1210] text-[#efece6] flex flex-col items-center py-10">
-      <h1 className="text-3xl mb-6 flex items-center gap-2"><Bell className="w-7 h-7" /> Notifications</h1>
-      {loading ? (
-        <div>Loading notifications...</div>
-      ) : notifications.length === 0 ? (
-        <div>No notifications found.</div>
-      ) : (
-        <div className="w-full max-w-2xl">
-          <div className="mb-4 flex items-center gap-2">
-            <span className="text-lg font-semibold">Notifications</span>
-            <span className="bg-red-600 text-white rounded-full px-2 py-0.5 text-xs">{notifications.length}</span>
-          </div>
-          {notifications.map((n, idx) => (
+    <div className="max-w-md mx-auto mt-10 bg-white rounded-lg shadow-lg p-6 relative">
+      <div className="flex items-center mb-4">
+        <span style={{ marginRight: 8, display: 'inline-flex', verticalAlign: 'middle' }}><FaBell color="#fbbf24" size={24} /></span>
+        <span className="text-xl font-semibold">Notifications</span>
+        {unreadCount > 0 && (
+          <span className="ml-2 bg-red-500 text-white rounded-full px-2 text-xs">{unreadCount}</span>
+        )}
+      </div>
+      <div>
+        {notifications.length === 0 ? (
+          <div className="text-gray-500 text-center py-8">No notifications</div>
+        ) : (
+          notifications.map((n) => (
             <div
-              key={idx}
-              className={`rounded-xl border-l-4 bg-[#232b23] p-4 mb-3 shadow flex items-start gap-4 border-yellow-400`}
+              key={n.id}
+              className={`flex items-start gap-3 p-3 rounded-lg mb-2 border ${n.read ? 'bg-gray-50' : 'bg-yellow-50 border-yellow-200'} relative`}
             >
-              <div className="flex flex-col items-center justify-center mr-2">
-                {getNotificationIcon(n.type)}
-              </div>
+              <div className="mt-1">{notificationIcons[n.type]}</div>
               <div className="flex-1">
-                <div className="font-semibold text-lg mb-1">{n.title}</div>
-                <div className="text-sm text-[#c9c3b6] mb-2">{n.message}</div>
-                <div className="text-xs text-[#9aa191]">{timeAgo(n.createdAt)}</div>
+                <div className="font-medium">{n.title}</div>
+                <div className="text-sm text-gray-600">{n.description}</div>
+                <div className="text-xs text-gray-400 mt-1">{n.time}</div>
               </div>
-              <div className="flex flex-col items-center gap-2 ml-2">
-                <Button size="icon" variant="ghost" title="Mark as read">
-                  <span role="img" aria-label="check">✔️</span>
-                </Button>
-                <Button size="icon" variant="ghost" title="Delete notification">
-                  <span role="img" aria-label="delete">❌</span>
-                </Button>
+              <div className="flex flex-col gap-1 ml-2">
+                {!n.read && (
+                  <button
+                    title="Mark as read"
+                    onClick={() => markAsRead(n.id)}
+                    style={{ color: '#22c55e', background: 'none', borderRadius: 4, padding: 4 }}
+                  >
+                    <FaCheck />
+                  </button>
+                )}
+                <button
+                  title="Delete"
+                  onClick={() => deleteNotification(n.id)}
+                  style={{ color: '#9ca3af', background: 'none', borderRadius: 4, padding: 4 }}
+                >
+                  <FaTimes />
+                </button>
               </div>
             </div>
-          ))}
-          <div className="mt-4 text-center">
-            <Button variant="link" className="text-blue-400 text-sm">View all notifications &rarr;</Button>
-          </div>
-        </div>
-      )}
+          ))
+        )}
+      </div>
+      <div className="mt-4 text-center">
+        <a href="#" className="text-blue-600 hover:underline text-sm font-medium">View all notifications</a>
+      </div>
     </div>
   );
 };

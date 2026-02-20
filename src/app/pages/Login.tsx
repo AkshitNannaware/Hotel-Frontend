@@ -43,22 +43,20 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-stone-100 px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-xl p-8">
+      <div className="w-full max-w-lg">
+        <div className="bg-white/90 rounded-[2.5rem] shadow-2xl p-12 border border-[#ececec] backdrop-blur-md">
           <div className="text-center mb-8">
-            <h1 className="text-3xl mb-2">Welcome Back</h1>
-            <p className="text-stone-600">Sign in to continue your journey</p>
+            <h1 className="text-4xl mb-2 font-bold tracking-tight">Welcome Back</h1>
+            <p className="text-stone-500 text-lg">Sign in to continue your journey</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex gap-2 p-1 bg-stone-100 rounded-xl mb-6">
+            <div className="flex gap-2 p-1 bg-stone-100 rounded-xl mb-8">
               <button
                 type="button"
                 onClick={() => setLoginMethod('email')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all ${
-                  loginMethod === 'email'
-                    ? 'bg-white shadow-sm'
-                    : 'text-stone-600 hover:text-stone-900'
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-lg font-medium transition-all ${
+                  loginMethod === 'email' ? 'bg-white shadow-md' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 <Mail className="w-4 h-4" />
@@ -67,10 +65,8 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setLoginMethod('phone')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all ${
-                  loginMethod === 'phone'
-                    ? 'bg-white shadow-sm'
-                    : 'text-stone-600 hover:text-stone-900'
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl text-lg font-medium transition-all ${
+                  loginMethod === 'phone' ? 'bg-white shadow-md' : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 <Phone className="w-4 h-4" />
@@ -87,7 +83,7 @@ const Login = () => {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-2 h-12"
+                  className="mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400"
                   required
                 />
               </div>
@@ -100,7 +96,7 @@ const Login = () => {
                   placeholder="Enter your phone number"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-2 h-12"
+                  className="mt-2 h-14 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400"
                   required
                 />
               </div>
@@ -115,7 +111,7 @@ const Login = () => {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 pr-12"
+                  className="h-14 pr-12 rounded-xl border-2 border-[#ececec] bg-white/80 text-lg px-5 focus:ring-2 focus:ring-amber-400"
                   required
                 />
                 <button
@@ -129,11 +125,11 @@ const Login = () => {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-stone-300" />
+              <label className="flex items-center gap-2 cursor-pointer text-base">
+                <input type="checkbox" className="w-5 h-5 rounded border-stone-300" />
                 <span className="text-stone-600">Remember me</span>
               </label>
-              <Link to="/forgot-password" className="text-stone-900 hover:underline">
+              <Link to="/forgot-password" className="text-stone-900 hover:underline text-base">
                 Forgot password?
               </Link>
             </div>
