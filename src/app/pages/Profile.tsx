@@ -2,6 +2,30 @@ import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { User, Mail, Phone, Calendar, LogOut, Settings, Bell, CreditCard, Edit2, Save, X, AlertCircle, CheckCircle2, Award, Star, TrendingUp, MapPin, Gift, Shield, Menu } from 'lucide-react';
 import { Button } from '../components/ui/button';
+// ...existing imports...
+// Utility to download a file from a URL
+function downloadFile(url: string, filename: string) {
+  fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth') || '{}').token || ''}`,
+    },
+  })
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to download invoice');
+      return response.blob();
+    })
+    .then(blob => {
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    })
+    .catch(() => {
+      alert('Could not download invoice.');
+    });
+}
 import { Input } from '../components/ui/input';
 import { useAuth } from '../context/AuthContext';
 import { useBooking } from '../context/BookingContext';
@@ -1033,6 +1057,13 @@ const Profile = () => {
                                     <CheckCircle2 className="w-3 h-3 mr-1" />
                                     Paid
                                   </span>
+                                  <Button
+                                    className="mt-2"
+                                    variant="outline"
+                                    onClick={() => downloadFile(`${API_BASE}/api/bookings/${booking.id}/invoice`, `invoice-room-${booking.id}.pdf`)}
+                                  >
+                                    Download Invoice
+                                  </Button>
                                 </div>
                               </div>
                             </div>
@@ -1059,6 +1090,13 @@ const Profile = () => {
                                   <CheckCircle2 className="w-3 h-3 mr-1" />
                                   Paid
                                 </span>
+                                <Button
+                                  className="mt-2"
+                                  variant="outline"
+                                  onClick={() => downloadFile(`${API_BASE}/api/service-bookings/${booking.id}/invoice`, `invoice-service-${booking.id}.pdf`)}
+                                >
+                                  Download Invoice
+                                </Button>
                               </div>
                             </div>
                           </div>

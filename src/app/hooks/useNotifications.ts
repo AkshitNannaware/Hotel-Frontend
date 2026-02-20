@@ -21,11 +21,19 @@ export function useNotifications() {
     if (!user) return;
     setLoading(true);
     setError(null);
+    // Get token from localStorage
+    let token = null;
+    const stored = localStorage.getItem('auth');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        token = parsed.token;
+      } catch {}
+    }
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/notifications`, {
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        // If you use JWT, add Authorization header here
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     })
       .then(async (res) => {

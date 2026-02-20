@@ -1963,7 +1963,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
                     <p className="text-[#c9c3b6]">Revenue today</p>
-                    <p className="mt-1 text-lg font-serif text-[#efece6]">${stats.totalRevenue.toFixed(0)}</p>
+                    <p className="mt-1 text-lg font-serif text-[#efece6]">₹{stats.totalRevenue.toFixed(0)}</p>
                   </div>
                   <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
                     <p className="text-[#c9c3b6]">Bookings</p>
@@ -2015,7 +2015,7 @@ const AdminDashboard = () => {
                   </div>
                   <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
                 </div>
-                <div className="text-3xl mb-1 font-serif">${stats.totalRevenue.toFixed(0)}</div>
+                <div className="text-3xl mb-1 font-serif">₹{stats.totalRevenue.toFixed(0)}</div>
                 <div className="text-[#6b6256] text-sm">Total Revenue</div>
               </div>
 
@@ -3091,7 +3091,7 @@ const AdminDashboard = () => {
                               {booking.paymentStatus || 'pending'}
                             </span>
                           </td>
-                          <td className="py-4 px-4">${booking.totalPrice.toFixed(2)}</td>
+                            <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
                           <td className="py-4 px-4">
                             {booking.idVerified === 'approved' ? (
                               <span className="text-sm text-green-600 font-medium">Approved</span>
