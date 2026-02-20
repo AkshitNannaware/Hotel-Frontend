@@ -1737,32 +1737,32 @@ const AdminDashboard = () => {
       {/* Sidebar */}
       <div
         id="admin-sideview"
-        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] bg-gradient-to-b from-[#1b1f1a] via-[#262c25] to-[#151814] text-[#f7f1e6] p-4 sm:p-6 border-r border-[#3f473d] shadow-[0_18px_40px_rgba(0,0,0,0.35)] transform transition-transform ${
+        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] bg-gradient-to-b from-[#f7f1e6] via-[#e9dcc2] to-[#efe1c6] text-[#23281f] p-6 border-r border-[#e7d6ad] shadow-[0_18px_40px_rgba(0,0,0,0.10)] transform transition-transform ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex items-start justify-between mb-8">
           <div>
-            <h2 className="text-2xl mb-1 font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
-            <p className="text-[#cbbfa8] text-sm">{user?.name}</p>
+            <h2 className="text-2xl mb-1 font-serif tracking-wide text-[#6f5122]" style={{ fontFamily: "'Great Vibes', cursive" }}>Admin Panel</h2>
+            <p className="text-[#a27c2f] text-sm font-medium">{user?.name}</p>
           </div>
           <button
             type="button"
             onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg text-[#cbbfa8] hover:text-[#fff4d8] hover:bg-[#2b322b]"
+            className="lg:hidden p-2 rounded-lg text-[#a27c2f] hover:text-[#fff4d8] hover:bg-[#f6ead7]"
             aria-label="Close menu"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <nav className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1">
+        <nav className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1 font-semibold text-base">
           <button
             onClick={() => handleNavSelect('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'dashboard'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <LayoutDashboard className="w-5 h-5" />
@@ -1771,10 +1771,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('rooms')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'rooms'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <Hotel className="w-5 h-5" />
@@ -1783,10 +1783,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('services')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'services'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <Bell className="w-5 h-5" />
@@ -1795,10 +1795,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('offers')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'offers'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <Tag className="w-5 h-5" />
@@ -1807,10 +1807,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('bookings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'bookings'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <Calendar className="w-5 h-5" />
@@ -1819,10 +1819,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('service-bookings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'service-bookings'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <ClipboardList className="w-5 h-5" />
@@ -1831,10 +1831,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('payments')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'payments'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <DollarSign className="w-5 h-5" />
@@ -1843,10 +1843,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('guests')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'guests'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <Users className="w-5 h-5" />
@@ -1855,10 +1855,10 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => handleNavSelect('contacts')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors border ${
               activeTab === 'contacts'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'border-transparent text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <MessageSquare className="w-5 h-5" />
@@ -1875,7 +1875,7 @@ const AdminDashboard = () => {
               setIsSidebarOpen(false);
               navigate('/admin/newsletters');
             }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]"
           >
             <Mail className="w-5 h-5" />
             <span>Newsletter</span>
@@ -1885,8 +1885,8 @@ const AdminDashboard = () => {
             onClick={() => handleNavSelect('settings')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               activeTab === 'settings'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
+                ? 'bg-[#e7d6ad] text-[#1b1e18] shadow-[0_10px_25px_rgba(0,0,0,0.10)]'
+                : 'text-[#a27c2f] hover:bg-[#f6ead7] hover:text-[#23281f]'
             }`}
           >
             <Settings className="w-5 h-5" />
@@ -1894,11 +1894,11 @@ const AdminDashboard = () => {
           </button>
         </nav>
 
-        <div className="mt-8 pt-8 border-t border-[#3f473d]">
+        <div className="mt-8 pt-8 border-t border-[#e7d6ad]">
           <Button
             onClick={() => navigate('/')}
             variant="outline"
-            className="w-full border-[#cbbfa8] bg-[#e9dcc2] text-[#2a2216] hover:bg-[#f3e8d2]"
+            className="w-full border-[#a27c2f] bg-[#f6ead7] text-[#6f5122] hover:bg-[#efe1c6]"
           >
             Back to Website
           </Button>
