@@ -25,16 +25,13 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Admin Dashboard Header */}
         {isAdminDashboard ? (
-          <nav className="flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold">
+          <nav className="flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold pr-10">
             <Link to="/admin" className="hover:text-white transition-colors">Home</Link>
             <Link to="/admin?tab=rooms" className="hover:text-white transition-colors">Manage Rooms</Link>
             <Link to="/admin?tab=services" className="hover:text-white transition-colors">Manage Services</Link>
             <Link to="/admin?tab=bookings" className="hover:text-white transition-colors">Bookings</Link>
             <Link to="/admin?tab=service-bookings" className="hover:text-white transition-colors">Service Bookings</Link>
             <Link to="/admin?tab=payments" className="hover:text-white transition-colors">Payments</Link>
-            <Button variant="outline" className="ml-4" onClick={() => window.location.reload()} title="Refresh">
-              Refresh
-            </Button>
           </nav>
         ) : (
           <nav className="flex items-center justify-between lg:justify-center">
@@ -59,9 +56,6 @@ const Header = () => {
                 )}
               </div>
               {/* Refresh Button */}
-              <Button variant="outline" className="ml-4" onClick={() => window.location.reload()} title="Refresh Website">
-                Refresh
-              </Button>
               <Link to="/notifications" className="hover:text-white transition-colors flex items-center gap-1">
                 <Bell className="w-5 h-5" />
               </Link>

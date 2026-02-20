@@ -1737,7 +1737,7 @@ const AdminDashboard = () => {
       {/* Sidebar */}
       <div
         id="admin-sideview"
-        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] bg-gradient-to-b from-[#1b1f1a] via-[#262c25] to-[#151814] text-[#f7f1e6] p-4 sm:p-6 border-r border-[#3f473d] shadow-[0_18px_40px_rgba(0,0,0,0.35)] transform transition-transform ${
+        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] bg-[#23281f] text-[#f7f1e6] p-4 sm:p-6 border-r border-[#3f473d] shadow-[0_18px_40px_rgba(0,0,0,0.35)] transform transition-transform ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
