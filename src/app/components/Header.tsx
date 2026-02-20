@@ -2,39 +2,16 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { Hotel, User, Menu, X, LogIn, LogOut } from 'lucide-react';
 import { FaBell, FaCheck, FaTimes, FaUserPlus, FaShoppingCart, FaClipboardList } from 'react-icons/fa';
+import { useNotifications } from '../hooks/useNotifications';
 // Notification pop-up logic and data
 const notificationIcons = {
-  sale: <FaShoppingCart color="#eab308" size={20} />,
-  order: <FaClipboardList color="#22c55e" size={20} />,
-  user: <FaUserPlus color="#3b82f6" size={20} />,
+  sale: <FaShoppingCart color="#eab308" size={20} />, // Admin
+  order: <FaClipboardList color="#22c55e" size={20} />, // Admin
+  user: <FaUserPlus color="#3b82f6" size={20} />, // Admin
+  booking: <FaClipboardList color="#fbbf24" size={20} />, // User
+  message: <FaUserPlus color="#22c55e" size={20} />, // User
 };
 
-const initialNotifications = [
-  {
-    id: '1',
-    type: 'sale',
-    title: 'New Sale Created',
-    description: 'Sale INV-20260219-454 completed successfully',
-    time: '21 hours ago',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'order',
-    title: 'New Order Received',
-    description: 'Order ORD-MLT4VRP0-K4FX has been created',
-    time: '1 day ago',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'user',
-    title: 'New User Added',
-    description: 'Akshit (akshit@gmail.com) has been added as manager',
-    time: '1 day ago',
-    read: true,
-  },
-];
 import { Button } from './ui/button';
 import { useAuth } from '../context/AuthContext';
 
@@ -54,19 +31,19 @@ const Header = () => {
   // Hide main nav links on /admin route
   const isAdminDashboard = location.pathname.startsWith('/admin');
 
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const { notifications, loading: notifLoading, error: notifError } = useNotifications();
+  const [notificationsState, setNotificationsState] = useState<string[]>([]); // for local mark as read/delete
   const [notifOpen, setNotifOpen] = useState(false);
-
-  const markAsRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = (id: string) => {
+    // TODO: Call API to mark as read
+    // For now, just update UI
+    // setNotificationsState((prev) => [...prev, id]);
   };
-
-  const deleteNotification = (id) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const deleteNotification = (id: string) => {
+    // TODO: Call API to delete notification
+    // For now, just update UI
+    // setNotificationsState((prev) => prev.filter((nid) => nid !== id));
   };
-
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -147,25 +124,32 @@ const Header = () => {
               </button>
             </div>
             <div className="max-h-[340px] overflow-y-auto px-2 py-2">
-              {notifications.length === 0 ? (
+              {notifLoading ? (
+                <div className="text-[#b6b6b6] text-center py-8">Loading notifications...</div>
+              ) : notifError ? (
+                <div className="text-[#b6b6b6] text-center py-8">{notifError}</div>
+              ) : notifications.length === 0 ? (
                 <div className="text-[#b6b6b6] text-center py-8">No notifications</div>
               ) : (
                 notifications.map((n) => (
                   <div
-                    key={n.id}
+                    key={n._id}
                     className={`flex items-start gap-3 px-5 py-4 rounded-xl mb-2 border transition-colors ${n.read ? 'bg-[#2e362e] border-[#3a463a]' : 'bg-[#3f4a40]/80 border-amber-200'} relative`}
                   >
-                    <div className="mt-1">{notificationIcons[n.type]}</div>
+                    <div className="mt-1">{notificationIcons['default'] || <FaBell />}</div>
                     <div className="flex-1">
-                      <div className="font-medium text-[#efece6]">{n.title}</div>
-                      <div className="text-sm text-[#cfc9bb]">{n.description}</div>
-                      <div className="text-xs text-[#b6b6b6] mt-1">{n.time}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-[#efece6]">{n.title}</div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${n.role === 'admin' ? 'bg-[#ffe58f] text-[#ad850e]' : n.role === 'user' ? 'bg-[#cfc9bb] text-[#232b23]' : 'bg-[#b6b6b6] text-[#232b23]'}`}>{n.role === 'admin' ? 'Admin' : n.role === 'user' ? 'User' : 'All'}</span>
+                      </div>
+                      <div className="text-sm text-[#cfc9bb]">{n.message}</div>
+                      <div className="text-xs text-[#b6b6b6] mt-1">{new Date(n.createdAt).toLocaleString()}</div>
                     </div>
                     <div className="flex flex-col gap-1 ml-2">
                       {!n.read && (
                         <button
                           title="Mark as read"
-                          onClick={() => markAsRead(n.id)}
+                          onClick={() => markAsRead(n._id)}
                           className="text-green-400 hover:text-green-500 bg-transparent rounded p-1"
                         >
                           <FaCheck />
@@ -173,7 +157,7 @@ const Header = () => {
                       )}
                       <button
                         title="Delete"
-                        onClick={() => deleteNotification(n.id)}
+                        onClick={() => deleteNotification(n._id)}
                         className="text-[#b6b6b6] hover:text-red-400 bg-transparent rounded p-1"
                       >
                         <FaTimes />
@@ -218,7 +202,7 @@ const Header = () => {
                 <>
                   <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Login&Signup</Link>
                   <Link to="/notifications" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light flex items-center gap-2">
-                    <Bell className="w-6 h-6" /> Notifications
+                    <FaBell className="w-6 h-6" /> Notifications
                   </Link>
                 </>
               )}
