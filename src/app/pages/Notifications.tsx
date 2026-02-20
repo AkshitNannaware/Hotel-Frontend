@@ -141,4 +141,4 @@ const Notifications: React.FC = () => {
   );
 };
 
-// This page is now unused and can be deleted.
+export default Notifications;
