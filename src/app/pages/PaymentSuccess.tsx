@@ -18,6 +18,38 @@ const PaymentSuccess = () => {
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [room, setRoom] = React.useState<Room | null>(null);
   const [roomLoadError, setRoomLoadError] = React.useState<string | null>(null);
+  // Service booking success state
+  const [service, setService] = React.useState<any | null>(null);
+  const [serviceBooking, setServiceBooking] = React.useState<any | null>(null);
+  const [serviceImage, setServiceImage] = React.useState<string | null>(null);
+  // If this is a service payment success, try to get service booking details
+  React.useEffect(() => {
+    // If the URL contains ?serviceBookingId, treat as service payment success
+    const serviceBookingId = searchParams.get('serviceBookingId');
+    if (!serviceBookingId) return;
+    (async () => {
+      try {
+        const token = localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')!).token : null;
+        const res = await fetch(`${API_BASE}/api/service-bookings/${serviceBookingId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setServiceBooking(data);
+          // Fetch service details
+          if (data.serviceId) {
+            const sres = await fetch(`${API_BASE}/api/services/${data.serviceId}`);
+            if (sres.ok) {
+              const sdata = await sres.json();
+              setService(sdata);
+              // Prefer video poster, else image
+              setServiceImage(sdata.image || null);
+            }
+          }
+        }
+      } catch {}
+    })();
+  }, [searchParams, API_BASE]);
 
   React.useEffect(() => {
     // If booking is not found in context, fetch from backend
@@ -101,10 +133,70 @@ const PaymentSuccess = () => {
   }
 
   const handleDownloadInvoice = () => {
-    // Simulate invoice download
     alert('Invoice download started (demo)');
   };
 
+  // If service payment success, show service details
+  if (serviceBooking && service) {
+    return (
+      <div className="min-h-screen bg-[#0f1210] text-[#efece6] flex items-center justify-center">
+        <div className="max-w-xl w-full mx-auto rounded-3xl border border-[#4b5246] bg-[#3a4035]/95 shadow-2xl overflow-hidden p-8 text-center">
+          <div className="w-14 h-14 bg-[#d7d0bf] rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-[#1f241f]" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl text-[#efece6] mb-2">Congrats! Your service booking is confirmed.</h1>
+          <p className="text-sm text-[#c9c3b6] mb-8">Your payment was successful. Check your email for the invoice.</p>
+          <div className="flex flex-col items-center mb-6">
+            {serviceImage && (
+              <img
+                src={serviceImage.startsWith('http') ? serviceImage : `${API_BASE}/${serviceImage.replace(/^\/+/, '')}`}
+                alt={service.name}
+                className="w-full max-w-xs h-48 object-cover rounded-2xl mb-4 border border-[#4b5246]"
+                onError={e => (e.currentTarget.style.display = 'none')}
+              />
+            )}
+            <div className="text-lg font-semibold mb-1">{service.name}</div>
+            <div className="text-sm text-[#c9c3b6] mb-2">{service.category}</div>
+            <div className="text-sm text-[#efece6] mb-2">{service.description}</div>
+            <div className="text-xs text-[#9aa191] mb-2">Price Range: {service.priceRange}</div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-[#d7d0bf] mb-6">
+            <div>
+              <div className="text-xs text-[#9aa191]">Booking ID</div>
+              <div>{serviceBooking._id || serviceBooking.id}</div>
+            </div>
+            <div>
+              <div className="text-xs text-[#9aa191]">Guest Name</div>
+              <div>{serviceBooking.guestName}</div>
+            </div>
+            <div>
+              <div className="text-xs text-[#9aa191]">Date</div>
+              <div>{serviceBooking.date}</div>
+            </div>
+            <div>
+              <div className="text-xs text-[#9aa191]">Time</div>
+              <div>{serviceBooking.time}</div>
+            </div>
+            <div>
+              <div className="text-xs text-[#9aa191]">Guests</div>
+              <div>{serviceBooking.guests}</div>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={() => navigate('/services')} className="rounded-xl border border-[#5b6255] bg-transparent text-[#d7d0bf] hover:bg-white/10" variant="outline">
+              Browse More Services
+            </Button>
+            <Button onClick={() => navigate('/')} className="rounded-xl border border-[#5b6255] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#e5ddca]">
+              <Home className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ...existing code...
   return (
     <div className="min-h-screen bg-[#0f1210] text-[#efece6]">
       <section className="relative overflow-hidden">

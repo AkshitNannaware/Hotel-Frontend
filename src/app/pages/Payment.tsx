@@ -270,7 +270,7 @@ const Payment = () => {
             <div className="rounded-[2rem] border border-[#4b5246] bg-[#3a4035]/95 shadow-2xl overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-[#4b5246]">
                 <div className="flex flex-wrap items-center gap-4 text-[11px] uppercase tracking-[0.25em] text-[#c9c3b6]">
-                  {['Select Dates & Guests', 'Choose Your Room', 'Guest Information', 'Payment'].map((label, index) => {
+                  {[' Service Payment'].map((label, index) => {
                     const step = index + 1;
                     const isActive = step === 4;
                     const isComplete = step < 4;

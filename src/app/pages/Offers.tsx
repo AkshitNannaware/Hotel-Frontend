@@ -209,7 +209,7 @@ const Offers = () => {
 
                       <div className="flex flex-wrap items-center gap-4">
                         <div>
-                          <div className="text-lg text-[#efece6]">${offer.price.toFixed(0)}</div>
+                          <div className="text-lg text-[#efece6]">₹{offer.price.toFixed(0)}</div>
                           <div className="text-[11px] text-[#cfc9bb]">
                             {expiryLabel ? `Expiry ${expiryLabel}` : 'Limited availability'}
                           </div>

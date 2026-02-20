@@ -252,11 +252,11 @@ const RoomDetails = () => {
                   <div className="pt-6 border-t border-[#4b5246] space-y-3 mb-8">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#9aa191]">Rate per night</span>
-                      <span>${room.price.toFixed(2)}</span>
+                      <span>₹{room.price.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-lg font-medium text-[#d7d0bf]">
                       <span>Total for {calculateNights()} nights</span>
-                      <span>${(room.price * calculateNights()).toFixed(2)}</span>
+                      <span>₹{(room.price * calculateNights()).toFixed(2)}</span>
                     </div>
                   </div>
 

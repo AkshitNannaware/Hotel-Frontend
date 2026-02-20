@@ -301,7 +301,7 @@ const RoomListing = () => {
                           <p className="text-xs text-[#cfc9bb] mt-1">Modern cozy suite · 1 queen bed</p>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-[#f0e7d6]">$ {room.price} night</div>
+                          <div className="text-sm text-[#f0e7d6]">₹ {room.price} night</div>
                           <div className="text-[10px] text-[#cfc9bb]">4.9 (84)</div>
                         </div>
                       </div>

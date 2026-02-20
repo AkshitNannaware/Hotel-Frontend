@@ -2335,7 +2335,7 @@ const AdminDashboard = () => {
                           </p>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-[#f0e7d6]">$ {room.price} night</div>
+                          <div className="text-sm text-[#f0e7d6]">₹ {room.price} night</div>
                           <div className="text-[10px] text-[#cfc9bb]">4.9 (84)</div>
                         </div>
                       </div>
