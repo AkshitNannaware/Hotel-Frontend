@@ -139,10 +139,18 @@ type AdminServiceBooking = {
 
 const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
 
+import { useLocation } from 'react-router';
 const AdminDashboard = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    // If navigation state has a tab, use it, else default to dashboard
+    if (location && location.state && location.state.tab) {
+      return location.state.tab;
+    }
+    return 'dashboard';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [roomsState, setRoomsState] = useState<Room[]>([]);
   const [bookingsState, setBookingsState] = useState<AdminBooking[]>([]);
@@ -583,10 +591,16 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    // If navigation state has a tab, update activeTab
+    if (location && location.state && location.state.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location]);
+
+  useEffect(() => {
     if (!isAdmin) {
       return;
     }
-
     const loadAdminData = async () => {
       setIsLoading(true);
       setLoadError(null);
@@ -656,7 +670,6 @@ const AdminDashboard = () => {
         setIsLoading(false);
       }
     };
-
     loadAdminData();
   }, [isAdmin]);
 
@@ -2811,7 +2824,7 @@ const AdminDashboard = () => {
               <h1 className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: "'Great Vibes', cursive" }}>All Bookings</h1>
               <div className="flex gap-3 items-center flex-wrap">
                 <select
-                  className="px-4 py-2 border border-stone-200 rounded-xl"
+                  className="px-5 py-2 h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-base font-medium focus:ring-amber-400 shadow-sm"
                   value={bookingStatusFilter}
                   onChange={(event) => setBookingStatusFilter(event.target.value)}
                 >
@@ -2866,98 +2879,131 @@ const AdminDashboard = () => {
             </div>
 
             {isBookingFormOpen && (
-              <form onSubmit={handleSaveBooking} className="bg-white rounded-2xl p-6 shadow-sm mb-8 border border-stone-200">
-                <h3 className="text-lg font-bold text-stone-900 mb-4">Add Booking</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
-                    value={bookingForm.roomId}
-                    onChange={(event) => setBookingForm({ ...bookingForm, roomId: event.target.value })}
-                    required
-                  >
-                    <option value="">Select Room</option>
-                    {roomsState.map((room) => (
-                      <option key={room.id} value={room.id}>
-                        {room.name} - ${room.price}/night
-                      </option>
-                    ))}
-                  </select>
-                  <Input
-                    placeholder="Guest Name"
-                    value={bookingForm.guestName}
-                    onChange={(event) => setBookingForm({ ...bookingForm, guestName: event.target.value })}
-                    required
-                  />
-                  <Input
-                    placeholder="Guest Email"
-                    type="email"
-                    value={bookingForm.guestEmail}
-                    onChange={(event) => setBookingForm({ ...bookingForm, guestEmail: event.target.value })}
-                    required
-                  />
-                  <Input
-                    placeholder="Guest Phone"
-                    value={bookingForm.guestPhone}
-                    onChange={(event) => setBookingForm({ ...bookingForm, guestPhone: event.target.value })}
-                    required
-                  />
-                  <Input
-                    placeholder="Check-In Date"
-                    type="date"
-                    value={bookingForm.checkIn}
-                    onChange={(event) => setBookingForm({ ...bookingForm, checkIn: event.target.value })}
-                    required
-                  />
-                  <Input
-                    placeholder="Check-Out Date"
-                    type="date"
-                    value={bookingForm.checkOut}
-                    onChange={(event) => setBookingForm({ ...bookingForm, checkOut: event.target.value })}
-                    required
-                  />
-                  <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
-                    value={bookingForm.status}
-                    onChange={(event) => setBookingForm({ ...bookingForm, status: event.target.value as any })}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="checked-in">Check-in</option>
-                    <option value="checked-out">Check-out</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                  <Input
-                    placeholder="Total Amount"
-                    type="number"
-                    step="0.01"
-                    value={bookingForm.totalPrice}
-                    onChange={(event) => setBookingForm({ ...bookingForm, totalPrice: event.target.value })}
-                    required
-                  />
-                  <select
-                    className="h-9 rounded-lg border border-stone-200 px-3 text-sm"
-                    value={bookingIdProofType}
-                    onChange={(event) => setBookingIdProofType(event.target.value)}
-                  >
-                    <option value="passport">Passport</option>
-                    <option value="driver-license">Driver License</option>
-                    <option value="government-id">Government ID</option>
-                  </select>
-                  <div className="md:col-span-2">
-                    <label className="text-sm text-stone-600 block mb-2">Upload ID proof (optional)</label>
+              <form onSubmit={handleSaveBooking} className="bg-[#232b23] rounded-3xl p-8 shadow-xl mb-8 border border-[#3a463a] max-w-4xl mx-auto">
+                <h2 className="text-3xl font-serif text-[#fffbe6] mb-8 text-center">Add Booking</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Select Room</label>
+                    <select
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
+                      value={bookingForm.roomId}
+                      onChange={(event) => setBookingForm({ ...bookingForm, roomId: event.target.value })}
+                      required
+                    >
+                      <option value="">Select Room</option>
+                      {roomsState.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.name} - ${room.price}/night
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Guest Name</label>
+                    <Input
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                      placeholder="Guest Name"
+                      value={bookingForm.guestName}
+                      onChange={(event) => setBookingForm({ ...bookingForm, guestName: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Guest Email</label>
+                    <Input
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                      placeholder="Guest Email"
+                      type="email"
+                      value={bookingForm.guestEmail}
+                      onChange={(event) => setBookingForm({ ...bookingForm, guestEmail: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Guest Phone</label>
+                    <Input
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                      placeholder="Guest Phone"
+                      value={bookingForm.guestPhone}
+                      onChange={(event) => setBookingForm({ ...bookingForm, guestPhone: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Check-In Date</label>
+                    <Input
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                      placeholder="Check-In Date"
+                      type="date"
+                      value={bookingForm.checkIn}
+                      onChange={(event) => setBookingForm({ ...bookingForm, checkIn: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Check-Out Date</label>
+                    <Input
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                      placeholder="Check-Out Date"
+                      type="date"
+                      value={bookingForm.checkOut}
+                      onChange={(event) => setBookingForm({ ...bookingForm, checkOut: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Status</label>
+                    <select
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
+                      value={bookingForm.status}
+                      onChange={(event) => setBookingForm({ ...bookingForm, status: event.target.value as any })}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="checked-in">Check-in</option>
+                      <option value="checked-out">Check-out</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Total Amount</label>
+                    <Input
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                      placeholder="Total Amount"
+                      type="number"
+                      step="0.01"
+                      value={bookingForm.totalPrice}
+                      onChange={(event) => setBookingForm({ ...bookingForm, totalPrice: event.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">ID Proof Type</label>
+                    <select
+                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
+                      value={bookingIdProofType}
+                      onChange={(event) => setBookingIdProofType(event.target.value)}
+                    >
+                      <option value="passport">Passport</option>
+                      <option value="driver-license">Driver License</option>
+                      <option value="government-id">Government ID</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-2 md:col-span-2">
+                    <label className="text-[#e6e6e6] text-sm font-medium">Upload ID proof (optional)</label>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,application/pdf"
                       onChange={(event) => setBookingIdProofFile(event.target.files?.[0] || null)}
-                      className="w-full text-sm text-stone-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200"
+                      className="w-full text-base text-[#efece6] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-base file:font-semibold file:bg-[#232b23] file:text-[#efece6] hover:file:bg-[#2e362e]"
                     />
                   </div>
                 </div>
-                <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="outline" onClick={() => setIsBookingFormOpen(false)}>
+                <div className="flex gap-4 justify-end mt-8">
+                  <Button type="button" variant="outline" className="bg-white text-[#232b23] border-none px-8 py-3 rounded-xl text-base font-semibold hover:bg-[#efece6]" onClick={() => setIsBookingFormOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button type="submit" className="bg-[#ffc107] hover:bg-[#ffb300] text-[#232b23] px-8 py-3 rounded-xl text-base font-semibold border-none">
                     Save Booking
                   </Button>
                 </div>
@@ -3091,7 +3137,7 @@ const AdminDashboard = () => {
               </div>
               <div className="flex flex-wrap gap-3 items-center">
                 <select
-                  className="px-4 py-2 border border-stone-200 rounded-xl"
+                  className="px-5 py-2 h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-base font-medium focus:ring-amber-400 shadow-sm"
                   value={serviceBookingStatusFilter}
                   onChange={(event) => setServiceBookingStatusFilter(event.target.value)}
                 >

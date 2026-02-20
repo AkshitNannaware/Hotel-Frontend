@@ -28,8 +28,8 @@ const Header = () => {
           <nav className="flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold justify-center pt-2">
             <span onClick={() => navigate('/admin', { state: { tab: 'dashboard' } })} className="hover:text-white transition-colors cursor-pointer">Home</span>
             <span onClick={() => navigate('/admin', { state: { tab: 'rooms' } })} className="hover:text-white transition-colors cursor-pointer">Manage Rooms</span>
-            <span onClick={() => navigate('/admin', { state: { tab: 'services' } })} className="hover:text-white transition-colors cursor-pointer">Manage Services</span>
             <span onClick={() => navigate('/admin', { state: { tab: 'bookings' } })} className="hover:text-white transition-colors cursor-pointer">Bookings</span>
+            <span onClick={() => navigate('/admin', { state: { tab: 'services' } })} className="hover:text-white transition-colors cursor-pointer">Manage Services</span>
             <span onClick={() => navigate('/admin', { state: { tab: 'service-bookings' } })} className="hover:text-white transition-colors cursor-pointer">Service Bookings</span>
             <span onClick={() => navigate('/admin', { state: { tab: 'payments' } })} className="hover:text-white transition-colors cursor-pointer">Payments</span>
             <Link to="/notifications" className="hover:text-white transition-colors flex items-center gap-1">
