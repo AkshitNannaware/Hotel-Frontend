@@ -2053,6 +2053,7 @@ const AdminDashboard = () => {
                     <tr className="border-b border-[#5b6255]">
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
+                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Room</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Check-in</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
@@ -2063,21 +2064,24 @@ const AdminDashboard = () => {
                   <tbody>
                     {recentBookings.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 px-4 text-center text-[#c9c3b6]">
+                        <td colSpan={8} className="py-8 px-4 text-center text-[#c9c3b6]">
                           No recent bookings
                         </td>
                       </tr>
                     ) : (
                       recentBookings.map((booking) => {
                         const room = roomsState.find(r => r.id === booking.roomId);
+                        const user = usersState.find(u => u.id === booking.userId);
+                        const phone = booking.guestPhone || user?.phone || 'N/A';
                         return (
                           <tr key={booking.id} className="border-b border-[#4b5246]">
                             <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
                             <td className="py-4 px-4">{booking.guestName}</td>
+                            <td className="py-4 px-4">{phone}</td>
                             <td className="py-4 px-4">{room?.name || 'N/A'}</td>
                             <td className="py-4 px-4">{new Date(booking.checkIn).toLocaleDateString()}</td>
                             <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
                                 {booking.status}
                               </span>
                             </td>
@@ -2122,34 +2126,56 @@ const AdminDashboard = () => {
                     <tr className="border-b border-[#5b6255]">
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
+                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Service</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Date</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Time</th>
                       <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
+                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Payment</th>
+                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentServiceBookings.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 px-4 text-center text-[#c9c3b6]">
+                        <td colSpan={9} className="py-8 px-4 text-center text-[#c9c3b6]">
                           No recent service bookings
                         </td>
                       </tr>
                     ) : (
                       recentServiceBookings.map((booking) => {
                         const service = servicesState.find(s => s.id === booking.serviceId);
+                        const paymentStatus = (booking.status === 'confirmed' ? 'paid' : booking.status === 'cancelled' ? 'failed' : 'pending');
+                        let amount = 0;
+                        if (service?.priceRange) {
+                          const match = String(service.priceRange).match(/\d+(\.\d+)?/);
+                          if (match) amount = parseFloat(match[0]);
+                        }
                         return (
                           <tr key={booking.id} className="border-b border-[#4b5246]">
                             <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
                             <td className="py-4 px-4">{booking.guestName}</td>
+                            <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
                             <td className="py-4 px-4">{service?.name || booking.serviceName || 'N/A'}</td>
                             <td className="py-4 px-4">{new Date(booking.date).toLocaleDateString()}</td>
                             <td className="py-4 px-4">{booking.time}</td>
                             <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
                                 {booking.status}
                               </span>
                             </td>
+                            <td className="py-4 px-4">
+                              <span className={`px-3 py-1 rounded-full text-sm ${
+                                paymentStatus === 'paid' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : paymentStatus === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {paymentStatus}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4">₹{amount.toFixed(2)}</td>
                           </tr>
                         );
                       })
@@ -3030,6 +3056,7 @@ const AdminDashboard = () => {
                     <tr className="border-b border-stone-200">
                       <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
                       <th className="text-left py-3 px-4 text-stone-600">Guest Details</th>
+                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
                       <th className="text-left py-3 px-4 text-stone-600">Room</th>
                       <th className="text-left py-3 px-4 text-stone-600">Dates</th>
                       <th className="text-left py-3 px-4 text-stone-600">Status</th>
@@ -3050,6 +3077,7 @@ const AdminDashboard = () => {
                             <div>{booking.guestName}</div>
                             <div className="text-sm text-stone-600">{booking.guestEmail}</div>
                           </td>
+                          <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
                           <td className="py-4 px-4">{room?.name}</td>
                           <td className="py-4 px-4">
                             <div className="text-sm">
@@ -3366,6 +3394,7 @@ const AdminDashboard = () => {
                                   <thead>
                                     <tr className="bg-[#2e362e] border-b border-[#3a463a]">
                                       <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Guest</th>
+                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Phone No.</th>
                                       <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Service</th>
                                       <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Date</th>
                                       <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Time</th>
@@ -3380,7 +3409,8 @@ const AdminDashboard = () => {
                                           <div className="font-medium text-[#efece6]">{booking.guestName}</div>
                                           <div className="text-xs text-[#b6b6b6]">{booking.guestEmail}</div>
                                         </td>
-                                        <td className="py-3 px-4 text-[#f5f1e8]">{booking.serviceName}</td>
+                                        <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
+                                        <td className="py-3 px-4 text-[#f5f1e8]">{booking.serviceName || 'N/A'}</td>
                                         <td className="py-3 px-4 text-[#f5f1e8]">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                                         <td className="py-3 px-4 text-[#f5f1e8]">{booking.time}</td>
                                         <td className="py-3 px-4">
