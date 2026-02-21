@@ -35,6 +35,7 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { useAuth } from '../context/AuthContext';
 import type { Room } from '../types/room';
+import { FaIndianRupeeSign } from "react-icons/fa6";
 
 type AdminStats = {
   totalRooms: number;
@@ -1931,7 +1932,7 @@ const AdminDashboard = () => {
             {isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             {isSidebarOpen ? 'Close' : 'Side View'}
           </button>
-          <span className="text-sm text-[#cbbfa8]" style={{ fontFamily: "'Great Vibes', cursive" }}>Admin Dashboard</span>
+          {/* <span className="text-sm text-[#cbbfa8]" style={{ fontFamily: "'Great Vibes', cursive" }}>Admin Dashboard</span> */}
         </div>
         {isLoading && (
           <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
@@ -2011,7 +2012,8 @@ const AdminDashboard = () => {
               <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                    <DollarSign className="w-6 h-6 text-[#6f5122]" />
+                    {/* <DollarSign className="w-6 h-6 text-[#6f5122]" /> */}
+                    <FaIndianRupeeSign className="w-6 h-6 text-[#6f5122]"/>
                   </div>
                   <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
                 </div>
@@ -2090,7 +2092,7 @@ const AdminDashboard = () => {
                                 {booking.paymentStatus || 'pending'}
                               </span>
                             </td>
-                            <td className="py-4 px-4">${booking.totalPrice.toFixed(2)}</td>
+                            <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
                           </tr>
                         );
                       })
@@ -2661,27 +2663,31 @@ const AdminDashboard = () => {
             </div>
 
             {isOfferFormOpen && (
-              <form onSubmit={handleOfferSubmit} className="bg-white rounded-2xl p-6 shadow-sm mb-8 border border-stone-200">
-                <h3 className="text-lg font-bold text-stone-900 mb-4">{editingOfferId ? 'Edit Offer' : 'Add Offer'}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              <form onSubmit={handleOfferSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingOfferId ? 'Edit Offer' : 'Add Offer'}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Offer title"
                     value={offerForm.title}
                     onChange={(event) => setOfferForm({ ...offerForm, title: event.target.value })}
                     required
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Subtitle"
                     value={offerForm.subtitle}
                     onChange={(event) => setOfferForm({ ...offerForm, subtitle: event.target.value })}
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     type="number"
                     placeholder="Price"
                     value={offerForm.price}
                     onChange={(event) => setOfferForm({ ...offerForm, price: event.target.value })}
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     type="number"
                     step="0.1"
                     placeholder="Rating"
@@ -2689,67 +2695,74 @@ const AdminDashboard = () => {
                     onChange={(event) => setOfferForm({ ...offerForm, rating: event.target.value })}
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     type="number"
                     placeholder="Review count"
                     value={offerForm.reviewCount}
                     onChange={(event) => setOfferForm({ ...offerForm, reviewCount: event.target.value })}
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="Badge text (e.g. 25% OFF)"
                     value={offerForm.badgeText}
                     onChange={(event) => setOfferForm({ ...offerForm, badgeText: event.target.value })}
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     type="date"
                     placeholder="Expiry date"
                     value={offerForm.expiryDate}
                     onChange={(event) => setOfferForm({ ...offerForm, expiryDate: event.target.value })}
                   />
                   <Input
+                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                     placeholder="CTA text"
                     value={offerForm.ctaText}
                     onChange={(event) => setOfferForm({ ...offerForm, ctaText: event.target.value })}
                   />
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs text-stone-500">Image URL (optional)</label>
+                    <label className="text-xs text-[#e6e6e6]">Image URL (optional)</label>
                     <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                       placeholder="https://..."
                       value={offerForm.image}
                       onChange={(event) => setOfferForm({ ...offerForm, image: event.target.value })}
                     />
                   </div>
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs text-stone-500">Upload image (optional)</label>
+                    <label className="text-xs text-[#e6e6e6]">Upload image (optional)</label>
                     <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
                       type="file"
                       accept="image/jpeg,image/jpg,image/png,image/webp"
                       onChange={(event) => setOfferImageFile(event.target.files?.[0] || null)}
                     />
                     {offerImageFile && (
-                      <p className="text-xs text-stone-500">Selected: {offerImageFile.name}</p>
+                      <p className="text-xs text-[#b6b6b6]">Selected: {offerImageFile.name}</p>
                     )}
                   </div>
                 </div>
                 <Textarea
+                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
                   placeholder="Offer description"
                   value={offerForm.description}
                   onChange={(event) => setOfferForm({ ...offerForm, description: event.target.value })}
-                  className="mb-4"
                 />
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mt-4">
                   <label className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
                       checked={offerForm.active}
                       onChange={(event) => setOfferForm({ ...offerForm, active: event.target.checked })}
+                      className="accent-amber-400"
                     />
                     Active
                   </label>
                   <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOfferFormOpen(false)}>
+                    <Button type="button" variant="outline" onClick={() => setIsOfferFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
                       Cancel
                     </Button>
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
                       {editingOfferId ? 'Update' : 'Add'}
                     </Button>
                   </div>
@@ -2848,7 +2861,7 @@ const AdminDashboard = () => {
                   className="bg-green-600 hover:bg-green-700 text-white shadow-md"
                   title="Download bookings as Excel"
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <Upload className="w-4 h-4 mr-2" />
                   Export
                 </Button>
                 <input
@@ -2863,7 +2876,7 @@ const AdminDashboard = () => {
                   className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                   onClick={() => document.getElementById('import-bookings-excel')?.click()}
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Download className="w-4 h-4 mr-2" />
                   Import
                 </Button>
                 <a
@@ -2872,7 +2885,7 @@ const AdminDashboard = () => {
                   className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-sm shadow-sm"
                   title="Download sample bookings template"
                 >
-                  <Download className="w-4 h-4" />
+                  <Upload className="w-4 h-4 mr-2" />
                   Sample
                 </a>
               </div>
@@ -3130,10 +3143,10 @@ const AdminDashboard = () => {
 
         {activeTab === 'service-bookings' && (
           <div>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
               <div>
-                <h1 className="text-4xl font-bold text-stone-900" style={{ fontFamily: "'Great Vibes', cursive" }}>Service Bookings</h1>
-                <p className="text-stone-600 mt-1 text-sm">Track customer reservations</p>
+                <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Service Bookings</h1>
+                <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel service reservations</p>
               </div>
               <div className="flex flex-wrap gap-3 items-center">
                 <select
@@ -3159,7 +3172,7 @@ const AdminDashboard = () => {
                   className="bg-green-600 hover:bg-green-700 text-white shadow-md"
                   title="Download service bookings as Excel"
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <Upload className="w-4 h-4 mr-2" />
                   Export
                 </Button>
                 <input
@@ -3174,7 +3187,7 @@ const AdminDashboard = () => {
                   className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                   onClick={() => document.getElementById('import-service-bookings-excel')?.click()}
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Download className="w-4 h-4 mr-2" />
                   Import
                 </Button>
                 <a
@@ -3183,7 +3196,7 @@ const AdminDashboard = () => {
                   className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-sm shadow-sm"
                   title="Download sample service bookings template"
                 >
-                  <Download className="w-4 h-4" />
+                  <Upload className="w-4 h-4 mr-2" />
                   Sample
                 </a>
               </div>
@@ -3315,10 +3328,10 @@ const AdminDashboard = () => {
                 {serviceCategories.map((category) => {
                   const categoryBookings = filteredServiceBookings.filter((booking) => booking.category === category.key);
                   const categoryColor: Record<string, string> = {
-                    restaurant: 'border-red-500',
-                    spa: 'border-purple-500',
-                    bar: 'border-blue-500',
-                    dining: 'border-green-500',
+                    restaurant: 'border-[#e7d6ad]',
+                    spa: 'border-[#cbbfa8]',
+                    bar: 'border-[#d7d0bf]',
+                    dining: 'border-[#efece6]',
                   };
                   const isExpanded = expandedServiceBookingCategories.has(category.key);
 
@@ -3326,7 +3339,7 @@ const AdminDashboard = () => {
                     <div key={category.key}>
                       <button
                         onClick={() => toggleServiceBookingCategory(category.key)}
-                        className={`w-full flex items-center justify-between gap-3 mb-4 pb-3 border-b-2 ${categoryColor[category.key] || 'border-stone-300'} hover:bg-stone-50 px-2 py-2 -mx-2 rounded transition-colors`}
+                        className={`w-full flex items-center justify-between gap-3 mb-4 pb-3 border-b-2 ${categoryColor[category.key] || 'border-[#3a463a]'} bg-[#232b23] text-[#f5f1e8] px-2 py-2 -mx-2 rounded-2xl transition-colors shadow-lg`}
                       >
                         <div className="flex items-center gap-3">
                           <div className="text-2xl">{'ðŸ´ðŸ§–ðŸ¹ðŸ½ï¸'['restaurant spa bar dining'.split(' ').indexOf(category.key)]}</div>
@@ -3347,31 +3360,31 @@ const AdminDashboard = () => {
                           {categoryBookings.length === 0 ? (
                             <p className="text-sm text-stone-500 py-6">No bookings</p>
                           ) : (
-                            <div className="bg-white rounded-xl border border-stone-200 overflow-hidden mb-8">
+                            <div className="bg-[#232b23] rounded-2xl border border-[#3a463a] overflow-hidden mb-8 shadow-lg">
                               <div className="overflow-x-auto text-sm">
                                 <table className="w-full">
                                   <thead>
-                                    <tr className="bg-stone-50 border-b border-stone-200">
-                                      <th className="text-left py-3 px-4 font-semibold text-stone-700">Guest</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-stone-700">Service</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-stone-700">Date</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-stone-700">Time</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-stone-700">Status</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-stone-700">Actions</th>
+                                    <tr className="bg-[#2e362e] border-b border-[#3a463a]">
+                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Guest</th>
+                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Service</th>
+                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Date</th>
+                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Time</th>
+                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Status</th>
+                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Actions</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {categoryBookings.map((booking) => (
-                                      <tr key={booking.id} className="border-b border-stone-100 hover:bg-stone-50">
+                                      <tr key={booking.id} className="border-b border-[#3a463a] hover:bg-[#2e362e]">
                                         <td className="py-3 px-4">
-                                          <div className="font-medium text-stone-900">{booking.guestName}</div>
-                                          <div className="text-xs text-stone-500">{booking.guestEmail}</div>
+                                          <div className="font-medium text-[#efece6]">{booking.guestName}</div>
+                                          <div className="text-xs text-[#b6b6b6]">{booking.guestEmail}</div>
                                         </td>
-                                        <td className="py-3 px-4 text-stone-700">{booking.serviceName}</td>
-                                        <td className="py-3 px-4 text-stone-700">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                                        <td className="py-3 px-4 text-stone-700">{booking.time}</td>
+                                        <td className="py-3 px-4 text-[#f5f1e8]">{booking.serviceName}</td>
+                                        <td className="py-3 px-4 text-[#f5f1e8]">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                                        <td className="py-3 px-4 text-[#f5f1e8]">{booking.time}</td>
                                         <td className="py-3 px-4">
-                                          <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                                          <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
                                             {booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Approved' : booking.status === 'cancelled' ? 'Rejected' : booking.status}
                                           </span>
                                         </td>
@@ -3382,7 +3395,7 @@ const AdminDashboard = () => {
                                                 type="button"
                                                 size="sm"
                                                 variant="outline"
-                                                className={`bg-green-50 text-green-700 border-green-200 hover:bg-green-100`}
+                                                className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
                                                 onClick={(e) => {
                                                   e.preventDefault();
                                                   e.stopPropagation();
@@ -3395,7 +3408,7 @@ const AdminDashboard = () => {
                                                 type="button"
                                                 size="sm"
                                                 variant="outline"
-                                                className={`bg-red-50 text-red-700 border-red-200 hover:bg-red-100`}
+                                                className="bg-rose-200 text-rose-800 hover:bg-rose-300 border-none"
                                                 onClick={(e) => {
                                                   e.preventDefault();
                                                   e.stopPropagation();
@@ -3427,7 +3440,7 @@ const AdminDashboard = () => {
             )}
           </div>
         )}
-
+       
         {activeTab === 'payments' && (
           <div>
             <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Payment Management</h1>
