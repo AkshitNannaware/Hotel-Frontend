@@ -103,6 +103,12 @@ const Profile = () => {
     setTwoFactorEnabled(Boolean(user?.twoFactorEnabled));
   }, [user?.twoFactorEnabled]);
 
+  React.useEffect(() => {
+    setEditedName(user?.name || '');
+    setEditedEmail(user?.email || '');
+    setEditedPhone(user?.phone || '');
+  }, [user]);
+
   const handleTabChange = (tab: string) => {
     const nextTab = resolveTab(tab);
     setActiveTab(nextTab);

@@ -22,6 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5000';
 
@@ -30,8 +31,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (parsed.user) {
+        if (parsed.user && parsed.token) {
           setUser(parsed.user);
+          setToken(parsed.token);
         }
       } catch {
         // ignore parse errors
@@ -65,6 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const data = await response.json();
       setUser(data.user);
+      setToken(data.token);
       localStorage.setItem('auth', JSON.stringify({ user: data.user, token: data.token }));
       console.info('Login success', data.user?.email || data.user?.phone || data.user?.id);
       return true;
@@ -100,6 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const data = await response.json();
       setUser(data.user);
+      setToken(data.token);
       localStorage.setItem('auth', JSON.stringify({ user: data.user, token: data.token }));
       console.info('Signup success', data.user?.email || data.user?.phone || data.user?.id);
       return true;
@@ -111,6 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('auth');
   };
 

@@ -142,18 +142,18 @@ type AdminServiceBooking = {
 const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
 
 import { useLocation } from 'react-router';
+
 const AdminDashboard = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => {
-    // If navigation state has a tab, use it, else default to dashboard
     if (location && location.state && location.state.tab) {
       return location.state.tab;
     }
     return 'dashboard';
   });
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to open on desktop
   const [roomsState, setRoomsState] = useState<Room[]>([]);
   const [bookingsState, setBookingsState] = useState<AdminBooking[]>([]);
   const [serviceBookingsState, setServiceBookingsState] = useState<AdminServiceBooking[]>([]);
@@ -240,11 +240,21 @@ const AdminDashboard = () => {
     status: 'pending' as const,
     specialRequests: '',
   });
+
   const [profileSettings, setProfileSettings] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
   });
+
+  // Sync profileSettings with user after refresh or login
+  useEffect(() => {
+    setProfileSettings({
+      name: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+    });
+  }, [user]);
   const [securityForm, setSecurityForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -265,8 +275,10 @@ const AdminDashboard = () => {
   });
   const [brandingSettings, setBrandingSettings] = useState({
     logoUrl: '',
-    primaryColor: '#1c1917',
-    accentColor: '#d6cdb8',
+    facebook: '',
+    instagram: '',
+    youtube: '',
+    twitter: '',
   });
   const [brandingLogoFile, setBrandingLogoFile] = useState<File | null>(null);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
@@ -282,9 +294,16 @@ const AdminDashboard = () => {
     action: null,
   });
 
+  // Admin Create User Form State
+  const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', phone: '', password: '', role: 'user' });
+  const [createUserError, setCreateUserError] = useState('');
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+
   const handleNavSelect = (tab: string) => {
     setActiveTab(tab);
-    setIsSidebarOpen(false);
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const getAuthToken = () => {
@@ -298,7 +317,6 @@ const AdminDashboard = () => {
     }
   };
   
-  // Show confirmation dialog before updating status
   const handleServiceBookingActionClick = (bookingId: string, action: 'approve' | 'reject') => {
     const booking = serviceBookingsState.find(b => b.id === bookingId);
     setServiceBookingConfirmDialog({
@@ -309,7 +327,6 @@ const AdminDashboard = () => {
     });
   };
 
-  // Actually update the booking status after confirmation
   const handleUpdateServiceBookingStatus = async () => {
     const { bookingId, action } = serviceBookingConfirmDialog;
     
@@ -327,9 +344,6 @@ const AdminDashboard = () => {
         return;
       }
 
-      console.log(`Updating booking ${bookingId} to ${nextStatus}`);
-      
-      // This is the correct endpoint
       const response = await fetch(`${API_BASE}/api/admin/service-bookings/${bookingId}/status`, {
         method: 'PATCH',
         headers: {
@@ -341,14 +355,11 @@ const AdminDashboard = () => {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Error response:', errorData);
         throw new Error(errorData.message || `Status update failed (${response.status})`);
       }
       
       const data = await response.json();
-      console.log('Update successful:', data);
       
-      // Normalize the updated booking and update local state
       const updatedBooking = normalizeServiceBooking(data);
       setServiceBookingsState((prev) =>
         prev.map((booking) =>
@@ -358,7 +369,6 @@ const AdminDashboard = () => {
         )
       );
       
-      // Close dialog
       setServiceBookingConfirmDialog({ show: false, bookingId: null, action: null });
       
       toast.success(`Service booking ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
@@ -375,7 +385,6 @@ const AdminDashboard = () => {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
-    // Only set Content-Type for non-FormData requests
     if (!options?.isFormData) {
       headers['Content-Type'] = 'application/json';
     }
@@ -404,8 +413,60 @@ const AdminDashboard = () => {
     return response.json();
   };
 
-  const handleSaveSettings = () => {
-    setSettingsSavedAt(new Date().toLocaleTimeString());
+  const fetchUsers = async () => {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth') || '{}');
+      const token = auth.token;
+      const response = await fetch(`${API_BASE}/api/admin/users`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (response.ok) {
+        const usersData = await response.json();
+        setUsersState((usersData as any[]).map((user) => ({
+          id: user._id || user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        })));
+      }
+    } catch {}
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        setLoadError('No auth token found. Please log in again.');
+        return;
+      }
+      const response = await fetch(`${API_BASE}/api/admin/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: profileSettings.name,
+          email: profileSettings.email,
+          phone: profileSettings.phone,
+          logoUrl: brandingSettings.logoUrl,
+          facebook: brandingSettings.facebook,
+          instagram: brandingSettings.instagram,
+          youtube: brandingSettings.youtube,
+          twitter: brandingSettings.twitter,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to update profile');
+      }
+      setSettingsSavedAt(new Date().toLocaleTimeString());
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to update profile');
+      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
+    }
   };
 
   const handleSecuritySave = async () => {
@@ -413,9 +474,43 @@ const AdminDashboard = () => {
       setSecurityError('Please enter your current password.');
       return;
     }
+    if (!securityForm.newPassword || !securityForm.confirmPassword) {
+      setSecurityError('Please enter and confirm your new password.');
+      return;
+    }
+    if (securityForm.newPassword !== securityForm.confirmPassword) {
+      setSecurityError('New password and confirm password do not match.');
+      return;
+    }
     setSecurityError(null);
-    setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    setSettingsSavedAt(new Date().toLocaleTimeString());
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        setSecurityError('No auth token found. Please log in again.');
+        return;
+      }
+      const response = await fetch(`${API_BASE}/api/admin/profile/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: securityForm.currentPassword,
+          newPassword: securityForm.newPassword,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to update password');
+      }
+      setSecurityForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setSettingsSavedAt(new Date().toLocaleTimeString());
+      toast.success('Password updated successfully!');
+    } catch (error) {
+      setSecurityError(error instanceof Error ? error.message : 'Failed to update password');
+      toast.error(error instanceof Error ? error.message : 'Failed to update password');
+    }
   };
 
   const normalizeRoom = (room: any): Room => ({
@@ -516,7 +611,7 @@ const AdminDashboard = () => {
     }
 
     if (booking.idVerified && booking.idVerified !== nextStatus) {
-      const confirmed = confirm(
+      const confirmed = window.confirm(
         `This ID is already marked as ${booking.idVerified}. Do you want to change it to ${nextStatus}?`
       );
       if (!confirmed) {
@@ -542,7 +637,6 @@ const AdminDashboard = () => {
         )
       );
 
-      // Update stats
       if (contactStatsState) {
         const oldContact = contactsState.find(c => c._id === contactId);
         if (oldContact) {
@@ -563,7 +657,7 @@ const AdminDashboard = () => {
   };
 
   const deleteContact = async (contactId: string) => {
-    if (!confirm('Are you sure you want to delete this contact message?')) {
+    if (!window.confirm('Are you sure you want to delete this contact message?')) {
       return;
     }
 
@@ -575,7 +669,6 @@ const AdminDashboard = () => {
       const deletedContact = contactsState.find(c => c._id === contactId);
       setContactsState((prev) => prev.filter((contact) => contact._id !== contactId));
 
-      // Update stats
       if (contactStatsState && deletedContact) {
         setContactStatsState((prev) => {
           if (!prev) return prev;
@@ -593,7 +686,6 @@ const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    // If navigation state has a tab, update activeTab
     if (location && location.state && location.state.tab) {
       setActiveTab(location.state.tab);
     }
@@ -606,7 +698,6 @@ const AdminDashboard = () => {
     const loadAdminData = async () => {
       setIsLoading(true);
       setLoadError(null);
-      console.log('Admin dashboard: loading data...');
       try {
         const [
           statsData,
@@ -663,11 +754,9 @@ const AdminDashboard = () => {
         setServicesState((servicesData as any[]).map(normalizeService));
         setServiceBookingsState((serviceBookingsData as any[]).map(normalizeServiceBooking));
         setOffersState((offersData as any[]).map(normalizeOffer));
-        console.log('Admin dashboard: data loaded');
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load admin data';
         setLoadError(message);
-        console.error('Admin dashboard: load failed', error);
       } finally {
         setIsLoading(false);
       }
@@ -827,7 +916,7 @@ const AdminDashboard = () => {
       size: room.size.toString(),
       available: room.available,
     });
-    setRoomImageFiles([]); // Clear any previously selected files
+    setRoomImageFiles([]);
     setIsRoomFormOpen(true);
   };
 
@@ -835,14 +924,12 @@ const AdminDashboard = () => {
     try {
       await fetchJson(`/api/admin/rooms/${roomId}`, { method: 'DELETE' });
       setRoomsState((prev) => prev.filter((room) => room.id !== roomId));
-      console.log(`Admin dashboard: room deleted ${roomId}`);
       if (editingRoomId === roomId) {
         setEditingRoomId(null);
         setIsRoomFormOpen(false);
         resetRoomForm();
       }
     } catch (error) {
-      console.error('Admin dashboard: delete room failed', error);
       setLoadError('Failed to delete room');
     }
   };
@@ -883,17 +970,14 @@ const AdminDashboard = () => {
           body: JSON.stringify(roomPayload),
         });
         roomId = editingRoomId;
-        console.log(`Admin dashboard: room updated ${editingRoomId}`);
       } else {
         updatedRoom = await fetchJson('/api/admin/rooms', {
           method: 'POST',
           body: JSON.stringify(roomPayload),
         });
         roomId = updatedRoom._id || updatedRoom.id;
-        console.log('Admin dashboard: room created');
       }
 
-      // Upload images if any
       if (roomImageFiles.length > 0) {
         try {
           const formData = new FormData();
@@ -908,12 +992,9 @@ const AdminDashboard = () => {
           });
 
           updatedRoom = uploadResponse.room;
-          console.log('Admin dashboard: room images uploaded', uploadResponse);
           toast.success('Room images uploaded successfully!');
         } catch (uploadError) {
-          console.error('Failed to upload images:', uploadError);
           toast.error('Failed to upload room images.');
-          // Continue even if image upload fails
         }
       }
 
@@ -929,12 +1010,10 @@ const AdminDashboard = () => {
           updatedRoom = uploadResponse.room || updatedRoom;
           toast.success('Room video uploaded successfully!');
         } catch (uploadError) {
-          console.error('Failed to upload video:', uploadError);
           toast.error('Failed to upload room video.');
         }
       }
 
-      // Update state
       if (editingRoomId) {
         setRoomsState((prev) =>
           prev.map((room) => (room.id === editingRoomId ? normalizeRoom(updatedRoom) : room))
@@ -947,7 +1026,6 @@ const AdminDashboard = () => {
       setEditingRoomId(null);
       resetRoomForm();
     } catch (error) {
-      console.error('Admin dashboard: save room failed', error);
       setLoadError('Failed to save room');
     }
   };
@@ -989,7 +1067,7 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteService = async (serviceId: string) => {
-    if (!confirm('Are you sure you want to delete this service?')) {
+    if (!window.confirm('Are you sure you want to delete this service?')) {
       return;
     }
 
@@ -1002,7 +1080,6 @@ const AdminDashboard = () => {
         resetServiceForm();
       }
     } catch (error) {
-      console.error('Admin dashboard: delete service failed', error);
       setLoadError('Failed to delete service');
     }
   };
@@ -1055,7 +1132,6 @@ const AdminDashboard = () => {
           updatedService = uploadResponse.service || updatedService;
           toast.success('Service image uploaded successfully!');
         } catch (uploadError) {
-          console.error('Admin dashboard: service image upload failed', uploadError);
           toast.error('Failed to upload service image.');
         }
       }
@@ -1072,7 +1148,6 @@ const AdminDashboard = () => {
           updatedService = uploadResponse.service || updatedService;
           toast.success('Service video uploaded successfully!');
         } catch (uploadError) {
-          console.error('Admin dashboard: service video upload failed', uploadError);
           toast.error('Failed to upload service video.');
         }
       }
@@ -1089,7 +1164,6 @@ const AdminDashboard = () => {
       setEditingServiceId(null);
       resetServiceForm();
     } catch (error) {
-      console.error('Admin dashboard: save service failed', error);
       setLoadError('Failed to save service');
     }
   };
@@ -1137,7 +1211,7 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteOffer = async (offerId: string) => {
-    if (!confirm('Are you sure you want to delete this offer?')) {
+    if (!window.confirm('Are you sure you want to delete this offer?')) {
       return;
     }
 
@@ -1150,7 +1224,6 @@ const AdminDashboard = () => {
         resetOfferForm();
       }
     } catch (error) {
-      console.error('Admin dashboard: delete offer failed', error);
       setLoadError('Failed to delete offer');
     }
   };
@@ -1202,7 +1275,6 @@ const AdminDashboard = () => {
           updatedOffer = uploadResponse.offer || updatedOffer;
           toast.success('Offer image uploaded successfully!');
         } catch (uploadError) {
-          console.error('Admin dashboard: offer image upload failed', uploadError);
           toast.error('Failed to upload offer image.');
         }
       }
@@ -1219,11 +1291,9 @@ const AdminDashboard = () => {
       setEditingOfferId(null);
       resetOfferForm();
     } catch (error) {
-      console.error('Admin dashboard: save offer failed', error);
       setLoadError('Failed to save offer');
     }
   };
-
 
   const toggleServiceBookingCategory = (categoryKey: string) => {
     const newSet = new Set(expandedServiceBookingCategories);
@@ -1261,7 +1331,6 @@ const AdminDashboard = () => {
         return;
       }
 
-      // Validate bookings have required fields
       const valid = importedData.every(
         (booking) =>
           booking.id &&
@@ -1279,14 +1348,12 @@ const AdminDashboard = () => {
         return;
       }
 
-      // Send to backend to save
       const response = await fetchJson('/api/admin/bookings/bulk-import', {
         method: 'POST',
         body: JSON.stringify({ bookings: importedData }),
       });
 
       if (response.success) {
-        // Refresh bookings
         const bookings = await fetchJson('/api/admin/bookings');
         setBookingsState(
           (bookings as any[]).map((booking) => ({
@@ -1310,7 +1377,6 @@ const AdminDashboard = () => {
         alert(`Successfully imported ${response.count} bookings!`);
       }
     } catch (error) {
-      console.error('Admin dashboard: import bookings failed', error);
       const message = error instanceof Error ? error.message : 'Failed to import bookings. Please check the file format.';
       alert(message);
     }
@@ -1341,7 +1407,6 @@ const AdminDashboard = () => {
       utils.book_append_sheet(wb, ws, 'Bookings');
       writeFile(wb, filename);
     } catch (error) {
-      console.error('Export to Excel failed:', error);
       alert('Failed to export bookings to Excel');
     }
   };
@@ -1446,7 +1511,6 @@ const AdminDashboard = () => {
         alert(`Successfully imported ${response.count} bookings!`);
       }
     } catch (error) {
-      console.error('Import from Excel failed:', error);
       const message = error instanceof Error ? error.message : 'Failed to import bookings from Excel';
       alert(message);
     }
@@ -1496,7 +1560,6 @@ const AdminDashboard = () => {
         alert('Service booking created successfully!');
       }
     } catch (error) {
-      console.error('Admin dashboard: save service booking failed', error);
       const message = error instanceof Error ? error.message : 'Failed to save service booking';
       alert(message);
     }
@@ -1528,7 +1591,6 @@ const AdminDashboard = () => {
       utils.book_append_sheet(wb, ws, 'ServiceBookings');
       writeFile(wb, filename);
     } catch (error) {
-      console.error('Export service bookings failed:', error);
       alert('Failed to export service bookings to Excel');
     }
   };
@@ -1618,7 +1680,6 @@ const AdminDashboard = () => {
         alert(`Successfully imported ${response.count} service bookings!`);
       }
     } catch (error) {
-      console.error('Import service bookings failed:', error);
       const message = error instanceof Error ? error.message : 'Failed to import service bookings from Excel';
       alert(message);
     }
@@ -1700,7 +1761,6 @@ const AdminDashboard = () => {
           }
         }
 
-        // Refresh bookings list
         const bookings = await fetchJson('/api/admin/bookings');
         setBookingsState(
           (bookings as any[]).map((booking) => ({
@@ -1725,7 +1785,6 @@ const AdminDashboard = () => {
         alert('Booking created successfully!');
       }
     } catch (error) {
-      console.error('Admin dashboard: save booking failed', error);
       alert('Failed to save booking');
     }
   };
@@ -1743,186 +1802,27 @@ const AdminDashboard = () => {
       <div className="absolute inset-0 pointer-events-none opacity-25 bg-[linear-gradient(180deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:100%_160px]" />
       
       <div className="relative w-full flex flex-col lg:flex-row">
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      {/* Sidebar */}
-      {/* <div
-        id="admin-sideview"
-        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-[#23281f] backdrop-blur-xl text-[#f7f1e6] p-6 border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <h2 className="text-2xl mb-1 font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
-            <p className="text-[#cbbfa8] text-sm">{user?.name}</p>
-          </div>
+        {!isSidebarOpen && (
           <button
-            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="fixed left-4 top-20 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden "
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        )}
+
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-lg text-[#cbbfa8] hover:text-[#fff4d8] hover:bg-[#2b322b]"
-            aria-label="Close menu"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          />
+        )}
 
-        <nav className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1">
-          <button
-            onClick={() => handleNavSelect('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'dashboard'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('rooms')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'rooms'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Hotel className="w-5 h-5" />
-            <span>Manage Rooms</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('services')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'services'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Bell className="w-5 h-5" />
-            <span>Manage Services</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('offers')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'offers'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Tag className="w-5 h-5" />
-            <span>Manage Offers</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('bookings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'bookings'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Calendar className="w-5 h-5" />
-            <span>Bookings</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('service-bookings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'service-bookings'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <ClipboardList className="w-5 h-5" />
-            <span>Service Bookings</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('payments')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'payments'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <DollarSign className="w-5 h-5" />
-            <span>Payments</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('guests')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'guests'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Users className="w-5 h-5" />
-            <span>Guests</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('contacts')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors border ${
-              activeTab === 'contacts'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] border-[#e7d6ad] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'border-transparent text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span>Contact Messages</span>
-            {contactStatsState && contactStatsState.new > 0 && (
-              <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                {contactStatsState.new}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => {
-              setIsSidebarOpen(false);
-              navigate('/admin/newsletters');
-            }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]"
-          >
-            <Mail className="w-5 h-5" />
-            <span>Newsletter</span>
-          </button>
-
-          <button
-            onClick={() => handleNavSelect('settings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              activeTab === 'settings'
-                ? 'bg-[#e7d6ad] text-[#1b1e18] shadow-[0_10px_25px_rgba(0,0,0,0.25)]'
-                : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6]'
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </button>
-        </nav>
-
-        <div className="mt-8 pt-8 border-t border-[#3f473d]">
-          <Button
-            onClick={() => navigate('/')}
-            variant="outline"
-            className="w-full border-[#cbbfa8] bg-[#e9dcc2] text-[#2a2216] hover:bg-[#f3e8d2]"
-          >
-            Back to Website
-          </Button>
-        </div>
-      </div> */}
       {/* Sidebar Container */}
-      <div
+       <div
         id="admin-sideview"
-        className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-72' : 'w-20'}`}
+        className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-70' : 'w-20'}`}
       >
       {/* Header Section */}
       <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
@@ -1971,7 +1871,7 @@ const AdminDashboard = () => {
             ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
             : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
         } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
-        title={!isSidebarOpen ? item.label : ''}
+        title={!isSidebarOpen ? item.label : '' }
       >
         <item.icon className={`w-5 h-5 shrink-0 ${activeTab === (item.section || item.id) ? 'text-[#1b1e18]' : ''}`} />
         {isSidebarOpen && (
@@ -2003,737 +1903,920 @@ const AdminDashboard = () => {
   </div>
 </div>
 
-      {/* Main Content */}
-      <div className={`flex-1 p-4 sm:p-6 lg:p-8 relative transition-all duration-300 ${isSidebarOpen ? 'ml-72' : 'ml-20'}`}> 
-        {isLoading && (
-          <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
-            Loading admin data...
-          </div>
-        )}
-        {loadError && (
-          <div className="mb-6 rounded-xl border border-red-300/60 bg-[#3a2f2f] px-4 py-3 text-sm text-red-200">
-            {loadError}
-          </div>
-        )}
-        
-        {activeTab === 'dashboard' && (
-          <div>
-            <div className="mb-8 rounded-[28px] border border-[#5b6255] bg-[#4a5449]/40 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h1 className="mt-2 text-4xl sm:text-5xl font-serif tracking-tight text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
-                    Dashboard Overview
-                  </h1>
-                  <p className="mt-2 text-xs uppercase tracking-[0.35em] text-[#c9c3b6]">
-                    Luxury performance brief
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
-                    <p className="text-[#c9c3b6]">Live occupancy</p>
-                    <p className="mt-1 text-lg font-serif text-[#efece6]">{stats.occupancyRate}%</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
-                    <p className="text-[#c9c3b6]">Revenue today</p>
-                    <p className="mt-1 text-lg font-serif text-[#efece6]">₹{stats.totalRevenue.toFixed(0)}</p>
-                  </div>
-                  <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
-                    <p className="text-[#c9c3b6]">Bookings</p>
-                    <p className="mt-1 text-lg font-serif text-[#efece6]">{stats.totalBookings}</p>
-                  </div>
-                </div>
+        {/* Main Content */}
+        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-72' : ''}`}>
+          <div className="p-4 sm:p-6 lg:p-8 relative">
+            {isLoading && (
+              <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
+                Loading admin data...
               </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                    <Hotel className="w-6 h-6 text-[#6f5122]" />
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
-                </div>
-                <div className="text-3xl mb-1 font-serif">{stats.totalRooms}</div>
-                <div className="text-[#6b6256] text-sm">Total Rooms</div>
+            )}
+            {loadError && (
+              <div className="mb-6 rounded-xl border border-red-300/60 bg-[#3a2f2f] px-4 py-3 text-sm text-red-200">
+                {loadError}
               </div>
-
-              <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                    <Hotel className="w-6 h-6 text-[#6f5122]" />
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
-                </div>
-                <div className="text-3xl mb-1 font-serif">{stats.availableRooms}</div>
-                <div className="text-[#6b6256] text-sm">Available Rooms</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-[#6f5122]" />
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
-                </div>
-                <div className="text-3xl mb-1 font-serif">{stats.totalBookings}</div>
-                <div className="text-[#6b6256] text-sm">Total Bookings</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                    {/* <DollarSign className="w-6 h-6 text-[#6f5122]" /> */}
-                    <FaIndianRupeeSign className="w-6 h-6 text-[#6f5122]"/>
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
-                </div>
-                <div className="text-3xl mb-1 font-serif">₹{stats.totalRevenue.toFixed(0)}</div>
-                <div className="text-[#6b6256] text-sm">Total Revenue</div>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-[#6f5122]" />
-                  </div>
-                  <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
-                </div>
-                <div className="text-3xl mb-1 font-serif">{stats.occupancyRate}%</div>
-                <div className="text-[#6b6256] text-sm">Occupancy Rate</div>
-              </div>
-            </div>
-
-            {/* Recent Room Bookings */}
-            <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                <h2 className="text-2xl font-serif">Recent Room Bookings</h2>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setActiveTab('bookings')}
-                  className="border-[#6b7264] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]"
-                >
-                  View All
-                </Button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-[#5b6255]">
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Room</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Check-in</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Payment</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentBookings.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-8 px-4 text-center text-[#c9c3b6]">
-                          No recent bookings
-                        </td>
-                      </tr>
-                    ) : (
-                      recentBookings.map((booking) => {
-                        const room = roomsState.find(r => r.id === booking.roomId);
-                        const user = usersState.find(u => u.id === booking.userId);
-                        const phone = booking.guestPhone || user?.phone || 'N/A';
-                        return (
-                          <tr key={booking.id} className="border-b border-[#4b5246]">
-                            <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
-                            <td className="py-4 px-4">{booking.guestName}</td>
-                            <td className="py-4 px-4">{phone}</td>
-                            <td className="py-4 px-4">{room?.name || 'N/A'}</td>
-                            <td className="py-4 px-4">{new Date(booking.checkIn).toLocaleDateString()}</td>
-                            <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
-                                {booking.status}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm ${
-                                booking.paymentStatus === 'paid' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : booking.paymentStatus === 'failed'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}>
-                                {booking.paymentStatus || 'pending'}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Recent Service Bookings */}
-            <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                <h2 className="text-2xl font-serif">Recent Service Bookings</h2>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setActiveTab('service-bookings')}
-                  className="border-[#6b7264] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]"
-                >
-                  View All
-                </Button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-[#5b6255]">
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Service</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Date</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Time</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Payment</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentServiceBookings.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-8 px-4 text-center text-[#c9c3b6]">
-                          No recent service bookings
-                        </td>
-                      </tr>
-                    ) : (
-                      recentServiceBookings.map((booking) => {
-                        const service = servicesState.find(s => s.id === booking.serviceId);
-                        const paymentStatus = (booking.status === 'confirmed' ? 'paid' : booking.status === 'cancelled' ? 'failed' : 'pending');
-                        let amount = 0;
-                        if (service?.priceRange) {
-                          const match = String(service.priceRange).match(/\d+(\.\d+)?/);
-                          if (match) amount = parseFloat(match[0]);
-                        }
-                        return (
-                          <tr key={booking.id} className="border-b border-[#4b5246]">
-                            <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
-                            <td className="py-4 px-4">{booking.guestName}</td>
-                            <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
-                            <td className="py-4 px-4">{service?.name || booking.serviceName || 'N/A'}</td>
-                            <td className="py-4 px-4">{new Date(booking.date).toLocaleDateString()}</td>
-                            <td className="py-4 px-4">{booking.time}</td>
-                            <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
-                                {booking.status}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">
-                              <span className={`px-3 py-1 rounded-full text-sm ${
-                                paymentStatus === 'paid' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : paymentStatus === 'failed'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-amber-100 text-amber-800'
-                              }`}>
-                                {paymentStatus}
-                              </span>
-                            </td>
-                            <td className="py-4 px-4">₹{amount.toFixed(2)}</td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'rooms' && (
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
-              <h1 className="text-3xl sm:text-4xl" style={{ fontFamily: "'Great Vibes', cursive" }}>Manage Rooms</h1>
-              <Button onClick={handleAddRoomClick} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]">
-                <Plus className="w-5 h-5 mr-2" />
-                Add New Room
-              </Button>
-            </div>
-
-            {isRoomFormOpen && (
-              <form onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
-                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingRoomId ? 'Update Room' : 'Add Room'}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Room name"
-                    value={roomForm.name}
-                    onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
-                    required
-                  />
-                  <select
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
-                    value={roomForm.type}
-                    onChange={(event) => setRoomForm({ ...roomForm, type: event.target.value })}
-                  >
-                    <option value="Single">Single</option>
-                    <option value="Double">Double</option>
-                    <option value="Suite">Suite</option>
-                    <option value="Deluxe">Deluxe</option>
-                  </select>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Price per night"
-                    value={roomForm.price}
-                    onChange={(event) => setRoomForm({ ...roomForm, price: event.target.value })}
-                    required
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Image URLs (optional, comma separated)"
-                    value={roomForm.images}
-                    onChange={(event) => setRoomForm({ ...roomForm, images: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Max guests"
-                    value={roomForm.maxGuests ?? ''}
-                    onChange={(event) =>
-                      setRoomForm((prev) => ({ ...prev, maxGuests: event.target.value }))
-                    }
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Size (sqm)"
-                    value={roomForm.size}
-                    onChange={(event) => setRoomForm({ ...roomForm, size: event.target.value })}
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
-                    Upload Room Images (optional)
-                  </label>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    multiple
-                    onChange={(event) => {
-                      if (event.target.files) {
-                        setRoomImageFiles(Array.from(event.target.files));
-                      }
-                    }}
-                  />
-                  {roomImageFiles.length > 0 && (
-                    <div className="mt-2 text-xs text-[#b6b6b6]">
-                      <p className="font-medium">Selected files ({roomImageFiles.length}):</p>
-                      <ul className="list-disc list-inside mt-1">
-                        {roomImageFiles.map((file, idx) => (
-                          <li key={idx}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</li>
-                        ))}
-                      </ul>
+            )}
+            
+            {activeTab === 'dashboard' && (
+              <div>
+                <div className="mb-8 rounded-[28px] border border-[#5b6255] bg-[#4a5449]/40 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h1 className="mt-2 text-4xl sm:text-5xl font-serif tracking-tight text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
+                        Dashboard Overview
+                      </h1>
+                      <p className="mt-2 text-xs uppercase tracking-[0.35em] text-[#c9c3b6]">
+                        Luxury performance brief
+                      </p>
                     </div>
-                  )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
+                        <p className="text-[#c9c3b6]">Live occupancy</p>
+                        <p className="mt-1 text-lg font-serif text-[#efece6]">{stats.occupancyRate}%</p>
+                      </div>
+                      <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
+                        <p className="text-[#c9c3b6]">Revenue today</p>
+                        <p className="mt-1 text-lg font-serif text-[#efece6]">₹{stats.totalRevenue.toFixed(0)}</p>
+                      </div>
+                      <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
+                        <p className="text-[#c9c3b6]">Bookings</p>
+                        <p className="mt-1 text-lg font-serif text-[#efece6]">{stats.totalBookings}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
-                    Upload Room Video (optional)
-                  </label>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
-                    type="file"
-                    accept="video/mp4,video/webm,video/ogg"
-                    onChange={(event) => setRoomVideoFile(event.target.files?.[0] || null)}
-                  />
-                  {roomVideoFile && (
-                    <p className="mt-2 text-xs text-[#b6b6b6]">Selected: {roomVideoFile.name}</p>
-                  )}
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <Hotel className="w-6 h-6 text-[#6f5122]" />
+                      </div>
+                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                    </div>
+                    <div className="text-3xl mb-1 font-serif">{stats.totalRooms}</div>
+                    <div className="text-[#6b6256] text-sm">Total Rooms</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <Hotel className="w-6 h-6 text-[#6f5122]" />
+                      </div>
+                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                    </div>
+                    <div className="text-3xl mb-1 font-serif">{stats.availableRooms}</div>
+                    <div className="text-[#6b6256] text-sm">Available Rooms</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <Calendar className="w-6 h-6 text-[#6f5122]" />
+                      </div>
+                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                    </div>
+                    <div className="text-3xl mb-1 font-serif">{stats.totalBookings}</div>
+                    <div className="text-[#6b6256] text-sm">Total Bookings</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <FaIndianRupeeSign className="w-6 h-6 text-[#6f5122]"/>
+                      </div>
+                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                    </div>
+                    <div className="text-3xl mb-1 font-serif">₹{stats.totalRevenue.toFixed(0)}</div>
+                    <div className="text-[#6b6256] text-sm">Total Revenue</div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <CheckCircle className="w-6 h-6 text-[#6f5122]" />
+                      </div>
+                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                    </div>
+                    <div className="text-3xl mb-1 font-serif">{stats.occupancyRate}%</div>
+                    <div className="text-[#6b6256] text-sm">Occupancy Rate</div>
+                  </div>
                 </div>
-                <Textarea
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Description"
-                  value={roomForm.description}
-                  onChange={(event) => setRoomForm({ ...roomForm, description: event.target.value })}
-                />
-                <Input
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Amenities (comma separated)"
-                  value={roomForm.amenities}
-                  onChange={(event) => setRoomForm({ ...roomForm, amenities: event.target.value })}
-                />
-                <div className="flex items-center justify-between mt-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={roomForm.available}
-                      onChange={(event) =>
-                        setRoomForm({ ...roomForm, available: event.target.checked })
-                      }
-                      className="accent-amber-400"
-                    />
-                    Available
-                  </label>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
-                      {editingRoomId ? 'Update Room' : 'Add Room'}
+
+                {/* Recent Room Bookings */}
+                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                    <h2 className="text-2xl font-serif">Recent Room Bookings</h2>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveTab('bookings')}
+                      className="border-[#6b7264] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]"
+                    >
+                      View All
                     </Button>
                   </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-[#5b6255]">
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Room</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Check-in</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Payment</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentBookings.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="py-8 px-4 text-center text-[#c9c3b6]">
+                              No recent bookings
+                            </td>
+                          </tr>
+                        ) : (
+                          recentBookings.map((booking) => {
+                            const room = roomsState.find(r => r.id === booking.roomId);
+                            const user = usersState.find(u => u.id === booking.userId);
+                            const phone = booking.guestPhone || user?.phone || 'N/A';
+                            return (
+                              <tr key={booking.id} className="border-b border-[#4b5246]">
+                                <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
+                                <td className="py-4 px-4">{booking.guestName}</td>
+                                <td className="py-4 px-4">{phone}</td>
+                                <td className="py-4 px-4">{room?.name || 'N/A'}</td>
+                                <td className="py-4 px-4">{new Date(booking.checkIn).toLocaleDateString()}</td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                                    {booking.status}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-sm ${
+                                    booking.paymentStatus === 'paid' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : booking.paymentStatus === 'failed'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {booking.paymentStatus || 'pending'}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </form>
+
+                {/* Recent Service Bookings */}
+                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                    <h2 className="text-2xl font-serif">Recent Service Bookings</h2>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveTab('service-bookings')}
+                      className="border-[#6b7264] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]"
+                    >
+                      View All
+                    </Button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-[#5b6255]">
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Service</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Date</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Time</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Payment</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentServiceBookings.length === 0 ? (
+                          <tr>
+                            <td colSpan={9} className="py-8 px-4 text-center text-[#c9c3b6]">
+                              No recent service bookings
+                            </td>
+                          </tr>
+                        ) : (
+                          recentServiceBookings.map((booking) => {
+                            const service = servicesState.find(s => s.id === booking.serviceId);
+                            const paymentStatus = (booking.status === 'confirmed' ? 'paid' : booking.status === 'cancelled' ? 'failed' : 'pending');
+                            let amount = 0;
+                            if (service?.priceRange) {
+                              const match = String(service.priceRange).match(/\d+(\.\d+)?/);
+                              if (match) amount = parseFloat(match[0]);
+                            }
+                            return (
+                              <tr key={booking.id} className="border-b border-[#4b5246]">
+                                <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
+                                <td className="py-4 px-4">{booking.guestName}</td>
+                                <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
+                                <td className="py-4 px-4">{service?.name || booking.serviceName || 'N/A'}</td>
+                                <td className="py-4 px-4">{new Date(booking.date).toLocaleDateString()}</td>
+                                <td className="py-4 px-4">{booking.time}</td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                                    {booking.status}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-sm ${
+                                    paymentStatus === 'paid' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : paymentStatus === 'failed'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {paymentStatus}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">₹{amount.toFixed(2)}</td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {roomsState.slice(0, 5).map((room) => {
-                const imageUrl = room.images[0];
-                const displayImage = imageUrl?.startsWith('/uploads/')
-                  ? `${API_BASE}${imageUrl}`
-                  : imageUrl;
-                const displayVideo = room.video?.startsWith('/uploads/')
-                  ? `${API_BASE}${room.video}`
-                  : room.video;
-                
-                return (
-                  <div
-                    key={room.id}
-                    className="group rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 overflow-hidden shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
-                  >
-                    <div className="relative h-40 overflow-hidden">
-                      {displayVideo ? (
-                        <video
-                          src={displayVideo}
-                          className="h-full w-full object-cover"
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                          poster={displayImage || undefined}
-                        />
-                      ) : displayImage ? (
-                        <img
-                          src={displayImage}
-                          alt={room.name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-[#222a22]" />
-                      )}
-                      <div className="absolute top-3 left-3 rounded-full bg-[#1e2520]/80 px-3 py-1 text-[10px] text-[#d7d2c5] border border-[#5b6659]">
-                        {room.available ? 'Available' : 'Occupied'}
-                      </div>
-                    </div>
-
-                    <div className="p-4 text-[#efece6]">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="text-base text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                            {room.name}
-                          </h3>
-                          <p className="text-xs text-[#cfc9bb] mt-1">
-                            {room.type} · {room.maxGuests} guests
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-[#f0e7d6]">₹ {room.price} night</div>
-                          <div className="text-[10px] text-[#cfc9bb]">4.9 (84)</div>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-3 text-[11px] text-[#cfc9bb]">
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5" />
-                          {room.maxGuests} guests
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Maximize2 className="w-3.5 h-3.5" />
-                          {room.size} m2
-                        </span>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {room.amenities.slice(0, 4).map((amenity, idx) => {
-                          const Icon = amenityIcons[amenity] || Coffee;
-                          return (
-                            <span
-                              key={`${room.id}-${amenity}-${idx}`}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-[#5b6659] bg-[#243026] px-2.5 py-1 text-[10px] text-[#d7d2c5]"
-                            >
-                              <Icon className="w-3 h-3" />
-                              {amenity}
-                            </span>
-                          );
-                        })}
-                      </div>
-
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 rounded-full border border-[#5b6659] bg-transparent text-[#efece6] hover:bg-white/10"
-                          onClick={() => handleEditRoomClick(room)}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
-                          onClick={() => handleDeleteRoom(room.id)}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'services' && (
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+            {activeTab === 'rooms' && (
               <div>
-                <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Services</h1>
-                <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel offerings</p>
-              </div>
-              <Button
-                onClick={handleAddServiceClick}
-                className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] shadow-[0_12px_24px_rgba(0,0,0,0.25)]"
-              >
-                <Plus className="w-4 h-4 mr-2"/>
-                Add Service
-              </Button>
-            </div>
-
-            {isServiceFormOpen && (
-              <form
-                onSubmit={handleServiceSubmit}
-                className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]"
-              >
-                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingServiceId ? 'Edit Service' : 'Add Service'}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Service name"
-                    value={serviceForm.name}
-                    onChange={(event) => setServiceForm({ ...serviceForm, name: event.target.value })}
-                    required
-                  />
-                  <select
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
-                    value={serviceForm.category}
-                    onChange={(event) =>
-                      setServiceForm({
-                        ...serviceForm,
-                        category: event.target.value as AdminService['category'],
-                      })
-                    }
-                  >
-                    <option value="dining">Room Service (In-room dining)</option>
-                    <option value="restaurant">Bite Book (Bite Book)</option>
-                    <option value="spa">Spa & wellness</option>
-                    <option value="bar">Bar & lounge</option>
-                  </select>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Price range"
-                    value={serviceForm.priceRange}
-                    onChange={(event) => setServiceForm({ ...serviceForm, priceRange: event.target.value })}
-                  />
-                  <div className="space-y-1">
-                    <label className="text-xs text-[#e6e6e6]">Image URL (optional)</label>
-                    <Input
-                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="https://..."
-                      value={serviceForm.image}
-                      onChange={(event) => setServiceForm({ ...serviceForm, image: event.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-[#e6e6e6]">Upload image (optional)</label>
-                    <Input
-                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
-                      type="file"
-                      accept="image/*"
-                      onChange={(event) => setServiceImageFile(event.target.files?.[0] || null)}
-                    />
-                    {serviceImageFile && (
-                      <p className="text-xs text-[#b6b6b6]">Selected: {serviceImageFile.name}</p>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-[#e6e6e6]">Upload video (optional)</label>
-                    <Input
-                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
-                      type="file"
-                      accept="video/mp4,video/webm,video/ogg"
-                      onChange={(event) => setServiceVideoFile(event.target.files?.[0] || null)}
-                    />
-                    {serviceVideoFile && (
-                      <p className="text-xs text-[#b6b6b6]">Selected: {serviceVideoFile.name}</p>
-                    )}
-                  </div>
-                </div>
-                <Textarea
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Description"
-                  value={serviceForm.description}
-                  onChange={(event) => setServiceForm({ ...serviceForm, description: event.target.value })}
-                />
-                <Input
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Available times (comma separated)"
-                  value={serviceForm.availableTimes}
-                  onChange={(event) => setServiceForm({ ...serviceForm, availableTimes: event.target.value })}
-                />
-                <div className="flex gap-2 justify-end mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsServiceFormOpen(false)}
-                    className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
-                    {editingServiceId ? 'Update' : 'Add'}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+                  <h1 className="text-3xl sm:text-4xl" style={{ fontFamily: "'Great Vibes', cursive" }}>Manage Rooms</h1>
+                  <Button onClick={handleAddRoomClick} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]">
+                    <Plus className="w-5 h-5 mr-2" />
+                    Add New Room
                   </Button>
                 </div>
-              </form>
-            )}
 
-            {servicesState.length === 0 ? (
-              <div className="text-center py-16 bg-[#2f3931] rounded-2xl border border-dashed border-[#556054]">
-                <p className="text-[#d6cdb8]">No services available</p>
-              </div>
-            ) : (
-              <div>
-                <div className="flex flex-wrap gap-3 mb-6">
-                  {serviceCategories.map((category) => {
-                    const isActive = activeServiceCategory === category.key;
-                    return (
-                      <button
-                        key={category.key}
-                        type="button"
-                        onClick={() => setActiveServiceCategory(category.key)}
-                        className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide border transition-colors ${
-                          isActive
-                            ? 'bg-amber-500 text-stone-900 border-amber-400'
-                            : 'bg-[#2f3931] text-[#d7d2c5] border-[#5b6659] hover:bg-[#364036]'
-                        }`}
+                {isRoomFormOpen && (
+                  <form onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                    <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingRoomId ? 'Update Room' : 'Add Room'}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Room name"
+                        value={roomForm.name}
+                        onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
+                        required
+                      />
+                      <select
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                        value={roomForm.type}
+                        onChange={(event) => setRoomForm({ ...roomForm, type: event.target.value })}
                       >
-                        {category.label}
-                      </button>
+                        <option value="Single">Single</option>
+                        <option value="Double">Double</option>
+                        <option value="Suite">Suite</option>
+                        <option value="Deluxe">Deluxe</option>
+                      </select>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        placeholder="Price per night"
+                        value={roomForm.price}
+                        onChange={(event) => setRoomForm({ ...roomForm, price: event.target.value })}
+                        required
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Image URLs (optional, comma separated)"
+                        value={roomForm.images}
+                        onChange={(event) => setRoomForm({ ...roomForm, images: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        placeholder="Max guests"
+                        value={roomForm.maxGuests ?? ''}
+                        onChange={(event) =>
+                          setRoomForm((prev) => ({ ...prev, maxGuests: event.target.value }))
+                        }
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        placeholder="Size (sqm)"
+                        value={roomForm.size}
+                        onChange={(event) => setRoomForm({ ...roomForm, size: event.target.value })}
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
+                        Upload Room Images (optional)
+                      </label>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        multiple
+                        onChange={(event) => {
+                          if (event.target.files) {
+                            setRoomImageFiles(Array.from(event.target.files));
+                          }
+                        }}
+                      />
+                      {roomImageFiles.length > 0 && (
+                        <div className="mt-2 text-xs text-[#b6b6b6]">
+                          <p className="font-medium">Selected files ({roomImageFiles.length}):</p>
+                          <ul className="list-disc list-inside mt-1">
+                            {roomImageFiles.map((file, idx) => (
+                              <li key={idx}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
+                        Upload Room Video (optional)
+                      </label>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
+                        type="file"
+                        accept="video/mp4,video/webm,video/ogg"
+                        onChange={(event) => setRoomVideoFile(event.target.files?.[0] || null)}
+                      />
+                      {roomVideoFile && (
+                        <p className="mt-2 text-xs text-[#b6b6b6]">Selected: {roomVideoFile.name}</p>
+                      )}
+                    </div>
+                    <Textarea
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Description"
+                      value={roomForm.description}
+                      onChange={(event) => setRoomForm({ ...roomForm, description: event.target.value })}
+                    />
+                    <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Amenities (comma separated)"
+                      value={roomForm.amenities}
+                      onChange={(event) => setRoomForm({ ...roomForm, amenities: event.target.value })}
+                    />
+                    <div className="flex items-center justify-between mt-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={roomForm.available}
+                          onChange={(event) =>
+                            setRoomForm({ ...roomForm, available: event.target.checked })
+                          }
+                          className="accent-amber-400"
+                        />
+                        Available
+                      </label>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
+                          Cancel
+                        </Button>
+                        <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
+                          {editingRoomId ? 'Update Room' : 'Add Room'}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {roomsState.slice(0, 5).map((room) => {
+                    const imageUrl = room.images[0];
+                    const displayImage = imageUrl?.startsWith('/uploads/')
+                      ? `${API_BASE}${imageUrl}`
+                      : imageUrl;
+                    const displayVideo = room.video?.startsWith('/uploads/')
+                      ? `${API_BASE}${room.video}`
+                      : room.video;
+                    
+                    return (
+                      <div
+                        key={room.id}
+                        className="group rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 overflow-hidden shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+                      >
+                        <div className="relative h-40 overflow-hidden">
+                          {displayVideo ? (
+                            <video
+                              src={displayVideo}
+                              className="h-full w-full object-cover"
+                              autoPlay
+                              muted
+                              loop
+                              playsInline
+                              poster={displayImage || undefined}
+                            />
+                          ) : displayImage ? (
+                            <img
+                              src={displayImage}
+                              alt={room.name}
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-[#222a22]" />
+                          )}
+                          <div className="absolute top-3 left-3 rounded-full bg-[#1e2520]/80 px-3 py-1 text-[10px] text-[#d7d2c5] border border-[#5b6659]">
+                            {room.available ? 'Available' : 'Occupied'}
+                          </div>
+                        </div>
+
+                        <div className="p-4 text-[#efece6]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className="text-base text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                                {room.name}
+                              </h3>
+                              <p className="text-xs text-[#cfc9bb] mt-1">
+                                {room.type} · {room.maxGuests} guests
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-[#f0e7d6]">₹ {room.price} night</div>
+                              <div className="text-[10px] text-[#cfc9bb]">4.9 (84)</div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-3 text-[11px] text-[#cfc9bb]">
+                            <span className="inline-flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5" />
+                              {room.maxGuests} guests
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Maximize2 className="w-3.5 h-3.5" />
+                              {room.size} m2
+                            </span>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {room.amenities.slice(0, 4).map((amenity, idx) => {
+                              const Icon = amenityIcons[amenity] || Coffee;
+                              return (
+                                <span
+                                  key={`${room.id}-${amenity}-${idx}`}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-[#5b6659] bg-[#243026] px-2.5 py-1 text-[10px] text-[#d7d2c5]"
+                                >
+                                  <Icon className="w-3 h-3" />
+                                  {amenity}
+                                </span>
+                              );
+                            })}
+                          </div>
+
+                          <div className="mt-4 flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 rounded-full border border-[#5b6659] bg-transparent text-[#efece6] hover:bg-white/10"
+                              onClick={() => handleEditRoomClick(room)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
+                              onClick={() => handleDeleteRoom(room.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
+              </div>
+            )}
 
-                {servicesForActiveCategory.length === 0 ? (
-                  <p className="text-sm text-[#cbbfa8] py-8">No services in this category</p>
+            {activeTab === 'services' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Services</h1>
+                    <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel offerings</p>
+                  </div>
+                  <Button
+                    onClick={handleAddServiceClick}
+                    className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] shadow-[0_12px_24px_rgba(0,0,0,0.25)]"
+                  >
+                    <Plus className="w-4 h-4 mr-2"/>
+                    Add Service
+                  </Button>
+                </div>
+
+                {isServiceFormOpen && (
+                  <form
+                    onSubmit={handleServiceSubmit}
+                    className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]"
+                  >
+                    <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingServiceId ? 'Edit Service' : 'Add Service'}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Service name"
+                        value={serviceForm.name}
+                        onChange={(event) => setServiceForm({ ...serviceForm, name: event.target.value })}
+                        required
+                      />
+                      <select
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                        value={serviceForm.category}
+                        onChange={(event) =>
+                          setServiceForm({
+                            ...serviceForm,
+                            category: event.target.value as AdminService['category'],
+                          })
+                        }
+                      >
+                        <option value="dining">Room Service (In-room dining)</option>
+                        <option value="restaurant">Bite Book (Bite Book)</option>
+                        <option value="spa">Spa & wellness</option>
+                        <option value="bar">Bar & lounge</option>
+                      </select>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Price range"
+                        value={serviceForm.priceRange}
+                        onChange={(event) => setServiceForm({ ...serviceForm, priceRange: event.target.value })}
+                      />
+                      <div className="space-y-1">
+                        <label className="text-xs text-[#e6e6e6]">Image URL (optional)</label>
+                        <Input
+                          className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="https://..."
+                          value={serviceForm.image}
+                          onChange={(event) => setServiceForm({ ...serviceForm, image: event.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-[#e6e6e6]">Upload image (optional)</label>
+                        <Input
+                          className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => setServiceImageFile(event.target.files?.[0] || null)}
+                        />
+                        {serviceImageFile && (
+                          <p className="text-xs text-[#b6b6b6]">Selected: {serviceImageFile.name}</p>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-[#e6e6e6]">Upload video (optional)</label>
+                        <Input
+                          className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
+                          type="file"
+                          accept="video/mp4,video/webm,video/ogg"
+                          onChange={(event) => setServiceVideoFile(event.target.files?.[0] || null)}
+                        />
+                        {serviceVideoFile && (
+                          <p className="text-xs text-[#b6b6b6]">Selected: {serviceVideoFile.name}</p>
+                        )}
+                      </div>
+                    </div>
+                    <Textarea
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Description"
+                      value={serviceForm.description}
+                      onChange={(event) => setServiceForm({ ...serviceForm, description: event.target.value })}
+                    />
+                    <Input
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Available times (comma separated)"
+                      value={serviceForm.availableTimes}
+                      onChange={(event) => setServiceForm({ ...serviceForm, availableTimes: event.target.value })}
+                    />
+                    <div className="flex gap-2 justify-end mt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsServiceFormOpen(false)}
+                        className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
+                        {editingServiceId ? 'Update' : 'Add'}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+
+                {servicesState.length === 0 ? (
+                  <div className="text-center py-16 bg-[#2f3931] rounded-2xl border border-dashed border-[#556054]">
+                    <p className="text-[#d6cdb8]">No services available</p>
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    {servicesForActiveCategory.map((service) => {
-                      const displayImage = service.image?.startsWith('/uploads/')
-                        ? `${API_BASE}${service.image}`
-                        : service.image;
-                      const displayVideo = service.video?.startsWith('/uploads/')
-                        ? `${API_BASE}${service.video}`
-                        : service.video;
+                  <div>
+                    <div className="flex flex-wrap gap-3 mb-6">
+                      {serviceCategories.map((category) => {
+                        const isActive = activeServiceCategory === category.key;
+                        return (
+                          <button
+                            key={category.key}
+                            type="button"
+                            onClick={() => setActiveServiceCategory(category.key)}
+                            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide border transition-colors ${
+                              isActive
+                                ? 'bg-amber-500 text-stone-900 border-amber-400'
+                                : 'bg-[#2f3931] text-[#d7d2c5] border-[#5b6659] hover:bg-[#364036]'
+                            }`}
+                          >
+                            {category.label}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                      return (
-                        <div
-                          key={service.id}
-                          className="group rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 overflow-hidden shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
-                        >
-                          <div className="relative h-40 overflow-hidden">
-                            {displayVideo ? (
-                              <video
-                                src={displayVideo}
-                                className="h-full w-full object-cover"
-                                autoPlay
-                                muted
-                                loop
-                                playsInline
-                                poster={displayImage || undefined}
-                              />
-                            ) : displayImage ? (
-                              <img
-                                src={displayImage}
-                                alt={service.name}
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="h-full w-full bg-[#222a22]" />
-                            )}
-                            <div className="absolute top-3 left-3 rounded-full bg-[#1e2520]/80 px-3 py-1 text-[10px] text-[#d7d2c5] border border-[#5b6659]">
-                              Available
-                            </div>
-                          </div>
-                          <div className="p-4 text-[#efece6]">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <h3 className="text-base text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                                  {service.name}
-                                </h3>
-                                <p className="text-xs text-[#cfc9bb] mt-1">
-                                  {serviceCategoryLabel(service.category)}
-                                </p>
+                    {servicesForActiveCategory.length === 0 ? (
+                      <p className="text-sm text-[#cbbfa8] py-8">No services in this category</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        {servicesForActiveCategory.map((service) => {
+                          const displayImage = service.image?.startsWith('/uploads/')
+                            ? `${API_BASE}${service.image}`
+                            : service.image;
+                          const displayVideo = service.video?.startsWith('/uploads/')
+                            ? `${API_BASE}${service.video}`
+                            : service.video;
+
+                          return (
+                            <div
+                              key={service.id}
+                              className="group rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 overflow-hidden shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+                            >
+                              <div className="relative h-40 overflow-hidden">
+                                {displayVideo ? (
+                                  <video
+                                    src={displayVideo}
+                                    className="h-full w-full object-cover"
+                                    autoPlay
+                                    muted
+                                    loop
+                                    playsInline
+                                    poster={displayImage || undefined}
+                                  />
+                                ) : displayImage ? (
+                                  <img
+                                    src={displayImage}
+                                    alt={service.name}
+                                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full bg-[#222a22]" />
+                                )}
+                                <div className="absolute top-3 left-3 rounded-full bg-[#1e2520]/80 px-3 py-1 text-[10px] text-[#d7d2c5] border border-[#5b6659]">
+                                  Available
+                                </div>
                               </div>
-                              <div className="text-right">
-                                <div className="text-sm text-[#f0e7d6]">{service.priceRange || 'Custom'} </div>
-                                <div className="text-[10px] text-[#cfc9bb]">Hotel service</div>
-                              </div>
-                            </div>
+                              <div className="p-4 text-[#efece6]">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <h3 className="text-base text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                                      {service.name}
+                                    </h3>
+                                    <p className="text-xs text-[#cfc9bb] mt-1">
+                                      {serviceCategoryLabel(service.category)}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-sm text-[#f0e7d6]">{service.priceRange || 'Custom'} </div>
+                                    <div className="text-[10px] text-[#cfc9bb]">Hotel service</div>
+                                  </div>
+                                </div>
 
-                            <p className="mt-3 text-[11px] text-[#cfc9bb] line-clamp-2">{service.description}</p>
+                                <p className="mt-3 text-[11px] text-[#cfc9bb] line-clamp-2">{service.description}</p>
 
-                            {service.availableTimes.length > 0 && (
-                              <div className="mt-4 flex flex-wrap gap-2">
-                                {service.availableTimes.slice(0, 4).map((time) => (
-                                  <span
-                                    key={`${service.id}-${time}`}
-                                    className="inline-flex items-center rounded-full border border-[#5b6659] bg-[#243026] px-2.5 py-1 text-[10px] text-[#d7d2c5]"
+                                {service.availableTimes.length > 0 && (
+                                  <div className="mt-4 flex flex-wrap gap-2">
+                                    {service.availableTimes.slice(0, 4).map((time) => (
+                                      <span
+                                        key={`${service.id}-${time}`}
+                                        className="inline-flex items-center rounded-full border border-[#5b6659] bg-[#243026] px-2.5 py-1 text-[10px] text-[#d7d2c5]"
+                                      >
+                                        {time}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="mt-4 flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 rounded-full border border-[#5b6659] bg-transparent text-[#efece6] hover:bg-white/10"
+                                    onClick={() => handleEditServiceClick(service)}
                                   >
-                                    {time}
-                                  </span>
-                                ))}
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
+                                    onClick={() => handleDeleteService(service.id)}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
                               </div>
-                            )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-                            <div className="mt-4 flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="flex-1 rounded-full border border-[#5b6659] bg-transparent text-[#efece6] hover:bg-white/10"
-                                onClick={() => handleEditServiceClick(service)}
+            {activeTab === 'offers' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-stone-900" style={{ fontFamily: "'Great Vibes', cursive" }}>Offers</h1>
+                    <p className="text-stone-600 mt-1 text-sm">Create and publish seasonal promotions.</p>
+                  </div>
+                  <Button onClick={handleAddOfferClick} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Offer
+                  </Button>
+                </div>
+
+                {isOfferFormOpen && (
+                  <form onSubmit={handleOfferSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                    <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingOfferId ? 'Edit Offer' : 'Add Offer'}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Offer title"
+                        value={offerForm.title}
+                        onChange={(event) => setOfferForm({ ...offerForm, title: event.target.value })}
+                        required
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Subtitle"
+                        value={offerForm.subtitle}
+                        onChange={(event) => setOfferForm({ ...offerForm, subtitle: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        placeholder="Price"
+                        value={offerForm.price}
+                        onChange={(event) => setOfferForm({ ...offerForm, price: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="number"
+                        step="0.1"
+                        placeholder="Rating"
+                        value={offerForm.rating}
+                        onChange={(event) => setOfferForm({ ...offerForm, rating: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Review count"
+                        value={offerForm.reviewCount}
+                        onChange={(event) => setOfferForm({ ...offerForm, reviewCount: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Badge text (e.g. 25% OFF)"
+                        value={offerForm.badgeText}
+                        onChange={(event) => setOfferForm({ ...offerForm, badgeText: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        type="date"
+                        placeholder="Expiry date"
+                        value={offerForm.expiryDate}
+                        onChange={(event) => setOfferForm({ ...offerForm, expiryDate: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="CTA text"
+                        value={offerForm.ctaText}
+                        onChange={(event) => setOfferForm({ ...offerForm, ctaText: event.target.value })}
+                      />
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-xs text-[#e6e6e6]">Image URL (optional)</label>
+                        <Input
+                          className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="https://..."
+                          value={offerForm.image}
+                          onChange={(event) => setOfferForm({ ...offerForm, image: event.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-xs text-[#e6e6e6]">Upload image (optional)</label>
+                        <Input
+                          className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={(event) => setOfferImageFile(event.target.files?.[0] || null)}
+                        />
+                        {offerImageFile && (
+                          <p className="text-xs text-[#b6b6b6]">Selected: {offerImageFile.name}</p>
+                        )}
+                      </div>
+                    </div>
+                    <Textarea
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Offer description"
+                      value={offerForm.description}
+                      onChange={(event) => setOfferForm({ ...offerForm, description: event.target.value })}
+                    />
+                    <div className="flex items-center justify-between mt-4">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={offerForm.active}
+                          onChange={(event) => setOfferForm({ ...offerForm, active: event.target.checked })}
+                          className="accent-amber-400"
+                        />
+                        Active
+                      </label>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsOfferFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
+                          Cancel
+                        </Button>
+                        <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
+                          {editingOfferId ? 'Update' : 'Add'}
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+
+                {offersState.length === 0 ? (
+                  <div className="text-center py-16 bg-stone-50 rounded-2xl border border-dashed border-stone-300">
+                    <p className="text-stone-600">No offers available</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {offersState.map((offer) => {
+                      const displayImage = offer.image?.startsWith('/uploads/')
+                        ? `${API_BASE}${offer.image}`
+                        : offer.image;
+                      return (
+                        <div key={offer.id} className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
+                          {displayImage ? (
+                            <div className="h-40 bg-stone-200 overflow-hidden">
+                              <img src={displayImage} alt={offer.title} className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="h-40 bg-stone-100" />
+                          )}
+                          <div className="p-5">
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div>
+                                <h3 className="font-semibold text-stone-900">{offer.title}</h3>
+                                {offer.subtitle && (
+                                  <p className="text-xs text-stone-500 mt-1">{offer.subtitle}</p>
+                                )}
+                              </div>
+                              <span className={`px-2.5 py-1 rounded-full text-xs ${offer.active ? 'bg-green-100 text-green-800' : 'bg-stone-200 text-stone-700'}`}>
+                                {offer.active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-stone-600 line-clamp-2 mb-3">{offer.description || 'No description yet.'}</p>
+                            <div className="flex items-center justify-between text-xs text-stone-600 mb-4">
+                              <span>₹{offer.price.toFixed(0)}</span>
+                              {offer.expiryDate && (
+                                <span>Expiry {formatOfferDateInput(offer.expiryDate)}</span>
+                              )}
+                            </div>
+                            <div className="flex gap-2 pt-3 border-t border-stone-100">
+                              <button
+                                onClick={() => handleEditOfferClick(offer)}
+                                className="flex-1 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
                               >
                                 Edit
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
-                                onClick={() => handleDeleteService(service.id)}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteOffer(offer.id)}
+                                className="flex-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded transition-colors"
                               >
                                 Delete
-                              </Button>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -2743,1289 +2826,1113 @@ const AdminDashboard = () => {
                 )}
               </div>
             )}
-          </div>
-        )}
 
-        {activeTab === 'offers' && (
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+            {activeTab === 'bookings' && (
               <div>
-                <h1 className="text-3xl sm:text-4xl font-bold text-stone-900" style={{ fontFamily: "'Great Vibes', cursive" }}>Offers</h1>
-                <p className="text-stone-600 mt-1 text-sm">Create and publish seasonal promotions.</p>
-              </div>
-              <Button onClick={handleAddOfferClick} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Offer
-              </Button>
-            </div>
-
-            {isOfferFormOpen && (
-              <form onSubmit={handleOfferSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
-                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingOfferId ? 'Edit Offer' : 'Add Offer'}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Offer title"
-                    value={offerForm.title}
-                    onChange={(event) => setOfferForm({ ...offerForm, title: event.target.value })}
-                    required
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Subtitle"
-                    value={offerForm.subtitle}
-                    onChange={(event) => setOfferForm({ ...offerForm, subtitle: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Price"
-                    value={offerForm.price}
-                    onChange={(event) => setOfferForm({ ...offerForm, price: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    step="0.1"
-                    placeholder="Rating"
-                    value={offerForm.rating}
-                    onChange={(event) => setOfferForm({ ...offerForm, rating: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="number"
-                    placeholder="Review count"
-                    value={offerForm.reviewCount}
-                    onChange={(event) => setOfferForm({ ...offerForm, reviewCount: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Badge text (e.g. 25% OFF)"
-                    value={offerForm.badgeText}
-                    onChange={(event) => setOfferForm({ ...offerForm, badgeText: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    type="date"
-                    placeholder="Expiry date"
-                    value={offerForm.expiryDate}
-                    onChange={(event) => setOfferForm({ ...offerForm, expiryDate: event.target.value })}
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="CTA text"
-                    value={offerForm.ctaText}
-                    onChange={(event) => setOfferForm({ ...offerForm, ctaText: event.target.value })}
-                  />
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs text-[#e6e6e6]">Image URL (optional)</label>
-                    <Input
-                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="https://..."
-                      value={offerForm.image}
-                      onChange={(event) => setOfferForm({ ...offerForm, image: event.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs text-[#e6e6e6]">Upload image (optional)</label>
-                    <Input
-                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer"
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={(event) => setOfferImageFile(event.target.files?.[0] || null)}
-                    />
-                    {offerImageFile && (
-                      <p className="text-xs text-[#b6b6b6]">Selected: {offerImageFile.name}</p>
-                    )}
-                  </div>
-                </div>
-                <Textarea
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Offer description"
-                  value={offerForm.description}
-                  onChange={(event) => setOfferForm({ ...offerForm, description: event.target.value })}
-                />
-                <div className="flex items-center justify-between mt-4">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={offerForm.active}
-                      onChange={(event) => setOfferForm({ ...offerForm, active: event.target.checked })}
-                      className="accent-amber-400"
-                    />
-                    Active
-                  </label>
-                  <div className="flex gap-2">
-                    <Button type="button" variant="outline" onClick={() => setIsOfferFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
-                      {editingOfferId ? 'Update' : 'Add'}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            )}
-
-            {offersState.length === 0 ? (
-              <div className="text-center py-16 bg-stone-50 rounded-2xl border border-dashed border-stone-300">
-                <p className="text-stone-600">No offers available</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {offersState.map((offer) => {
-                  const displayImage = offer.image?.startsWith('/uploads/')
-                    ? `${API_BASE}${offer.image}`
-                    : offer.image;
-                  return (
-                    <div key={offer.id} className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-                      {displayImage ? (
-                        <div className="h-40 bg-stone-200 overflow-hidden">
-                          <img src={displayImage} alt={offer.title} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="h-40 bg-stone-100" />
-                      )}
-                      <div className="p-5">
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <div>
-                            <h3 className="font-semibold text-stone-900">{offer.title}</h3>
-                            {offer.subtitle && (
-                              <p className="text-xs text-stone-500 mt-1">{offer.subtitle}</p>
-                            )}
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-full text-xs ${offer.active ? 'bg-green-100 text-green-800' : 'bg-stone-200 text-stone-700'}`}>
-                            {offer.active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-stone-600 line-clamp-2 mb-3">{offer.description || 'No description yet.'}</p>
-                        <div className="flex items-center justify-between text-xs text-stone-600 mb-4">
-                          <span>${offer.price.toFixed(0)}</span>
-                          {offer.expiryDate && (
-                            <span>Expiry {formatOfferDateInput(offer.expiryDate)}</span>
-                          )}
-                        </div>
-                        <div className="flex gap-2 pt-3 border-t border-stone-100">
-                          <button
-                            onClick={() => handleEditOfferClick(offer)}
-                            className="flex-1 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteOffer(offer.id)}
-                            className="flex-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'bookings' && (
-          <div>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
-              <h1 className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: "'Great Vibes', cursive" }}>All Bookings</h1>
-              <div className="flex gap-3 items-center flex-wrap">
-                <select
-                  className="px-5 py-2 h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-base font-medium focus:ring-amber-400 shadow-sm"
-                  value={bookingStatusFilter}
-                  onChange={(event) => setBookingStatusFilter(event.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="checked-in">Checked-in</option>
-                  <option value="checked-out">Checked-out</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <Button
-                  onClick={handleAddBookingClick}
-                  className="bg-amber-600 hover:bg-amber-700 text-white shadow-md"
-                  title="Add booking manually"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add
-                </Button>
-                <Button
-                  onClick={handleExportBookingsToExcel}
-                  className="bg-green-600 hover:bg-green-700 text-white shadow-md"
-                  title="Download bookings as Excel"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
-                <input
-                  id="import-bookings-excel"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleImportBookingsFromExcel}
-                  className="hidden"
-                  title="Upload bookings Excel file"
-                />
-                <Button
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
-                  onClick={() => document.getElementById('import-bookings-excel')?.click()}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Import
-                </Button>
-                <a
-                  href="/sample_bookings.xlsx"
-                  download="sample_bookings.xlsx"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-sm shadow-sm"
-                  title="Download sample bookings template"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Sample
-                </a>
-              </div>
-            </div>
-
-            {isBookingFormOpen && (
-              <form onSubmit={handleSaveBooking} className="bg-[#232b23] rounded-3xl p-8 shadow-xl mb-8 border border-[#3a463a] max-w-4xl mx-auto">
-                <h2 className="text-3xl font-serif text-[#fffbe6] mb-8 text-center">Add Booking</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Select Room</label>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
+                  <h1 className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: "'Great Vibes', cursive" }}>All Bookings</h1>
+                  <div className="flex gap-3 items-center flex-wrap">
                     <select
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
-                      value={bookingForm.roomId}
-                      onChange={(event) => setBookingForm({ ...bookingForm, roomId: event.target.value })}
-                      required
+                      className="px-5 py-2 h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-base font-medium focus:ring-amber-400 shadow-sm"
+                      value={bookingStatusFilter}
+                      onChange={(event) => setBookingStatusFilter(event.target.value)}
                     >
-                      <option value="">Select Room</option>
-                      {roomsState.map((room) => (
-                        <option key={room.id} value={room.id}>
-                          {room.name} - ${room.price}/night
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Guest Name</label>
-                    <Input
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="Guest Name"
-                      value={bookingForm.guestName}
-                      onChange={(event) => setBookingForm({ ...bookingForm, guestName: event.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Guest Email</label>
-                    <Input
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="Guest Email"
-                      type="email"
-                      value={bookingForm.guestEmail}
-                      onChange={(event) => setBookingForm({ ...bookingForm, guestEmail: event.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Guest Phone</label>
-                    <Input
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="Guest Phone"
-                      value={bookingForm.guestPhone}
-                      onChange={(event) => setBookingForm({ ...bookingForm, guestPhone: event.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Check-In Date</label>
-                    <Input
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="Check-In Date"
-                      type="date"
-                      value={bookingForm.checkIn}
-                      onChange={(event) => setBookingForm({ ...bookingForm, checkIn: event.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Check-Out Date</label>
-                    <Input
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="Check-Out Date"
-                      type="date"
-                      value={bookingForm.checkOut}
-                      onChange={(event) => setBookingForm({ ...bookingForm, checkOut: event.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Status</label>
-                    <select
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
-                      value={bookingForm.status}
-                      onChange={(event) => setBookingForm({ ...bookingForm, status: event.target.value as any })}
-                    >
+                      <option value="all">All Status</option>
                       <option value="pending">Pending</option>
                       <option value="confirmed">Confirmed</option>
-                      <option value="checked-in">Check-in</option>
-                      <option value="checked-out">Check-out</option>
+                      <option value="checked-in">Checked-in</option>
+                      <option value="checked-out">Checked-out</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Total Amount</label>
-                    <Input
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="Total Amount"
-                      type="number"
-                      step="0.01"
-                      value={bookingForm.totalPrice}
-                      onChange={(event) => setBookingForm({ ...bookingForm, totalPrice: event.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">ID Proof Type</label>
-                    <select
-                      className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
-                      value={bookingIdProofType}
-                      onChange={(event) => setBookingIdProofType(event.target.value)}
+                    <Button
+                      onClick={handleAddBookingClick}
+                      className="bg-amber-600 hover:bg-amber-700 text-white shadow-md"
+                      title="Add booking manually"
                     >
-                      <option value="passport">Passport</option>
-                      <option value="driver-license">Driver License</option>
-                      <option value="government-id">Government ID</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-2 md:col-span-2">
-                    <label className="text-[#e6e6e6] text-sm font-medium">Upload ID proof (optional)</label>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add
+                    </Button>
+                    <Button
+                      onClick={handleExportBookingsToExcel}
+                      className="bg-green-600 hover:bg-green-700 text-white shadow-md"
+                      title="Download bookings as Excel"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
                     <input
+                      id="import-bookings-excel"
                       type="file"
-                      accept="image/jpeg,image/png,application/pdf"
-                      onChange={(event) => setBookingIdProofFile(event.target.files?.[0] || null)}
-                      className="w-full text-base text-[#efece6] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-base file:font-semibold file:bg-[#232b23] file:text-[#efece6] hover:file:bg-[#2e362e]"
+                      accept=".xlsx,.xls"
+                      onChange={handleImportBookingsFromExcel}
+                      className="hidden"
+                      title="Upload bookings Excel file"
                     />
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                      onClick={() => document.getElementById('import-bookings-excel')?.click()}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Import
+                    </Button>
+                    <a
+                      href="/sample_bookings.xlsx"
+                      download="sample_bookings.xlsx"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-sm shadow-sm"
+                      title="Download sample bookings template"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Sample
+                    </a>
                   </div>
                 </div>
-                <div className="flex gap-4 justify-end mt-8">
-                  <Button type="button" variant="outline" className="bg-white text-[#232b23] border-none px-8 py-3 rounded-xl text-base font-semibold hover:bg-[#efece6]" onClick={() => setIsBookingFormOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-[#ffc107] hover:bg-[#ffb300] text-[#232b23] px-8 py-3 rounded-xl text-base font-semibold border-none">
-                    Save Booking
-                  </Button>
-                </div>
-              </form>
-            )}
 
-            <div className="bg-white rounded-3xl p-8 shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-stone-200">
-                      <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
-                      <th className="text-left py-3 px-4 text-stone-600">Guest Details</th>
-                      <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
-                      <th className="text-left py-3 px-4 text-stone-600">Room</th>
-                      <th className="text-left py-3 px-4 text-stone-600">Dates</th>
-                      <th className="text-left py-3 px-4 text-stone-600">Status</th>
-                      <th className="text-left py-3 px-4 text-stone-600">ID Proof</th>
-                      <th className="text-left py-3 px-4 text-stone-600">ID Status</th>
-                      <th className="text-left py-3 px-4 text-stone-600">Payment</th>
-                      <th className="text-left py-3 px-4 text-stone-600">Amount</th>
-                      <th className="text-left py-3 px-4 text-stone-600">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBookings.map((booking) => {
-                      const room = roomsState.find(r => r.id === booking.roomId);
-                      return (
-                        <tr key={booking.id} className="border-b border-stone-100 hover:bg-stone-50">
-                          <td className="py-4 px-4">{booking.id}</td>
-                          <td className="py-4 px-4">
-                            <div>{booking.guestName}</div>
-                            <div className="text-sm text-stone-600">{booking.guestEmail}</div>
-                          </td>
-                          <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
-                          <td className="py-4 px-4">{room?.name}</td>
-                          <td className="py-4 px-4">
-                            <div className="text-sm">
-                              {new Date(booking.checkIn).toLocaleDateString()} -
-                            </div>
-                            <div className="text-sm">
-                              {new Date(booking.checkOut).toLocaleDateString()}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-                              {booking.status}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            {booking.idProofUrl ? (
-                              <div className="space-y-1">
-                                <a
-                                  href={`${API_BASE}${booking.idProofUrl}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-sm text-blue-600 hover:underline"
-                                >
-                                  View ID
-                                </a>
-                                <div className="text-xs text-stone-500">
-                                  {booking.idProofType ? booking.idProofType.replace(/-/g, ' ') : 'Document'}
+                {isBookingFormOpen && (
+                  <form onSubmit={handleSaveBooking} className="bg-[#232b23] rounded-3xl p-8 shadow-xl mb-8 border border-[#3a463a] max-w-4xl mx-auto">
+                    <h2 className="text-3xl font-serif text-[#fffbe6] mb-8 text-center">Add Booking</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Select Room</label>
+                        <select
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
+                          value={bookingForm.roomId}
+                          onChange={(event) => setBookingForm({ ...bookingForm, roomId: event.target.value })}
+                          required
+                        >
+                          <option value="">Select Room</option>
+                          {roomsState.map((room) => (
+                            <option key={room.id} value={room.id}>
+                              {room.name} - ₹{room.price}/night
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Guest Name</label>
+                        <Input
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="Guest Name"
+                          value={bookingForm.guestName}
+                          onChange={(event) => setBookingForm({ ...bookingForm, guestName: event.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Guest Email</label>
+                        <Input
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="Guest Email"
+                          type="email"
+                          value={bookingForm.guestEmail}
+                          onChange={(event) => setBookingForm({ ...bookingForm, guestEmail: event.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Guest Phone</label>
+                        <Input
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="Guest Phone"
+                          value={bookingForm.guestPhone}
+                          onChange={(event) => setBookingForm({ ...bookingForm, guestPhone: event.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Check-In Date</label>
+                        <Input
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="Check-In Date"
+                          type="date"
+                          value={bookingForm.checkIn}
+                          onChange={(event) => setBookingForm({ ...bookingForm, checkIn: event.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Check-Out Date</label>
+                        <Input
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="Check-Out Date"
+                          type="date"
+                          value={bookingForm.checkOut}
+                          onChange={(event) => setBookingForm({ ...bookingForm, checkOut: event.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Status</label>
+                        <select
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
+                          value={bookingForm.status}
+                          onChange={(event) => setBookingForm({ ...bookingForm, status: event.target.value as any })}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="checked-in">Check-in</option>
+                          <option value="checked-out">Check-out</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Total Amount</label>
+                        <Input
+                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="Total Amount"
+                          type="number"
+                          step="0.01"
+                          value={bookingForm.totalPrice}
+                          onChange={(event) => setBookingForm({ ...bookingForm, totalPrice: event.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2 md:col-span-2">
+                        <label className="text-[#e6e6e6] text-sm font-medium">Upload ID proof (optional)</label>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,application/pdf"
+                          onChange={(event) => setBookingIdProofFile(event.target.files?.[0] || null)}
+                          className="w-full text-base text-[#efece6] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-base file:font-semibold file:bg-[#232b23] file:text-[#efece6] hover:file:bg-[#2e362e]"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-4 justify-end mt-8">
+                      <Button type="button" variant="outline" className="bg-white text-[#232b23] border-none px-8 py-3 rounded-xl text-base font-semibold hover:bg-[#efece6]" onClick={() => setIsBookingFormOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="bg-[#ffc107] hover:bg-[#ffb300] text-[#232b23] px-8 py-3 rounded-xl text-base font-semibold border-none">
+                        Save Booking
+                      </Button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="bg-white rounded-3xl p-8 shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-stone-200">
+                          <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Guest Details</th>
+                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Room</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Dates</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Status</th>
+                          <th className="text-left py-3 px-4 text-stone-600">ID Proof</th>
+                          <th className="text-left py-3 px-4 text-stone-600">ID Status</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Payment</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Amount</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredBookings.map((booking) => {
+                          const room = roomsState.find(r => r.id === booking.roomId);
+                          return (
+                            <tr key={booking.id} className="border-b border-stone-100 hover:bg-stone-50">
+                              <td className="py-4 px-4">{booking.id}</td>
+                              <td className="py-4 px-4">
+                                <div>{booking.guestName}</div>
+                                <div className="text-sm text-stone-600">{booking.guestEmail}</div>
+                              </td>
+                              <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
+                              <td className="py-4 px-4">{room?.name}</td>
+                              <td className="py-4 px-4">
+                                <div className="text-sm">
+                                  {new Date(booking.checkIn).toLocaleDateString()} -
                                 </div>
-                                {booking.idProofUploadedAt && (
-                                  <div className="text-xs text-stone-500">
-                                    {new Date(booking.idProofUploadedAt).toLocaleDateString()}
+                                <div className="text-sm">
+                                  {new Date(booking.checkOut).toLocaleDateString()}
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                                  {booking.status}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                {booking.idProofUrl ? (
+                                  <div className="space-y-1">
+                                    <a
+                                      href={`${API_BASE}${booking.idProofUrl}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-sm text-blue-600 hover:underline"
+                                    >
+                                      View ID
+                                    </a>
+                                    <div className="text-xs text-stone-500">
+                                      {booking.idProofType ? booking.idProofType.replace(/-/g, ' ') : 'Document'}
+                                    </div>
+                                    {booking.idProofUploadedAt && (
+                                      <div className="text-xs text-stone-500">
+                                        {new Date(booking.idProofUploadedAt).toLocaleDateString()}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-stone-500">Not uploaded</span>
+                                )}
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-3 py-1 rounded-full text-sm ${idVerifiedBadgeClass(booking.idVerified)}`}>
+                                  {booking.idVerified || 'pending'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-3 py-1 rounded-full text-sm ${
+                                  booking.paymentStatus === 'paid' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : booking.paymentStatus === 'failed'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {booking.paymentStatus || 'pending'}
+                                </span>
+                              </td>
+                                <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
+                              <td className="py-4 px-4">
+                                {booking.idVerified === 'approved' ? (
+                                  <span className="text-sm text-green-600 font-medium">Approved</span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleIdVerificationChange(booking, 'approved')}
+                                      disabled={!booking.idProofUrl}
+                                      title={!booking.idProofUrl ? 'Awaiting ID proof upload' : undefined}
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleIdVerificationChange(booking, 'rejected')}
+                                      disabled={!booking.idProofUrl}
+                                      title={!booking.idProofUrl ? 'Awaiting ID proof upload' : undefined}
+                                    >
+                                      Reject
+                                    </Button>
                                   </div>
                                 )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'service-bookings' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Service Bookings</h1>
+                    <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel service reservations</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <select
+                      className="px-5 py-2 h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-base font-medium focus:ring-amber-400 shadow-sm"
+                      value={serviceBookingStatusFilter}
+                      onChange={(event) => setServiceBookingStatusFilter(event.target.value)}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <Button
+                      onClick={handleAddServiceBookingClick}
+                      className="bg-amber-600 hover:bg-amber-700 text-white shadow-md"
+                      title="Add service booking manually"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add
+                    </Button>
+                    <Button
+                      onClick={handleExportServiceBookingsToExcel}
+                      className="bg-green-600 hover:bg-green-700 text-white shadow-md"
+                      title="Download service bookings as Excel"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
+                    <input
+                      id="import-service-bookings-excel"
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleImportServiceBookingsFromExcel}
+                      className="hidden"
+                      title="Upload service bookings Excel file"
+                    />
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                      onClick={() => document.getElementById('import-service-bookings-excel')?.click()}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Import
+                    </Button>
+                    <a
+                      href="/sample_service_bookings.csv"
+                      download="sample_service_bookings.csv"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-sm shadow-sm"
+                      title="Download sample service bookings template"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      Sample
+                    </a>
+                  </div>
+                </div>
+
+                {isServiceBookingFormOpen && (
+                  <form
+                    onSubmit={handleSaveServiceBooking}
+                    className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]"
+                  >
+                    <h2 className="text-2xl font-serif mb-6 text-center">Add Service Booking</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <select
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                        value={serviceBookingForm.serviceId}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, serviceId: event.target.value, time: '' })}
+                        required
+                      >
+                        <option value="">Select Service</option>
+                        {servicesState.map((service) => (
+                          <option key={service.id} value={service.id}>
+                            {service.name}
+                          </option>
+                        ))}
+                      </select>
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Guest Name"
+                        value={serviceBookingForm.guestName}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestName: event.target.value })}
+                        required
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Guest Email"
+                        type="email"
+                        value={serviceBookingForm.guestEmail}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestEmail: event.target.value })}
+                        required
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Guest Phone"
+                        value={serviceBookingForm.guestPhone}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestPhone: event.target.value })}
+                        required
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Date"
+                        type="date"
+                        value={serviceBookingForm.date}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, date: event.target.value })}
+                        required
+                      />
+                      {serviceBookingTimes.length > 0 ? (
+                        <select
+                          className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                          value={serviceBookingForm.time}
+                          onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, time: event.target.value })}
+                          required
+                        >
+                          <option value="">Select Time</option>
+                          {serviceBookingTimes.map((time) => (
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          placeholder="Time (e.g., 7:00 PM)"
+                          value={serviceBookingForm.time}
+                          onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, time: event.target.value })}
+                          required
+                        />
+                      )}
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Guests"
+                        type="number"
+                        min="1"
+                        value={serviceBookingForm.guests}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guests: event.target.value })}
+                        required
+                      />
+                      <select
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                        value={serviceBookingForm.status}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, status: event.target.value as any })}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                    <Textarea
+                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
+                      placeholder="Special Requests"
+                      value={serviceBookingForm.specialRequests}
+                      onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, specialRequests: event.target.value })}
+                    />
+                    <div className="flex gap-2 justify-end mt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsServiceBookingFormOpen(false)}
+                        className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="bg-amber-500 hover:bg-amber-600 text-[#232b23] font-semibold shadow-md"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </form>
+                )}
+
+                {filteredServiceBookings.length === 0 ? (
+                  <div className="text-center py-12 bg-stone-50 rounded-2xl border border-dashed border-stone-300">
+                    <p className="text-stone-600">No service bookings yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {serviceCategories.map((category) => {
+                      const categoryBookings = filteredServiceBookings.filter((booking) => booking.category === category.key);
+                      const categoryColor: Record<string, string> = {
+                        restaurant: 'border-[#e7d6ad]',
+                        spa: 'border-[#cbbfa8]',
+                        bar: 'border-[#d7d0bf]',
+                        dining: 'border-[#efece6]',
+                      };
+                      const isExpanded = expandedServiceBookingCategories.has(category.key);
+
+                      return (
+                        <div key={category.key}>
+                          <button
+                            onClick={() => toggleServiceBookingCategory(category.key)}
+                            className={`w-full flex items-center justify-between gap-3 mb-4 pb-3 border-b-2 ${categoryColor[category.key] || 'border-[#3a463a]'} bg-[#232b23] text-[#f5f1e8] px-2 py-2 -mx-2 rounded-2xl transition-colors shadow-lg`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="text-2xl">🍴🧖🍹🍽️</div>
+                              <div className="text-left">
+                                <h2 className="text-lg font-bold text-stone-900">{category.label}</h2>
+                                <p className="text-xs text-stone-500">{categoryBookings.length} booking{categoryBookings.length !== 1 ? 's' : ''}</p>
                               </div>
-                            ) : (
-                              <span className="text-sm text-stone-500">Not uploaded</span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className={`px-3 py-1 rounded-full text-sm ${idVerifiedBadgeClass(booking.idVerified)}`}>
-                              {booking.idVerified || 'pending'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className={`px-3 py-1 rounded-full text-sm ${
-                              booking.paymentStatus === 'paid' 
-                                ? 'bg-green-100 text-green-800' 
-                                : booking.paymentStatus === 'failed'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {booking.paymentStatus || 'pending'}
-                            </span>
-                          </td>
-                            <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
-                          <td className="py-4 px-4">
-                            {booking.idVerified === 'approved' ? (
-                              <span className="text-sm text-green-600 font-medium">Approved</span>
-                            ) : (
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleIdVerificationChange(booking, 'approved')}
-                                  disabled={!booking.idProofUrl}
-                                  title={!booking.idProofUrl ? 'Awaiting ID proof upload' : undefined}
-                                >
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleIdVerificationChange(booking, 'rejected')}
-                                  disabled={!booking.idProofUrl}
-                                  title={!booking.idProofUrl ? 'Awaiting ID proof upload' : undefined}
-                                >
-                                  Reject
-                                </Button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
+                            </div>
+                            <div className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+                              <svg className="w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                              </svg>
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <>
+                              {categoryBookings.length === 0 ? (
+                                <p className="text-sm text-stone-500 py-6">No bookings</p>
+                              ) : (
+                                <div className="bg-[#232b23] rounded-2xl border border-[#3a463a] overflow-hidden mb-8 shadow-lg">
+                                  <div className="overflow-x-auto text-sm">
+                                    <table className="w-full">
+                                      <thead>
+                                        <tr className="bg-[#2e362e] border-b border-[#3a463a]">
+                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Guest</th>
+                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Phone No.</th>
+                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Service</th>
+                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Date</th>
+                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Time</th>
+                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Status</th>
+                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Actions</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {categoryBookings.map((booking) => (
+                                          <tr key={booking.id} className="border-b border-[#3a463a] hover:bg-[#2e362e]">
+                                            <td className="py-3 px-4">
+                                              <div className="font-medium text-[#efece6]">{booking.guestName}</div>
+                                              <div className="text-xs text-[#b6b6b6]">{booking.guestEmail}</div>
+                                            </td>
+                                            <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
+                                            <td className="py-3 px-4 text-[#f5f1e8]">{booking.serviceName || 'N/A'}</td>
+                                            <td className="py-3 px-4 text-[#f5f1e8]">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                                            <td className="py-3 px-4 text-[#f5f1e8]">{booking.time}</td>
+                                            <td className="py-3 px-4">
+                                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                                                {booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Approved' : booking.status === 'cancelled' ? 'Rejected' : booking.status}
+                                              </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                              {booking.status === 'pending' ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                  <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
+                                                    onClick={(e) => {
+                                                      e.preventDefault();
+                                                      e.stopPropagation();
+                                                      handleServiceBookingActionClick(booking.id, 'approve');
+                                                    }}
+                                                  >
+                                                    Approve
+                                                  </Button>
+                                                  <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="bg-rose-200 text-rose-800 hover:bg-rose-300 border-none"
+                                                    onClick={(e) => {
+                                                      e.preventDefault();
+                                                      e.stopPropagation();
+                                                      handleServiceBookingActionClick(booking.id, 'reject');
+                                                    }}
+                                                  >
+                                                    Reject
+                                                  </Button>
+                                                </div>
+                                              ) : booking.status === 'confirmed' ? (
+                                                <span className="inline-block px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold">Approved</span>
+                                              ) : booking.status === 'cancelled' ? (
+                                                <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-semibold">Rejected</span>
+                                              ) : null}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'service-bookings' && (
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+            )}
+           
+            {activeTab === 'payments' && (
               <div>
-                <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Service Bookings</h1>
-                <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel service reservations</p>
-              </div>
-              <div className="flex flex-wrap gap-3 items-center">
-                <select
-                  className="px-5 py-2 h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-base font-medium focus:ring-amber-400 shadow-sm"
-                  value={serviceBookingStatusFilter}
-                  onChange={(event) => setServiceBookingStatusFilter(event.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-                <Button
-                  onClick={handleAddServiceBookingClick}
-                  className="bg-amber-600 hover:bg-amber-700 text-white shadow-md"
-                  title="Add service booking manually"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add
-                </Button>
-                <Button
-                  onClick={handleExportServiceBookingsToExcel}
-                  className="bg-green-600 hover:bg-green-700 text-white shadow-md"
-                  title="Download service bookings as Excel"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
-                <input
-                  id="import-service-bookings-excel"
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleImportServiceBookingsFromExcel}
-                  className="hidden"
-                  title="Upload service bookings Excel file"
-                />
-                <Button
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
-                  onClick={() => document.getElementById('import-service-bookings-excel')?.click()}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Import
-                </Button>
-                <a
-                  href="/sample_service_bookings.csv"
-                  download="sample_service_bookings.csv"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-sm shadow-sm"
-                  title="Download sample service bookings template"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Sample
-                </a>
-              </div>
-            </div>
-
-            {isServiceBookingFormOpen && (
-              <form
-                onSubmit={handleSaveServiceBooking}
-                className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]"
-              >
-                <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">Add Service Booking</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <select
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
-                    value={serviceBookingForm.serviceId}
-                    onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, serviceId: event.target.value, time: '' })}
-                    required
-                  >
-                    <option value="">Select Service</option>
-                    {servicesState.map((service) => (
-                      <option key={service.id} value={service.id}>
-                        {service.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Guest Name"
-                    value={serviceBookingForm.guestName}
-                    onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestName: event.target.value })}
-                    required
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Guest Email"
-                    type="email"
-                    value={serviceBookingForm.guestEmail}
-                    onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestEmail: event.target.value })}
-                    required
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Guest Phone"
-                    value={serviceBookingForm.guestPhone}
-                    onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestPhone: event.target.value })}
-                    required
-                  />
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Date"
-                    type="date"
-                    value={serviceBookingForm.date}
-                    onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, date: event.target.value })}
-                    required
-                  />
-                  {serviceBookingTimes.length > 0 ? (
-                    <select
-                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
-                      value={serviceBookingForm.time}
-                      onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, time: event.target.value })}
-                      required
-                    >
-                      <option value="">Select Time</option>
-                      {serviceBookingTimes.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </select>
+                <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Payment Management</h1>
+                <div className="bg-white rounded-3xl p-8 shadow-sm">
+                  {usersState.length === 0 ? (
+                    <div className="text-center py-16 text-stone-600">No payment records yet.</div>
                   ) : (
-                    <Input
-                      className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                      placeholder="Time (e.g., 7:00 PM)"
-                      value={serviceBookingForm.time}
-                      onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, time: event.target.value })}
-                      required
-                    />
-                  )}
-                  <Input
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
-                    placeholder="Guests"
-                    type="number"
-                    min="1"
-                    value={serviceBookingForm.guests}
-                    onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guests: event.target.value })}
-                    required
-                  />
-                  <select
-                    className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
-                    value={serviceBookingForm.status}
-                    onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, status: event.target.value as any })}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-                <Textarea
-                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 mb-4"
-                  placeholder="Special Requests"
-                  value={serviceBookingForm.specialRequests}
-                  onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, specialRequests: event.target.value })}
-                />
-                <div className="flex gap-2 justify-end mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsServiceBookingFormOpen(false)}
-                    className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="bg-amber-500 hover:bg-amber-600 text-[#232b23] font-semibold shadow-md"
-                  >
-                    Add
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {filteredServiceBookings.length === 0 ? (
-              <div className="text-center py-12 bg-stone-50 rounded-2xl border border-dashed border-stone-300">
-                <p className="text-stone-600">No service bookings yet</p>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {serviceCategories.map((category) => {
-                  const categoryBookings = filteredServiceBookings.filter((booking) => booking.category === category.key);
-                  const categoryColor: Record<string, string> = {
-                    restaurant: 'border-[#e7d6ad]',
-                    spa: 'border-[#cbbfa8]',
-                    bar: 'border-[#d7d0bf]',
-                    dining: 'border-[#efece6]',
-                  };
-                  const isExpanded = expandedServiceBookingCategories.has(category.key);
-
-                  return (
-                    <div key={category.key}>
-                      <button
-                        onClick={() => toggleServiceBookingCategory(category.key)}
-                        className={`w-full flex items-center justify-between gap-3 mb-4 pb-3 border-b-2 ${categoryColor[category.key] || 'border-[#3a463a]'} bg-[#232b23] text-[#f5f1e8] px-2 py-2 -mx-2 rounded-2xl transition-colors shadow-lg`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="text-2xl">{'ðŸ´ðŸ§–ðŸ¹ðŸ½ï¸'['restaurant spa bar dining'.split(' ').indexOf(category.key)]}</div>
-                          <div className="text-left">
-                            <h2 className="text-lg font-bold text-stone-900">{category.label}</h2>
-                            <p className="text-xs text-stone-500">{categoryBookings.length} booking{categoryBookings.length !== 1 ? 's' : ''}</p>
-                          </div>
-                        </div>
-                        <div className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-                          <svg className="w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                          </svg>
-                        </div>
-                      </button>
-
-                      {isExpanded && (
-                        <>
-                          {categoryBookings.length === 0 ? (
-                            <p className="text-sm text-stone-500 py-6">No bookings</p>
-                          ) : (
-                            <div className="bg-[#232b23] rounded-2xl border border-[#3a463a] overflow-hidden mb-8 shadow-lg">
-                              <div className="overflow-x-auto text-sm">
-                                <table className="w-full">
-                                  <thead>
-                                    <tr className="bg-[#2e362e] border-b border-[#3a463a]">
-                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Guest</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Phone No.</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Service</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Date</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Time</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Status</th>
-                                      <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {categoryBookings.map((booking) => (
-                                      <tr key={booking.id} className="border-b border-[#3a463a] hover:bg-[#2e362e]">
-                                        <td className="py-3 px-4">
-                                          <div className="font-medium text-[#efece6]">{booking.guestName}</div>
-                                          <div className="text-xs text-[#b6b6b6]">{booking.guestEmail}</div>
-                                        </td>
-                                        <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
-                                        <td className="py-3 px-4 text-[#f5f1e8]">{booking.serviceName || 'N/A'}</td>
-                                        <td className="py-3 px-4 text-[#f5f1e8]">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                                        <td className="py-3 px-4 text-[#f5f1e8]">{booking.time}</td>
-                                        <td className="py-3 px-4">
-                                          <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
-                                            {booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Approved' : booking.status === 'cancelled' ? 'Rejected' : booking.status}
-                                          </span>
-                                        </td>
-                                        <td className="py-3 px-4">
-                                          {booking.status === 'pending' ? (
-                                            <div className="flex flex-wrap gap-2">
-                                              <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="outline"
-                                                className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
-                                                onClick={(e) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  handleServiceBookingActionClick(booking.id, 'approve');
-                                                }}
-                                              >
-                                                Approve
-                                              </Button>
-                                              <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="outline"
-                                                className="bg-rose-200 text-rose-800 hover:bg-rose-300 border-none"
-                                                onClick={(e) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  handleServiceBookingActionClick(booking.id, 'reject');
-                                                }}
-                                              >
-                                                Reject
-                                              </Button>
-                                            </div>
-                                          ) : booking.status === 'confirmed' ? (
-                                            <span className="inline-block px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold">Approved</span>
-                                          ) : booking.status === 'cancelled' ? (
-                                            <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-semibold">Rejected</span>
-                                          ) : null}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-stone-200">
+                            <th className="text-left py-3 px-4 text-stone-600">User</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Room Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Service Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Total Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usersState.map((user) => {
+                            if (!user || !user.id) return null;
+                            const userRoomBookings = bookingsState.filter(b => b.userId === user.id);
+                            const roomTotal = userRoomBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+                            const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
+                            const serviceTotal = userServiceBookings.reduce((sum, sb) => {
+                              let price = 0;
+                              if (sb.priceRange) {
+                                const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
+                                if (match) price = parseFloat(match[0]);
+                              }
+                              return sum + price;
+                            }, 0);
+                            const total = roomTotal + serviceTotal;
+                            if (roomTotal === 0 && serviceTotal === 0) return null;
+                            return (
+                              <tr key={user.id} className="border-b border-stone-100">
+                                <td className="py-4 px-4">{user.name} <span className="block text-xs text-stone-400">{user.email}</span></td>
+                                <td className="py-4 px-4">₹{roomTotal.toFixed(2)}</td>
+                                <td className="py-4 px-4">₹{serviceTotal.toFixed(2)}</td>
+                                <td className="py-4 px-4 font-bold">₹{total.toFixed(2)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
             )}
-          </div>
-        )}
-       
-        {activeTab === 'payments' && (
-          <div>
-            <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Payment Management</h1>
-            <div className="bg-white rounded-3xl p-8 shadow-sm">
-              {usersState.length === 0 ? (
-                <div className="text-center py-16 text-stone-600">No payment records yet.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-stone-200">
-                        <th className="text-left py-3 px-4 text-stone-600">User</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Room Amount</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Service Amount</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Total Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usersState.map((user) => {
-                        // Sum room bookings for this user
-                        const userRoomBookings = bookingsState.filter(b => b.userId === user.id);
-                        const roomTotal = userRoomBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
-                        // Sum service bookings for this user (if any price field is available)
-                        // If you have a price field in service bookings, use it. Otherwise, you may need to add it.
-                        // For now, we assume no price field, so set to 0.
-                        // If you have a price, e.g., booking.price or booking.totalPrice, use that instead of 0 below.
-                        const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
-                        // Try to use priceRange as a number if possible, else 0
-                        const serviceTotal = userServiceBookings.reduce((sum, sb) => {
-                          // Try to parse priceRange as a number
-                          let price = 0;
-                          if (sb.priceRange) {
-                            // If priceRange is a single number string, use it
-                            const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
-                            if (match) price = parseFloat(match[0]);
-                          }
-                          return sum + price;
-                        }, 0);
-                        const total = roomTotal + serviceTotal;
-                        if (roomTotal === 0 && serviceTotal === 0) return null; // Skip users with no payments
-                        return (
-                          <tr key={user.id} className="border-b border-stone-100">
-                            <td className="py-4 px-4">{user.name} <span className="block text-xs text-stone-400">{user.email}</span></td>
-                            <td className="py-4 px-4">₹{roomTotal.toFixed(2)}</td>
-                            <td className="py-4 px-4">₹{serviceTotal.toFixed(2)}</td>
-                            <td className="py-4 px-4 font-bold">₹{total.toFixed(2)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'guests' && (
-          <div>
-            <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
-            <div className="bg-white rounded-3xl p-8 shadow-sm">
-              {usersState.length === 0 ? (
-                <div className="text-center py-16 text-stone-600">No guests found.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-stone-200">
-                        <th className="text-left py-3 px-4 text-stone-600">Name</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Email</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Phone</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Role</th>
-                        <th className="text-left py-3 px-4 text-stone-600">Bookings</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {usersState.map((guest) => {
-                        const bookingCount = bookingsState.filter(
-                          (booking) => booking.userId && booking.userId === guest.id
-                        ).length;
-                        return (
-                          <tr key={guest.id} className="border-b border-stone-100">
-                            <td className="py-4 px-4">{guest.name}</td>
-                            <td className="py-4 px-4">{guest.email || 'â€”'}</td>
-                            <td className="py-4 px-4">{guest.phone || 'â€”'}</td>
-                            <td className="py-4 px-4">{guest.role}</td>
-                            <td className="py-4 px-4">{bookingCount}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'contacts' && (
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            {activeTab === 'guests' && (
               <div>
-                <h1 className="text-3xl sm:text-4xl mb-2" style={{ fontFamily: "'Great Vibes', cursive" }}>Contact Messages</h1>
-                <p className="text-stone-600">Manage customer inquiries and feedback</p>
+                <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
+                
+                {/* Admin Create User Form */}
+                {/* Removed Create New User form from guests section */}
+
+                {/* Users List */}
+                <div className="bg-[#232b23] rounded-3xl p-8 shadow-lg border border-[#3a463a] text-[#f5f1e8]">
+                  {usersState.length === 0 ? (
+                    <div className="text-center py-16">No guests found.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-[#3a463a]">
+                            <th className="text-left py-3 px-4 text-[#c9c3b6]">Name</th>
+                            <th className="text-left py-3 px-4 text-[#c9c3b6]">Email</th>
+                            <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone</th>
+                            <th className="text-left py-3 px-4 text-[#c9c3b6]">Role</th>
+                            <th className="text-left py-3 px-4 text-[#c9c3b6]">Bookings</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usersState.map((guest) => {
+                            if (!guest || !guest.id) return null;
+                            const bookingCount = bookingsState.filter(
+                              (booking) => booking.userId && booking.userId === guest.id
+                            ).length;
+                            return (
+                              <tr key={guest.id} className="border-b border-[#3a463a] hover:bg-[#2e362e]">
+                                <td className="py-4 px-4">{guest.name}</td>
+                                <td className="py-4 px-4">{guest.email || '—'}</td>
+                                <td className="py-4 px-4">{guest.phone || '—'}</td>
+                                <td className="py-4 px-4">{guest.role}</td>
+                                <td className="py-4 px-4">{bookingCount}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
-              {contactStatsState && (
-                <div className="flex flex-wrap gap-4">
-                  <div className="bg-white rounded-2xl px-6 py-3 shadow-sm">
-                    <div className="text-sm text-stone-500">Total</div>
-                    <div className="text-2xl font-bold">{contactStatsState.total}</div>
+            )}
+
+            {activeTab === 'contacts' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl mb-2" style={{ fontFamily: "'Great Vibes', cursive" }}>Contact Messages</h1>
+                    <p className="text-stone-600">Manage customer inquiries and feedback</p>
                   </div>
-                  <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-3">
-                    <div className="text-sm text-red-600">New</div>
-                    <div className="text-2xl font-bold text-red-700">{contactStatsState.new}</div>
-                  </div>
-                  <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-3">
-                    <div className="text-sm text-green-600">Replied</div>
-                    <div className="text-2xl font-bold text-green-700">{contactStatsState.replied}</div>
-                  </div>
+                  {contactStatsState && (
+                    <div className="flex flex-wrap gap-4">
+                      <div className="bg-white rounded-2xl px-6 py-3 shadow-sm">
+                        <div className="text-sm text-stone-500">Total</div>
+                        <div className="text-2xl font-bold">{contactStatsState.total}</div>
+                      </div>
+                      <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-3">
+                        <div className="text-sm text-red-600">New</div>
+                        <div className="text-2xl font-bold text-red-700">{contactStatsState.new}</div>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-3">
+                        <div className="text-sm text-green-600">Replied</div>
+                        <div className="text-2xl font-bold text-green-700">{contactStatsState.replied}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="bg-white rounded-3xl p-8 shadow-sm">
-              {contactsState.length === 0 ? (
-                <div className="text-center py-16">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-stone-400" />
-                  <h3 className="text-2xl mb-2">No contact messages</h3>
-                  <p className="text-stone-600">Customer inquiries will appear here</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {contactsState.map((contact) => {
-                    const statusColors = {
-                      new: 'bg-red-100 text-red-800 border-red-200',
-                      read: 'bg-blue-100 text-blue-800 border-blue-200',
-                      replied: 'bg-green-100 text-green-800 border-green-200',
-                      archived: 'bg-stone-100 text-stone-800 border-stone-200',
-                    };
+                <div className="bg-white rounded-3xl p-8 shadow-sm">
+                  {contactsState.length === 0 ? (
+                    <div className="text-center py-16">
+                      <MessageSquare className="w-16 h-16 mx-auto mb-4 text-stone-400" />
+                      <h3 className="text-2xl mb-2">No contact messages</h3>
+                      <p className="text-stone-600">Customer inquiries will appear here</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {contactsState.map((contact) => {
+                        const statusColors = {
+                          new: 'bg-red-100 text-red-800 border-red-200',
+                          read: 'bg-blue-100 text-blue-800 border-blue-200',
+                          replied: 'bg-green-100 text-green-800 border-green-200',
+                          archived: 'bg-stone-100 text-stone-800 border-stone-200',
+                        };
 
-                    return (
-                      <div
-                        key={contact._id}
-                        className={`border-2 rounded-3xl p-6 transition-all ${
-                          contact.status === 'new' ? 'border-red-200 bg-red-50/30' : 'border-stone-200 bg-white'
-                        }`}
-                      >
-                        <div className="flex items-start gap-6">
-                          {/* Icon */}
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                            contact.status === 'new' ? 'bg-red-100' : 'bg-stone-100'
-                          }`}>
-                            <Mail className={`w-7 h-7 ${contact.status === 'new' ? 'text-red-600' : 'text-stone-600'}`} />
-                          </div>
+                        return (
+                          <div
+                            key={contact._id}
+                            className={`border-2 rounded-3xl p-6 transition-all ${
+                              contact.status === 'new' ? 'border-red-200 bg-red-50/30' : 'border-stone-200 bg-white'
+                            }`}
+                          >
+                            <div className="flex items-start gap-6">
+                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                                contact.status === 'new' ? 'bg-red-100' : 'bg-stone-100'
+                              }`}>
+                                <Mail className={`w-7 h-7 ${contact.status === 'new' ? 'text-red-600' : 'text-stone-600'}`} />
+                              </div>
 
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h3 className="text-xl font-bold text-stone-800 mb-1">{contact.name}</h3>
-                                <div className="flex flex-wrap gap-3 text-sm text-stone-600">
-                                  <span className="flex items-center gap-1">
-                                    <Mail className="w-4 h-4" />
-                                    {contact.email}
-                                  </span>
-                                  {contact.phone && (
-                                    <span className="flex items-center gap-1">
-                                      <Phone className="w-4 h-4" />
-                                      {contact.phone}
-                                    </span>
-                                  )}
-                                </div>
-                                {contact.subject && (
-                                  <div className="mt-2 text-sm font-semibold text-stone-700">
-                                    Subject: {contact.subject}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <h3 className="text-xl font-bold text-stone-800 mb-1">{contact.name}</h3>
+                                    <div className="flex flex-wrap gap-3 text-sm text-stone-600">
+                                      <span className="flex items-center gap-1">
+                                        <Mail className="w-4 h-4" />
+                                        {contact.email}
+                                      </span>
+                                      {contact.phone && (
+                                        <span className="flex items-center gap-1">
+                                          <Phone className="w-4 h-4" />
+                                          {contact.phone}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {contact.subject && (
+                                      <div className="mt-2 text-sm font-semibold text-stone-700">
+                                        Subject: {contact.subject}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                              <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 ${statusColors[contact.status]}`}>
-                                {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                              </span>
-                            </div>
+                                  <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 ${statusColors[contact.status]}`}>
+                                    {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
+                                  </span>
+                                </div>
 
-                            <div className="bg-stone-50 rounded-2xl p-4 mb-4 border border-stone-200">
-                              <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{contact.message}</p>
-                            </div>
+                                <div className="bg-stone-50 rounded-2xl p-4 mb-4 border border-stone-200">
+                                  <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{contact.message}</p>
+                                </div>
 
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm text-stone-500">
-                                Received: {new Date(contact.createdAt).toLocaleDateString()} at{' '}
-                                {new Date(contact.createdAt).toLocaleTimeString()}
-                              </div>
-                              <div className="flex gap-2">
-                                {contact.status === 'new' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => updateContactStatus(contact._id, 'read')}
-                                    className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
-                                  >
-                                    <Eye className="w-4 h-4 mr-1" />
-                                    Mark Read
-                                  </Button>
-                                )}
-                                {(contact.status === 'new' || contact.status === 'read') && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => updateContactStatus(contact._id, 'replied')}
-                                    className="rounded-xl bg-green-600 hover:bg-green-700"
-                                  >
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                    Mark Replied
-                                  </Button>
-                                )}
-                                {contact.status !== 'archived' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => updateContactStatus(contact._id, 'archived')}
-                                    className="rounded-xl"
-                                  >
-                                    Archive
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => deleteContact(contact._id)}
-                                  className="rounded-xl border-red-200 text-red-600 hover:bg-red-50"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <div className="flex items-center justify-between">
+                                  <div className="text-sm text-stone-500">
+                                    Received: {new Date(contact.createdAt).toLocaleDateString()} at{' '}
+                                    {new Date(contact.createdAt).toLocaleTimeString()}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {contact.status === 'new' && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => updateContactStatus(contact._id, 'read')}
+                                        className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
+                                      >
+                                        <Eye className="w-4 h-4 mr-1" />
+                                        Mark Read
+                                      </Button>
+                                    )}
+                                    {(contact.status === 'new' || contact.status === 'read') && (
+                                      <Button
+                                        size="sm"
+                                        onClick={() => updateContactStatus(contact._id, 'replied')}
+                                        className="rounded-xl bg-green-600 hover:bg-green-700"
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                        Mark Replied
+                                      </Button>
+                                    )}
+                                    {contact.status !== 'archived' && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => updateContactStatus(contact._id, 'archived')}
+                                        className="rounded-xl"
+                                      >
+                                        Archive
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => deleteContact(contact._id)}
+                                      className="rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div>
+                <h1 className="text-4xl mb-2 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>Settings</h1>
+                <p className="text-[#cfc9bb] mb-8">Configure system settings</p>
+                {settingsSavedAt && (
+                  <div className="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                    Settings updated at {settingsSavedAt}.
+                  </div>
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
+                    <h3 className="text-xl mb-4 text-[#efece6]">Profile Settings</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Name</label>
+                        <Input
+                          value={profileSettings.name}
+                          onChange={(e) => setProfileSettings(prev => ({ ...prev, name: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Email</label>
+                        <Input
+                          type="email"
+                          value={profileSettings.email}
+                          onChange={(e) => setProfileSettings(prev => ({ ...prev, email: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Phone</label>
+                        <Input
+                          value={profileSettings.phone}
+                          onChange={(e) => setProfileSettings(prev => ({ ...prev, phone: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
+                        Save Profile
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
+                    <h3 className="text-xl mb-4 text-[#efece6]">Security</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Current Password</label>
+                        <Input
+                          type="password"
+                          value={securityForm.currentPassword}
+                          onChange={(e) => setSecurityForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">New Password</label>
+                        <Input
+                          type="password"
+                          value={securityForm.newPassword}
+                          onChange={(e) => setSecurityForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Confirm Password</label>
+                        <Input
+                          type="password"
+                          value={securityForm.confirmPassword}
+                          onChange={(e) => setSecurityForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      {securityError && (
+                        <div className="rounded-xl border border-rose-300/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                          {securityError}
+                        </div>
+                      )}
+                      <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSecuritySave}>
+                        Update Password
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
+                    <h3 className="text-xl mb-4 text-[#efece6]">Hotel Info</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Hotel Name</label>
+                        <Input
+                          value={hotelSettings.name}
+                          onChange={(e) => setHotelSettings(prev => ({ ...prev, name: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Address</label>
+                        <Input
+                          value={hotelSettings.address}
+                          onChange={(e) => setHotelSettings(prev => ({ ...prev, address: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">Phone</label>
+                          <Input
+                            value={hotelSettings.phone}
+                            onChange={(e) => setHotelSettings(prev => ({ ...prev, phone: e.target.value }))}
+                            className={settingsInputClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">Email</label>
+                          <Input
+                            type="email"
+                            value={hotelSettings.email}
+                            onChange={(e) => setHotelSettings(prev => ({ ...prev, email: e.target.value }))}
+                            className={settingsInputClass}
+                          />
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">Check-in Time</label>
+                          <Input
+                            type="time"
+                            value={hotelSettings.checkInTime}
+                            onChange={(e) => setHotelSettings(prev => ({ ...prev, checkInTime: e.target.value }))}
+                            className={settingsInputClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">Check-out Time</label>
+                          <Input
+                            type="time"
+                            value={hotelSettings.checkOutTime}
+                            onChange={(e) => setHotelSettings(prev => ({ ...prev, checkOutTime: e.target.value }))}
+                            className={settingsInputClass}
+                          />
+                        </div>
+                      </div>
+                      <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
+                        Save Hotel Info
+                      </Button>
+                    </div>
+                  </div>
 
-        {activeTab === 'settings' && (
-          <div>
-            <h1 className="text-4xl mb-2 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>Settings</h1>
-            <p className="text-[#cfc9bb] mb-8">Configure system settings</p>
-            {settingsSavedAt && (
-              <div className="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                Settings updated at {settingsSavedAt}.
+                  <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
+                    <h3 className="text-xl mb-4 text-[#efece6]">Billing & Payments</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Razorpay Key ID</label>
+                        <Input
+                          value={billingSettings.razorpayKeyId}
+                          onChange={(e) => setBillingSettings(prev => ({ ...prev, razorpayKeyId: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Payout Account</label>
+                        <Input
+                          value={billingSettings.payoutAccount}
+                          onChange={(e) => setBillingSettings(prev => ({ ...prev, payoutAccount: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
+                        Save Billing
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
+                    <h3 className="text-xl mb-4 text-[#efece6]">Theme & Branding</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Upload Logo</label>
+                        <Input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={(e) => setBrandingLogoFile(e.target.files?.[0] || null)}
+                          className={settingsInputClass}
+                        />
+                        {brandingLogoFile && (
+                          <p className="mt-2 text-xs text-[#cfc9bb]">Selected: {brandingLogoFile.name}</p>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">Facebook Link</label>
+                          <Input
+                            type="url"
+                            value={brandingSettings.facebook}
+                            onChange={e => setBrandingSettings(prev => ({ ...prev, facebook: e.target.value }))}
+                            placeholder="https://facebook.com/yourpage"
+                            className={settingsInputClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">Instagram Link</label>
+                          <Input
+                            type="url"
+                            value={brandingSettings.instagram}
+                            onChange={e => setBrandingSettings(prev => ({ ...prev, instagram: e.target.value }))}
+                            placeholder="https://instagram.com/yourpage"
+                            className={settingsInputClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">YouTube Link</label>
+                          <Input
+                            type="url"
+                            value={brandingSettings.youtube}
+                            onChange={e => setBrandingSettings(prev => ({ ...prev, youtube: e.target.value }))}
+                            placeholder="https://youtube.com/yourchannel"
+                            className={settingsInputClass}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-[#cfc9bb]">Twitter Link</label>
+                          <Input
+                            type="url"
+                            value={brandingSettings.twitter}
+                            onChange={e => setBrandingSettings(prev => ({ ...prev, twitter: e.target.value }))}
+                            placeholder="https://twitter.com/yourprofile"
+                            className={settingsInputClass}
+                          />
+                        </div>
+                      </div>
+                      <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
+                        Save Social Links
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
+                    <h3 className="text-xl mb-4 text-[#efece6]">Maintenance Mode</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between rounded-2xl border border-[#5b6659] px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-[#efece6]">Enable maintenance banner</p>
+                          <p className="text-xs text-[#cfc9bb]">Show a site-wide notice for guests.</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={maintenanceEnabled}
+                          onChange={(e) => setMaintenanceEnabled(e.target.checked)}
+                          className="h-5 w-5 accent-stone-700"
+                        />
+                      </div>
+                      <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
+                        {maintenanceEnabled ? 'Save & Enable' : 'Save & Disable'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
-                <h3 className="text-xl mb-4 text-[#efece6]">Profile Settings</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Name</label>
-                    <Input
-                      value={profileSettings.name}
-                      onChange={(e) => setProfileSettings(prev => ({ ...prev, name: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Email</label>
-                    <Input
-                      type="email"
-                      value={profileSettings.email}
-                      onChange={(e) => setProfileSettings(prev => ({ ...prev, email: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Phone</label>
-                    <Input
-                      value={profileSettings.phone}
-                      onChange={(e) => setProfileSettings(prev => ({ ...prev, phone: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
-                    Save Profile
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
-                <h3 className="text-xl mb-4 text-[#efece6]">Security</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Current Password</label>
-                    <Input
-                      type="password"
-                      value={securityForm.currentPassword}
-                      onChange={(e) => setSecurityForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">New Password</label>
-                    <Input
-                      type="password"
-                      value={securityForm.newPassword}
-                      onChange={(e) => setSecurityForm(prev => ({ ...prev, newPassword: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Confirm Password</label>
-                    <Input
-                      type="password"
-                      value={securityForm.confirmPassword}
-                      onChange={(e) => setSecurityForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  {securityError && (
-                    <div className="rounded-xl border border-rose-300/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                      {securityError}
-                    </div>
-                  )}
-                  <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSecuritySave}>
-                    Update Password
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
-                <h3 className="text-xl mb-4 text-[#efece6]">Hotel Info</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Hotel Name</label>
-                    <Input
-                      value={hotelSettings.name}
-                      onChange={(e) => setHotelSettings(prev => ({ ...prev, name: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Address</label>
-                    <Input
-                      value={hotelSettings.address}
-                      onChange={(e) => setHotelSettings(prev => ({ ...prev, address: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Phone</label>
-                      <Input
-                        value={hotelSettings.phone}
-                        onChange={(e) => setHotelSettings(prev => ({ ...prev, phone: e.target.value }))}
-                        className={settingsInputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Email</label>
-                      <Input
-                        type="email"
-                        value={hotelSettings.email}
-                        onChange={(e) => setHotelSettings(prev => ({ ...prev, email: e.target.value }))}
-                        className={settingsInputClass}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Check-in Time</label>
-                      <Input
-                        type="time"
-                        value={hotelSettings.checkInTime}
-                        onChange={(e) => setHotelSettings(prev => ({ ...prev, checkInTime: e.target.value }))}
-                        className={settingsInputClass}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Check-out Time</label>
-                      <Input
-                        type="time"
-                        value={hotelSettings.checkOutTime}
-                        onChange={(e) => setHotelSettings(prev => ({ ...prev, checkOutTime: e.target.value }))}
-                        className={settingsInputClass}
-                      />
-                    </div>
-                  </div>
-                  <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
-                    Save Hotel Info
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
-                <h3 className="text-xl mb-4 text-[#efece6]">Billing & Payments</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Razorpay Key ID</label>
-                    <Input
-                      value={billingSettings.razorpayKeyId}
-                      onChange={(e) => setBillingSettings(prev => ({ ...prev, razorpayKeyId: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Payout Account</label>
-                    <Input
-                      value={billingSettings.payoutAccount}
-                      onChange={(e) => setBillingSettings(prev => ({ ...prev, payoutAccount: e.target.value }))}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
-                    Save Billing
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
-                <h3 className="text-xl mb-4 text-[#efece6]">Theme & Branding</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-[#cfc9bb]">Upload Logo</label>
-                    <Input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={(e) => setBrandingLogoFile(e.target.files?.[0] || null)}
-                      className={settingsInputClass}
-                    />
-                    {brandingLogoFile && (
-                      <p className="mt-2 text-xs text-[#cfc9bb]">Selected: {brandingLogoFile.name}</p>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Primary Color</label>
-                      <Input
-                        type="color"
-                        value={brandingSettings.primaryColor}
-                        onChange={(e) => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
-                        className={`${settingsInputClass} h-12 p-1`}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Accent Color</label>
-                      <Input
-                        type="color"
-                        value={brandingSettings.accentColor}
-                        onChange={(e) => setBrandingSettings(prev => ({ ...prev, accentColor: e.target.value }))}
-                        className={`${settingsInputClass} h-12 p-1`}
-                      />
-                    </div>
-                  </div>
-                  <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
-                    Save Branding
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
-                <h3 className="text-xl mb-4 text-[#efece6]">Maintenance Mode</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between rounded-2xl border border-[#5b6659] px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-[#efece6]">Enable maintenance banner</p>
-                      <p className="text-xs text-[#cfc9bb]">Show a site-wide notice for guests.</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={maintenanceEnabled}
-                      onChange={(e) => setMaintenanceEnabled(e.target.checked)}
-                      className="h-5 w-5 accent-stone-700"
-                    />
-                  </div>
-                  <Button className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]" onClick={handleSaveSettings}>
-                    {maintenanceEnabled ? 'Save & Enable' : 'Save & Disable'}
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
-        )}
-      </div>
+        </div>
       </div>
 
       {/* Service Booking Confirmation Dialog */}
