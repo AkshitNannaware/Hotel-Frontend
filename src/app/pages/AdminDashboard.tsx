@@ -35,6 +35,7 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { useAuth } from '../context/AuthContext';
 import type { Room } from '../types/room';
+import { MdSubscriptions } from "react-icons/md";
 import { FaIndianRupeeSign } from "react-icons/fa6";
 
 type AdminStats = {
@@ -1730,7 +1731,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="admin-theme min-h-screen flex flex-col lg:flex-row bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10">
+    <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10">
       {/* Background Gradients */}
       <div 
         className="absolute inset-0 pointer-events-none"
@@ -1749,9 +1750,9 @@ const AdminDashboard = () => {
         />
       )}
       {/* Sidebar */}
-      <div
+      {/* <div
         id="admin-sideview"
-        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] bg-[#23281f] text-[#f7f1e6] p-4 sm:p-6 border-r border-[#3f473d] shadow-[0_18px_40px_rgba(0,0,0,0.35)] transform transition-transform ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] bg-[#23281f] backdrop-blur-xl text-[#f7f1e6] p-6 border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -1917,23 +1918,93 @@ const AdminDashboard = () => {
             Back to Website
           </Button>
         </div>
-      </div>
+      </div> */}
+      {/* Sidebar Container */}
+      <div
+        id="admin-sideview"
+        className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-72' : 'w-20'}`}
+      >
+      {/* Header Section */}
+      <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
+        <div className="flex items-center justify-between w-full">
+          {isSidebarOpen && (
+        <div>
+          <h2 className="text-2xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
+          <p className="text-[#cbbfa8] text-sm">Admin User</p>
+        </div>
+      )}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className=" m-4 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
+        aria-label={isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+      >
+        <Menu className="w-6 h-6" />
+      </button>
+    </div>
+  </div>
+
+  {/* Navigation Links */}
+  <nav className="flex-1 flex flex-col gap-2 px-2 overflow-y-auto custom-scrollbar">
+    {[
+      { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { id: 'rooms', icon: Edit, label: 'Manage Rooms' },
+      { id: 'services', icon: Bell, label: 'Manage Services' },
+      { id: 'offers', icon: Tag, label: 'Manage Offers' },
+      { id: 'bookings', icon: Calendar, label: 'Bookings' },
+      { id: 'service-bookings', icon: ClipboardList, label: 'Service Bookings' },
+      { id: 'payments', icon: FaIndianRupeeSign, label: 'Payments' },
+      { id: 'contact-messages', icon: Mail, label: 'Contact Messages', section: 'contacts' },
+      { id: 'newsletter', icon: MdSubscriptions, label: 'News Letter', section: 'newsletter' },
+      { id: 'guests', icon: Users, label: 'Guests' },
+    ].map((item) => (
+      <button
+        key={item.id}
+        onClick={() => {
+          if (item.section) {
+            setActiveTab(item.section);
+          } else {
+            handleNavSelect(item.id);
+          }
+        }}
+        className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
+          activeTab === (item.section || item.id)
+            ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
+            : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
+        } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
+        title={!isSidebarOpen ? item.label : ''}
+      >
+        <item.icon className={`w-5 h-5 shrink-0 ${activeTab === (item.section || item.id) ? 'text-[#1b1e18]' : ''}`} />
+        {isSidebarOpen && (
+          <span className="text-[15px] font-medium whitespace-nowrap">
+            {item.label}
+          </span>
+        )}
+      </button>
+    ))}
+  </nav>
+
+  {/* Footer Section */}
+  <div className={`p-4 mt-auto border-t border-[#3f473d] ${isSidebarOpen ? 'px-6' : 'px-2'}`}>
+    <div className="flex flex-col gap-2">
+      {/* Settings Link */}
+      <button
+        onClick={() => handleNavSelect('settings')}
+        className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
+          activeTab === 'settings'
+            ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
+            : 'text-[#cbbfa8] hover:bg-[#2d342d] rounded-2xl'
+        } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
+        title={!isSidebarOpen ? 'Settings' : ''}
+      >
+        <Settings className="w-5 h-5" />
+        {isSidebarOpen && <span className="text-[15px] font-medium">Settings</span>}
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 sm:p-6 lg:p-8 relative">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen((prev) => !prev)}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#3f473d] bg-[#1c211d] px-3 py-2 text-sm font-medium text-[#f7f1e6] shadow-[0_8px_20px_rgba(0,0,0,0.25)] transition-colors hover:bg-[#232a22]"
-            aria-expanded={isSidebarOpen}
-            aria-controls="admin-sideview"
-          >
-            {isSidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-            {isSidebarOpen ? 'Close' : 'Side View'}
-          </button>
-          {/* <span className="text-sm text-[#cbbfa8]" style={{ fontFamily: "'Great Vibes', cursive" }}>Admin Dashboard</span> */}
-        </div>
+      <div className={`flex-1 p-4 sm:p-6 lg:p-8 relative transition-all duration-300 ${isSidebarOpen ? 'ml-72' : 'ml-20'}`}> 
         {isLoading && (
           <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
             Loading admin data...
@@ -3514,9 +3585,9 @@ const AdminDashboard = () => {
                         return (
                           <tr key={user.id} className="border-b border-stone-100">
                             <td className="py-4 px-4">{user.name} <span className="block text-xs text-stone-400">{user.email}</span></td>
-                            <td className="py-4 px-4">${roomTotal.toFixed(2)}</td>
-                            <td className="py-4 px-4">${serviceTotal.toFixed(2)}</td>
-                            <td className="py-4 px-4 font-bold">${total.toFixed(2)}</td>
+                            <td className="py-4 px-4">₹{roomTotal.toFixed(2)}</td>
+                            <td className="py-4 px-4">₹{serviceTotal.toFixed(2)}</td>
+                            <td className="py-4 px-4 font-bold">₹{total.toFixed(2)}</td>
                           </tr>
                         );
                       })}
