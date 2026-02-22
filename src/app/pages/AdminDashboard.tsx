@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router';
 import { 
   LayoutDashboard, 
   Hotel, 
-  Calendar, 
-  DollarSign, 
+  Calendar,  
   Users, 
   Settings,
   Bell,
@@ -1790,7 +1789,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10">
+    <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10 pl-17">
       {/* Background Gradients */}
       <div 
         className="absolute inset-0 pointer-events-none"
@@ -1805,7 +1804,7 @@ const AdminDashboard = () => {
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="fixed left-4 top-20 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden "
+            className="fixed top-20 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden "
             aria-label="Open menu"
           >
             <Menu className="w-6 h-6" />
@@ -1822,7 +1821,7 @@ const AdminDashboard = () => {
       {/* Sidebar Container */}
        <div
         id="admin-sideview"
-        className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-70' : 'w-20'}`}
+        className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-72' : 'w-20'}`}
       >
       {/* Header Section */}
       <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
@@ -1904,7 +1903,7 @@ const AdminDashboard = () => {
 </div>
 
         {/* Main Content */}
-        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-72' : ''}`}>
+        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-52' : ''}`}>
           <div className="p-4 sm:p-6 lg:p-8 relative">
             {isLoading && (
               <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
