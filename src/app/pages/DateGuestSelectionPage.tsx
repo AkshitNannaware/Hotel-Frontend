@@ -1,10 +1,17 @@
 import React, { useState } from "react";
 import { Calendar, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const DateGuestSelectionPage = () => {
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(1);
+  const navigate = useNavigate();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate("/room-selection");
+  };
 
   return (
     <>
@@ -16,7 +23,7 @@ const DateGuestSelectionPage = () => {
       </div>
       <div className="min-h-screen bg-[#3f4a40] text-[#efece6] py-8 flex flex-col items-center">
         <div className="w-full max-w-2xl bg-[#2e352a] border border-[#5b6659] rounded-3xl shadow-2xl p-8 mt-8">
-          <form className="space-y-8">
+          <form className="space-y-8" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <label className="block text-[#d7d2c5] mb-2 font-medium">Check In</label>
