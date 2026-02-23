@@ -22,7 +22,7 @@ const updateBookingStatus = async (bookingId: string, status: string) => {
 };
 import React, { useEffect, useState } from 'react';
 import Footer from '../components/Footer';
-import { useSwipeable } from 'react-swipeable';
+// import { useSwipeable } from 'react-swipeable';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { 
@@ -1846,11 +1846,12 @@ const AdminDashboard = () => {
     onIdVerificationChange: (booking: AdminBooking, status: 'approved' | 'rejected') => void;
     onUpdateStatus: (id: string, status: string) => void;
   }) => {
-    const swipeHandlers = useSwipeable({
-      onSwipedLeft: () => setSwipedBookingId(booking.id),
-      onSwipedRight: () => setSwipedBookingId(null),
-      trackMouse: false,
-    });
+    // Swipe functionality disabled: react-swipeable removed for build compatibility
+    // const swipeHandlers = useSwipeable({
+    //   onSwipedLeft: () => setSwipedBookingId(booking.id),
+    //   onSwipedRight: () => setSwipedBookingId(null),
+    //   trackMouse: false,
+    // });
 
     // Desktop view
     if (!isMobile) {
@@ -1958,7 +1959,7 @@ const AdminDashboard = () => {
     return (
       <tr className="border-b border-stone-100 hover:bg-stone-50" style={{ position: 'relative' }}>
         <td colSpan={11} style={{ padding: 0, background: 'transparent', position: 'relative' }}>
-          <div {...swipeHandlers} className={`flex w-full transition-transform duration-300 ${swipedBookingId === booking.id ? 'translate-x-[-120px]' : ''}`}> 
+          <div className={`flex w-full transition-transform duration-300 ${swipedBookingId === booking.id ? 'translate-x-[-120px]' : ''}`}> 
             {/* Swipeable fields */}
             <div className="flex-1 grid grid-cols-11">
               <div className="py-4 px-4">{booking.id}</div>
