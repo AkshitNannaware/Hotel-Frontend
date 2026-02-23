@@ -11,11 +11,16 @@ import Footer from '../components/Footer';
 
 const RoomListing = () => {
   const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
-  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [priceRange, setPriceRange] = useState([0, 5000]);
 
   const resolveImageUrl = (imageUrl: string) => {
     if (!imageUrl) return '';
-    return imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+    if (imageUrl.startsWith('/uploads/')) return `${API_BASE}${imageUrl}`;
+    // If it's just a filename, assume /uploads/rooms/
+    if (!imageUrl.startsWith('/')) return `${API_BASE}/uploads/rooms/${imageUrl}`;
+    // fallback
+    return `${API_BASE}${imageUrl}`;
   };
 
   const resolveVideoUrl = (videoUrl?: string) => {
