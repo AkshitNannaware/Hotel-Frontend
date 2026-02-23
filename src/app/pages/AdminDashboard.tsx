@@ -57,6 +57,7 @@ import {
   Wifi,
   Car,
   Coffee,
+  LogOut,
   Waves
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -178,7 +179,7 @@ const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http:
 import { useLocation } from 'react-router';
 
 const AdminDashboard = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => {
@@ -1989,9 +1990,11 @@ const AdminDashboard = () => {
                                 className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
                                 onClick={async (e) => {
                                   e.stopPropagation();
-                                  await onUpdateStatus(booking.id, 'check-in', 'paid', 'online');
-                                  setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'online', paymentStatus: 'paid' } : b));
-                                  window.open(`/payment/${booking.id}`, '_blank');
+                                  try {
+                                    await onUpdateStatus(booking.id, 'checked-in', 'paid', 'online');
+                                    setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'online', paymentStatus: 'paid' } : b));
+                                    window.location.reload();
+                                  } catch { }
                                 }}
                               >
                                 Online
@@ -2220,19 +2223,24 @@ const AdminDashboard = () => {
           </nav>
 
           {/* Footer Section */}
+
           <div className={`p-4 mt-auto border-t border-[#3f473d] ${isSidebarOpen ? 'px-6' : 'px-2'}`}>
             <div className="flex flex-col gap-2">
-              {/* Settings Link */}
               <button
-                onClick={() => handleNavSelect('settings')}
-                className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${activeTab === 'settings'
-                  ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
-                  : 'text-[#cbbfa8] hover:bg-[#2d342d] rounded-2xl'
-                  } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
-                title={!isSidebarOpen ? 'Settings' : ''}
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to logout?")) {
+                    logout();
+                    navigate('/login');
+                  }
+                }}
+                className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-red-400 ${isSidebarOpen
+                    ? 'gap-4 justify-start px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-2xl'
+                    : 'justify-center p-3 text-red-400 hover:bg-red-500/10 rounded-2xl'
+                  }`}
+                title={!isSidebarOpen ? 'Logout' : ''}
               >
-                <Settings className="w-5 h-5" />
-                {isSidebarOpen && <span className="text-[15px] font-medium">Settings</span>}
+                <LogOut className="w-5 h-5" />
+                {isSidebarOpen && <span className="text-[15px] font-medium">Logout</span>}
               </button>
             </div>
           </div>

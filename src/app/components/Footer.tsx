@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router';
 import { Facebook, Instagram, MessageCircle, Youtube, Twitter } from 'lucide-react';
 import { Button } from './ui/button';
-import DateGuestSelectionPage from '../pages/DateGuestSelectionPage';
 
 const Footer = ({ isAdmin = false }) => {
   // Accept brandingSettings as prop for social links
@@ -175,11 +174,15 @@ const Footer = ({ isAdmin = false }) => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/admin/settings" className="hover:text-white transition-colors">
+                  <Link to="/admin" state={{ tab: 'settings' }} className="hover:text-white transition-colors">
                     Settings
                   </Link>
                 </li>
-                <li>Admin Tools & Reports</li>
+                <li>
+                  <Link to="/" state={{ tab: 'settings' }} className="hover:text-white transition-colors">
+                    Back to Website
+                  </Link>
+                </li>
               </ul>
             </div>
             <div>

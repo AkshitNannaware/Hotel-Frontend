@@ -30,6 +30,8 @@ const Header = () => {
 
   // Hide main nav links on /admin route
   const isAdminDashboard = location.pathname.startsWith('/admin');
+  // Hide header on /admin-signup
+  const hideHeader = location.pathname === '/admin-signup';
 
   const { notifications, loading: notifLoading, error: notifError } = useNotifications();
   const [notificationsState, setNotificationsState] = useState<string[]>([]); // for local mark as read/delete
@@ -46,6 +48,7 @@ const Header = () => {
   };
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  if (hideHeader) return null;
   return (
     <header className="absolute top-0 left-0 right-0 z-50 w-full">
       <div className="max-w-7xl mx-auto px-6 py-6">
