@@ -1,21 +1,27 @@
-﻿// Update booking status (e.g., for check-out)
-const updateBookingStatus = async (bookingId: string, status: string) => {
+﻿// Update booking status (e.g., for check-out or payment)
+const updateBookingStatus = async (
+  bookingId: string,
+  status: string,
+  paymentStatus?: string,
+  paymentMethod?: 'cash' | 'online'
+) => {
   try {
+    const body: any = { status };
+    if (paymentStatus) body.paymentStatus = paymentStatus;
+    if (paymentMethod) body.paymentMethod = paymentMethod;
     const response = await fetch(`${API_BASE}/api/admin/bookings/${bookingId}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         // Add auth header if needed
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(body),
       credentials: 'include',
     });
     if (!response.ok) {
       throw new Error('Failed to update booking status');
     }
     toast.success(`Booking status updated to ${status}`);
-    // Use navigate from useNavigate hook
-
   } catch (err: any) {
     toast.error(err.message || 'Failed to update booking status');
   }
@@ -25,11 +31,11 @@ import Footer from '../components/Footer';
 // import { useSwipeable } from 'react-swipeable';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import { 
-  LayoutDashboard, 
-  Hotel, 
-  Calendar,  
-  Users, 
+import {
+  LayoutDashboard,
+  Hotel,
+  Calendar,
+  Users,
   Settings,
   Bell,
   Plus,
@@ -85,6 +91,7 @@ type AdminBooking = {
   bookingDate?: string | Date;
   status: string;
   paymentStatus?: string;
+  paymentMethod?: 'cash' | 'online';
   idVerified?: 'pending' | 'approved' | 'rejected';
   idProofUrl?: string;
   idProofType?: string;
@@ -286,7 +293,7 @@ const AdminDashboard = () => {
       phone: user?.phone || '',
     });
   }, [user]);
-  
+
   const [securityForm, setSecurityForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -347,7 +354,7 @@ const AdminDashboard = () => {
       return null;
     }
   };
-  
+
   const handleServiceBookingActionClick = (bookingId: string, action: 'approve' | 'reject') => {
     const booking = serviceBookingsState.find(b => b.id === bookingId);
     setServiceBookingConfirmDialog({
@@ -360,7 +367,7 @@ const AdminDashboard = () => {
 
   const handleUpdateServiceBookingStatus = async () => {
     const { bookingId, action } = serviceBookingConfirmDialog;
-    
+
     if (!bookingId || !action) {
       return;
     }
@@ -383,14 +390,14 @@ const AdminDashboard = () => {
         },
         body: JSON.stringify({ status: nextStatus }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Status update failed (${response.status})`);
       }
-      
+
       const data = await response.json();
-      
+
       const updatedBooking = normalizeServiceBooking(data);
       setServiceBookingsState((prev) =>
         prev.map((booking) =>
@@ -399,9 +406,9 @@ const AdminDashboard = () => {
             : booking
         )
       );
-      
+
       setServiceBookingConfirmDialog({ show: false, bookingId: null, action: null });
-      
+
       toast.success(`Service booking ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
     } catch (err) {
       console.error('Error in handleUpdateServiceBookingStatus:', err);
@@ -461,7 +468,7 @@ const AdminDashboard = () => {
           role: user.role,
         })));
       }
-    } catch {}
+    } catch { }
   };
 
   const handleSaveSettings = async () => {
@@ -600,6 +607,8 @@ const AdminDashboard = () => {
     guestPhone: booking.guestPhone,
     status: ['pending', 'confirmed', 'cancelled'].includes(booking.status) ? booking.status : 'pending',
     bookingDate: booking.bookingDate,
+    // ADD THIS LINE TO FIX THE SYNC ISSUE
+    paymentStatus: booking.paymentStatus || 'pending',
   });
 
   const updateIdVerification = async (bookingId: string, idVerified: 'pending' | 'approved' | 'rejected') => {
@@ -610,17 +619,29 @@ const AdminDashboard = () => {
       });
 
       setBookingsState((prev) =>
-        prev.map((booking) =>
-          booking.id === bookingId
-            ? {
+        prev.map((booking) => {
+          if (booking.id === bookingId) {
+            // If ID is approved and status is still pending, auto-confirm booking
+            if (idVerified === 'approved' && booking.status === 'pending') {
+              return {
                 ...booking,
                 idVerified: updated.idVerified,
                 idProofUrl: updated.idProofUrl,
                 idProofType: updated.idProofType,
                 idProofUploadedAt: updated.idProofUploadedAt,
-              }
-            : booking
-        )
+                status: 'confirmed',
+              };
+            }
+            return {
+              ...booking,
+              idVerified: updated.idVerified,
+              idProofUrl: updated.idProofUrl,
+              idProofType: updated.idProofType,
+              idProofUploadedAt: updated.idProofUploadedAt,
+            };
+          }
+          return booking;
+        })
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update ID status';
@@ -1424,7 +1445,7 @@ const AdminDashboard = () => {
       const { utils, writeFile } = await import('xlsx');
       const timestamp = new Date().toISOString().slice(0, 10);
       const filename = `bookings_${timestamp}.xlsx`;
-      
+
       const data = bookingsState.map((booking) => ({
         'Booking ID': booking.id,
         'Guest Name': booking.guestName,
@@ -1745,7 +1766,7 @@ const AdminDashboard = () => {
 
   const handleSaveBooking = async (event: React.FormEvent) => {
     event.preventDefault();
-    
+
     try {
       const payload = {
         roomId: bookingForm.roomId,
@@ -1829,22 +1850,22 @@ const AdminDashboard = () => {
   };
 
   // Swipeable Booking Row Component
-  const SwipeableBookingRow = ({ 
-    booking, 
-    room, 
-    isMobile, 
-    swipedBookingId, 
+  const SwipeableBookingRow = ({
+    booking,
+    room,
+    isMobile,
+    swipedBookingId,
     setSwipedBookingId,
     onIdVerificationChange,
-    onUpdateStatus 
-  }: { 
-    booking: AdminBooking; 
-    room: Room | undefined; 
+    onUpdateStatus
+  }: {
+    booking: AdminBooking;
+    room: Room | undefined;
     isMobile: boolean;
     swipedBookingId: string | null;
     setSwipedBookingId: (id: string | null) => void;
     onIdVerificationChange: (booking: AdminBooking, status: 'approved' | 'rejected') => void;
-    onUpdateStatus: (id: string, status: string) => void;
+    onUpdateStatus: (id: string, status: string, paymentStatus?: string, paymentMethod?: 'cash' | 'online') => void;
   }) => {
     // Swipe functionality disabled: react-swipeable removed for build compatibility
     // const swipeHandlers = useSwipeable({
@@ -1907,15 +1928,17 @@ const AdminDashboard = () => {
             </span>
           </td>
           <td className="py-4 px-4">
-            <span className={`px-3 py-1 rounded-full text-sm ${
-              booking.paymentStatus === 'paid' 
-                ? 'bg-green-100 text-green-800' 
-                : booking.paymentStatus === 'failed'
+            <span className={`px-3 py-1 rounded-full text-sm ${booking.paymentStatus === 'paid'
+              ? 'bg-green-100 text-green-800'
+              : booking.paymentStatus === 'failed'
                 ? 'bg-red-100 text-red-800'
                 : 'bg-amber-100 text-amber-800'
-            }`}>
+              }`}>
               {booking.paymentStatus || 'pending'}
             </span>
+            <div className="mt-1 text-xs text-stone-600">
+              Pending Amount: ₹{booking.paymentStatus === 'paid' ? 0 : booking.totalPrice.toFixed(2)}
+            </div>
           </td>
           <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
           <td className="py-4 px-4">
@@ -1933,19 +1956,56 @@ const AdminDashboard = () => {
                       <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>Reject</DropdownMenuItem>
                     </>
                   )}
+                  {/* Show Check-In button if status is confirmed and ID is approved */}
                   {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
                     <DropdownMenuItem onClick={() => {
-                      if(window.confirm("Check in this user now?")) {
+                      if (window.confirm("Check in this user now?")) {
                         onUpdateStatus(booking.id, 'checked-in');
                       }
                     }}>Check-In</DropdownMenuItem>
                   )}
                   {booking.status === 'checked-in' && (
-                    <DropdownMenuItem onClick={() => {
-                      if(window.confirm("Confirm Check-Out?")) {
-                        onUpdateStatus(booking.id, 'checked-out');
-                      }
-                    }}>Check Out</DropdownMenuItem>
+                    <>
+                      {/* Pay Now button if payment is not paid */}
+                      {booking.paymentStatus !== 'paid' && (
+                        <DropdownMenuItem>
+                          <div className="flex flex-col">
+                            <span className="font-semibold mb-1">Pay Now</span>
+                            <div className="flex gap-2">
+                              <button
+                                className="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await onUpdateStatus(booking.id, 'checked-in', 'paid', 'cash');
+                                    setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'cash', paymentStatus: 'paid' } : b));
+                                    window.location.reload();
+                                  } catch { }
+                                }}
+                              >
+                                Cash
+                              </button>
+                              <button
+                                className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await onUpdateStatus(booking.id, 'check-in', 'paid', 'online');
+                                  setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'online', paymentStatus: 'paid' } : b));
+                                  window.open(`/payment/${booking.id}`, '_blank');
+                                }}
+                              >
+                                Online
+                              </button>
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => {
+                        if (window.confirm("Confirm Check-Out?")) {
+                          onUpdateStatus(booking.id, 'checked-out');
+                        }
+                      }}>Check Out</DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1959,7 +2019,7 @@ const AdminDashboard = () => {
     return (
       <tr className="border-b border-stone-100 hover:bg-stone-50" style={{ position: 'relative' }}>
         <td colSpan={11} style={{ padding: 0, background: 'transparent', position: 'relative' }}>
-          <div className={`flex w-full transition-transform duration-300 ${swipedBookingId === booking.id ? 'translate-x-[-120px]' : ''}`}> 
+          <div className={`flex w-full transition-transform duration-300 ${swipedBookingId === booking.id ? 'translate-x-[-120px]' : ''}`}>
             {/* Swipeable fields */}
             <div className="flex-1 grid grid-cols-11">
               <div className="py-4 px-4">{booking.id}</div>
@@ -1978,7 +2038,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="py-4 px-4">
-                <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
                   {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                 </span>
               </div>
@@ -2007,19 +2067,20 @@ const AdminDashboard = () => {
                 )}
               </div>
               <div className="py-4 px-4">
-                <span className={`px-3 py-1 rounded-full text-sm ${idVerifiedBadgeClass(booking.idVerified)}`}> 
+                <span className={`px-3 py-1 rounded-full text-sm ${idVerifiedBadgeClass(booking.idVerified)}`}>
                   {booking.idVerified || 'pending'}
                 </span>
               </div>
               <div className="py-4 px-4">
-                <span className={`px-3 py-1 rounded-full text-sm ${
-                  booking.paymentStatus === 'paid' 
-                    ? 'bg-green-100 text-green-800' 
-                    : booking.paymentStatus === 'failed'
+                <span className={`px-3 py-1 rounded-full text-sm ${booking.paymentStatus === 'paid'
+                  ? 'bg-green-100 text-green-800'
+                  : booking.paymentStatus === 'failed'
                     ? 'bg-red-100 text-red-800'
                     : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {booking.paymentStatus || 'pending'}
+                  }`}>
+                  {booking.paymentStatus === 'paid' && booking.paymentMethod === 'cash' && 'Paid (Cash)'}
+                  {booking.paymentStatus === 'paid' && booking.paymentMethod === 'online' && 'Paid (Online)'}
+                  {booking.paymentStatus !== 'paid' && (booking.paymentStatus || 'pending')}
                 </span>
               </div>
               <div className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</div>
@@ -2041,14 +2102,14 @@ const AdminDashboard = () => {
                   )}
                   {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
                     <DropdownMenuItem onClick={() => {
-                      if(window.confirm("Check in this user now?")) {
+                      if (window.confirm("Check in this user now?")) {
                         onUpdateStatus(booking.id, 'checked-in');
                       }
                     }}>Check-In</DropdownMenuItem>
                   )}
                   {booking.status === 'checked-in' && (
                     <DropdownMenuItem onClick={() => {
-                      if(window.confirm("Confirm Check-Out?")) {
+                      if (window.confirm("Confirm Check-Out?")) {
                         onUpdateStatus(booking.id, 'checked-out');
                       }
                     }}>Check Out</DropdownMenuItem>
@@ -2065,7 +2126,7 @@ const AdminDashboard = () => {
   return (
     <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10 pl-0">
       {/* Background Gradients */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: 'radial-gradient(circle at 15% 20%, rgba(88,105,90,0.35), transparent 55%), radial-gradient(circle at 85% 60%, rgba(98,120,100,0.35), transparent 60%), linear-gradient(180deg, rgba(23,30,24,0.9), rgba(23,30,24,0.55))',
@@ -2073,7 +2134,7 @@ const AdminDashboard = () => {
       />
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(90deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:220px_100%]" />
       <div className="absolute inset-0 pointer-events-none opacity-25 bg-[linear-gradient(180deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:100%_160px]" />
-      
+
       <div className="relative w-full flex flex-col lg:flex-row pl-17">
         {!isSidebarOpen && (
           <button
@@ -2141,12 +2202,11 @@ const AdminDashboard = () => {
                       handleNavSelect(item.id);
                     }
                   }}
-                  className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
-                    activeTab === (item.section || item.id)
-                      ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
-                      : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
-                  } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
-                  title={!isSidebarOpen ? item.label : '' }
+                  className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${activeTab === (item.section || item.id)
+                    ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
+                    : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
+                    } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
+                  title={!isSidebarOpen ? item.label : ''}
                 >
                   <IconComponent className={`w-5 h-5 shrink-0 ${activeTab === (item.section || item.id) ? 'text-[#1b1e18]' : ''}`} />
                   {isSidebarOpen && (
@@ -2165,11 +2225,10 @@ const AdminDashboard = () => {
               {/* Settings Link */}
               <button
                 onClick={() => handleNavSelect('settings')}
-                className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
-                  activeTab === 'settings'
-                    ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
-                    : 'text-[#cbbfa8] hover:bg-[#2d342d] rounded-2xl'
-                } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
+                className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${activeTab === 'settings'
+                  ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
+                  : 'text-[#cbbfa8] hover:bg-[#2d342d] rounded-2xl'
+                  } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
                 title={!isSidebarOpen ? 'Settings' : ''}
               >
                 <Settings className="w-5 h-5" />
@@ -2180,7 +2239,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-72' : ''}`}> 
+        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-72' : ''}`}>
           <div className="p-2 sm:p-4 md:p-6 lg:p-8 relative">
             {isLoading && (
               <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
@@ -2192,7 +2251,7 @@ const AdminDashboard = () => {
                 {loadError}
               </div>
             )}
-            
+
             {activeTab === 'dashboard' && (
               <div>
                 <div className="mb-8 rounded-[28px] border border-[#5b6255] bg-[#4a5449]/40 p-4 sm:p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
@@ -2260,7 +2319,7 @@ const AdminDashboard = () => {
                   <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                        <FaIndianRupeeSign className="w-6 h-6 text-[#6f5122]"/>
+                        <FaIndianRupeeSign className="w-6 h-6 text-[#6f5122]" />
                       </div>
                       <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
                     </div>
@@ -2328,18 +2387,17 @@ const AdminDashboard = () => {
                                 <td className="py-4 px-4">{room?.name || 'N/A'}</td>
                                 <td className="py-4 px-4">{new Date(booking.checkIn).toLocaleDateString()}</td>
                                 <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
                                     {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                   </span>
                                 </td>
                                 <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${
-                                    booking.paymentStatus === 'paid' 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : booking.paymentStatus === 'failed'
+                                  <span className={`px-3 py-1 rounded-full text-sm ${booking.paymentStatus === 'paid'
+                                    ? 'bg-green-100 text-green-800'
+                                    : booking.paymentStatus === 'failed'
                                       ? 'bg-red-100 text-red-800'
                                       : 'bg-amber-100 text-amber-800'
-                                  }`}>
+                                    }`}>
                                     {booking.paymentStatus || 'pending'}
                                   </span>
                                 </td>
@@ -2407,18 +2465,17 @@ const AdminDashboard = () => {
                                 <td className="py-4 px-4">{new Date(booking.date).toLocaleDateString()}</td>
                                 <td className="py-4 px-4">{booking.time}</td>
                                 <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
                                     {booking.status}
                                   </span>
                                 </td>
                                 <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${
-                                    paymentStatus === 'paid' 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : paymentStatus === 'failed'
+                                  <span className={`px-3 py-1 rounded-full text-sm ${paymentStatus === 'paid'
+                                    ? 'bg-green-100 text-green-800'
+                                    : paymentStatus === 'failed'
                                       ? 'bg-red-100 text-red-800'
                                       : 'bg-amber-100 text-amber-800'
-                                  }`}>
+                                    }`}>
                                     {paymentStatus}
                                   </span>
                                 </td>
@@ -2581,7 +2638,7 @@ const AdminDashboard = () => {
                     const displayVideo = room.video?.startsWith('/uploads/')
                       ? `${API_BASE}${room.video}`
                       : room.video;
-                    
+
                     return (
                       <div
                         key={room.id}
@@ -2693,7 +2750,7 @@ const AdminDashboard = () => {
                     onClick={handleAddServiceClick}
                     className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] shadow-[0_12px_24px_rgba(0,0,0,0.25)]"
                   >
-                    <Plus className="w-4 h-4 mr-2"/>
+                    <Plus className="w-4 h-4 mr-2" />
                     Add Service
                   </Button>
                 </div>
@@ -2809,11 +2866,10 @@ const AdminDashboard = () => {
                             key={category.key}
                             type="button"
                             onClick={() => setActiveServiceCategory(category.key)}
-                            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide border transition-colors ${
-                              isActive
-                                ? 'bg-amber-500 text-stone-900 border-amber-400'
-                                : 'bg-[#2f3931] text-[#d7d2c5] border-[#5b6659] hover:bg-[#364036]'
-                            }`}
+                            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide border transition-colors ${isActive
+                              ? 'bg-amber-500 text-stone-900 border-amber-400'
+                              : 'bg-[#2f3931] text-[#d7d2c5] border-[#5b6659] hover:bg-[#364036]'
+                              }`}
                           >
                             {category.label}
                           </button>
@@ -3596,7 +3652,7 @@ const AdminDashboard = () => {
                                             <td className="py-3 px-4 text-[#f5f1e8]">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                                             <td className="py-3 px-4 text-[#f5f1e8]">{booking.time}</td>
                                             <td className="py-3 px-4">
-                                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
                                                 {booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Approved' : booking.status === 'cancelled' ? 'Rejected' : booking.status}
                                               </span>
                                             </td>
@@ -3652,8 +3708,8 @@ const AdminDashboard = () => {
                 )}
               </div>
             )}
-           
-            {activeTab === 'payments' && (
+
+            {/* {activeTab === 'payments' && (
               <div>
                 <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Payment Management</h1>
                 <div className="bg-white rounded-3xl p-8 shadow-sm">
@@ -3668,6 +3724,8 @@ const AdminDashboard = () => {
                             <th className="text-left py-3 px-4 text-stone-600">Room Amount</th>
                             <th className="text-left py-3 px-4 text-stone-600">Service Amount</th>
                             <th className="text-left py-3 px-4 text-stone-600">Total Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Pending Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Payment Status</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3675,23 +3733,167 @@ const AdminDashboard = () => {
                             if (!user || !user.id) return null;
                             const userRoomBookings = bookingsState.filter(b => b.userId === user.id);
                             const roomTotal = userRoomBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+                                  const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
+                                  // Use paymentStatus for service bookings
+                                  const serviceTotal = userServiceBookings.reduce((sum, sb) => {
+                                    let price = 0;
+                                    if (sb.priceRange) {
+                                      const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
+                                      if (match) price = parseFloat(match[0]);
+                                    }
+                                    return sum + price;
+                                  }, 0);
+                                  const total = roomTotal + serviceTotal;
+                                  if (roomTotal === 0 && serviceTotal === 0) return null;
+                                  // Calculate paid/pending for service bookings using paymentStatus
+                                  const roomPaid = userRoomBookings.filter(b => b.paymentStatus === 'paid').reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+                                  const roomPending = roomTotal - roomPaid;
+                                  const servicePaid = userServiceBookings.filter(sb => sb.paymentStatus === 'paid').reduce((sum, sb) => {
+                                    let price = 0;
+                                    if (sb.priceRange) {
+                                      const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
+                                      if (match) price = parseFloat(match[0]);
+                                    }
+                                    return sum + price;
+                                  }, 0);
+                                  const servicePending = serviceTotal - servicePaid;
+                                  return (
+                                    <tr key={user.id} className="border-b border-stone-100">
+                                      <td className="py-4 px-4">{user.name} <span className="block text-xs text-stone-400">{user.email}</span></td>
+                                      <td className="py-4 px-4">₹{roomTotal.toFixed(2)}</td>
+                                      <td className="py-4 px-4">₹{serviceTotal.toFixed(2)}</td>
+                                      <td className="py-4 px-4 font-bold">₹{total.toFixed(2)}</td>
+                                      <td className="py-4 px-4">₹{(roomPending + servicePending).toFixed(2)}</td>
+                                      <td className="py-4 px-4">
+                                        {roomPending === 0 && servicePending === 0 ? (
+                                          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Paid</span>
+                                        ) : roomPending === 0 && servicePending > 0 ? (
+                                          <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Pending (Service)</span>
+                                        ) : roomPending > 0 && servicePending === 0 ? (
+                                          <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Pending (Room)</span>
+                                        ) : (
+                                          <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Pending</span>
+                                        )}
+                                      </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )} */}
+            {activeTab === 'payments' && (
+              <div>
+                <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>
+                  Payment Management
+                </h1>
+                <div className="bg-white rounded-3xl p-8 shadow-sm">
+                  {usersState.length === 0 ? (
+                    <div className="text-center py-16 text-stone-600">No payment records yet.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-stone-200">
+                            <th className="text-left py-3 px-4 text-stone-600">User</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Room Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Service Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Total Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Pending Amount</th>
+                            <th className="text-left py-3 px-4 text-stone-600">Payment Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usersState.map((user) => {
+                            if (!user || !user.id) return null;
+
+                            // 1. Room Calculation Logic
+                            const userRoomBookings = bookingsState.filter(b => b.userId === user.id);
+                            const roomTotal = userRoomBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+                            const roomPaid = userRoomBookings
+                              .filter(b => b.paymentStatus === 'paid')
+                              .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
+                            const roomPending = roomTotal - roomPaid;
+
+                            // 2. Service Calculation Logic (Fixed for DB sync)
+                            // const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
+
+                            // const parsePrice = (range) => {
+                            //   if (!range) return 0;
+                            //   const match = String(range).match(/\d+(\.\d+)?/);
+                            //   return match ? parseFloat(match[0]) : 0;
+                            // };
+
+                            // const serviceTotal = userServiceBookings.reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
+
+                            // // Sabse important change: Status check for services
+                            // const servicePaid = userServiceBookings
+                            //   .filter(sb => sb.paymentStatus === 'paid') 
+                            //   .reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
+
+                            // const servicePending = serviceTotal - servicePaid;
+
+                            // 2. Service Calculation Logic (Robust Update)
                             const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
-                            const serviceTotal = userServiceBookings.reduce((sum, sb) => {
-                              let price = 0;
-                              if (sb.priceRange) {
-                                const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
-                                if (match) price = parseFloat(match[0]);
-                              }
-                              return sum + price;
-                            }, 0);
-                            const total = roomTotal + serviceTotal;
-                            if (roomTotal === 0 && serviceTotal === 0) return null;
+
+                            const parsePrice = (range) => {
+                              if (!range) return 0;
+                              // This matches numbers like "500" or "500.00"
+                              const match = String(range).match(/\d+(\.\d+)?/);
+                              return match ? parseFloat(match[0]) : 0;
+                            };
+
+                            const serviceTotal = userServiceBookings.reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
+
+                            // IMPROVED: Case-insensitive check and trim to match 'paid', 'Paid', or 'PAID'
+                            const servicePaid = userServiceBookings
+                              .filter(sb => sb.paymentStatus && sb.paymentStatus.toString().toLowerCase().trim() === 'paid')
+                              .reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
+
+                            const servicePending = serviceTotal - servicePaid;
+
+                            // 3. Final Calculation for the Row
+                            const grandTotal = roomTotal + serviceTotal;
+                            const grandPending = roomPending + servicePending;
+
+                            // Agar user ne koi booking nahi ki toh row mat dikhao
+                            if (grandTotal === 0) return null;
+
                             return (
-                              <tr key={user.id} className="border-b border-stone-100">
-                                <td className="py-4 px-4">{user.name} <span className="block text-xs text-stone-400">{user.email}</span></td>
+                              <tr key={user.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors text-stone-900">
+                                <td className="py-4 px-4">
+                                  <span className="font-medium">{user.name}</span>
+                                  <span className="block text-xs text-stone-400">{user.email}</span>
+                                </td>
                                 <td className="py-4 px-4">₹{roomTotal.toFixed(2)}</td>
                                 <td className="py-4 px-4">₹{serviceTotal.toFixed(2)}</td>
-                                <td className="py-4 px-4 font-bold">₹{total.toFixed(2)}</td>
+                                <td className="py-4 px-4 font-bold">₹{grandTotal.toFixed(2)}</td>
+                                <td className={`py-4 px-4 font-semibold ${grandPending > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                  ₹{grandPending.toFixed(2)}
+                                </td>
+                                <td className="py-4 px-4">
+                                  {grandPending <= 0 ? (
+                                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                      Fully Paid
+                                    </span>
+                                  ) : (
+                                    <div className="flex flex-col gap-1">
+                                      {roomPending > 0 && (
+                                        <span className="bg-amber-100 text-amber-800 text-[10px] font-medium px-2 py-0.5 rounded-full w-fit">
+                                          Room Pending
+                                        </span>
+                                      )}
+                                      {servicePending > 0 && (
+                                        <span className="bg-blue-100 text-blue-800 text-[10px] font-medium px-2 py-0.5 rounded-full w-fit">
+                                          Service Pending
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
                               </tr>
                             );
                           })}
@@ -3706,7 +3908,7 @@ const AdminDashboard = () => {
             {activeTab === 'guests' && (
               <div>
                 <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
-                
+
                 {/* Users List */}
                 <div className="bg-[#232b23] rounded-3xl p-8 shadow-lg border border-[#3a463a] text-[#f5f1e8]">
                   {usersState.length === 0 ? (
@@ -3792,14 +3994,12 @@ const AdminDashboard = () => {
                         return (
                           <div
                             key={contact._id}
-                            className={`border-2 rounded-3xl p-6 transition-all ${
-                              contact.status === 'new' ? 'border-red-200 bg-red-50/30' : 'border-stone-200 bg-white'
-                            }`}
+                            className={`border-2 rounded-3xl p-6 transition-all ${contact.status === 'new' ? 'border-red-200 bg-red-50/30' : 'border-stone-200 bg-white'
+                              }`}
                           >
                             <div className="flex items-start gap-6">
-                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                                contact.status === 'new' ? 'bg-red-100' : 'bg-stone-100'
-                              }`}>
+                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${contact.status === 'new' ? 'bg-red-100' : 'bg-stone-100'
+                                }`}>
                                 <Mail className={`w-7 h-7 ${contact.status === 'new' ? 'text-red-600' : 'text-stone-600'}`} />
                               </div>
 

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { useBooking } from '../context/BookingContext';
 import { toast } from 'sonner';
 import type { Room } from '../types/room';
+import { FaIndianRupeeSign } from "react-icons/fa6";
 
 const BookingDetails = () => {
   const { bookingId } = useParams();
@@ -283,28 +284,28 @@ const BookingDetails = () => {
           <div className="lg:col-span-1">
             <div className="bg-[#2f3a32]/70 border border-[#5b6659] rounded-3xl p-6 sticky top-4">
               <h3 className="text-xl mb-6 flex items-center gap-2 text-[#efece6]">
-                <DollarSign className="w-6 h-6" />
+                <FaIndianRupeeSign className="w-6 h-6" />
                 Payment Summary
               </h3>
 
               <div className="space-y-4 mb-6 pb-6 border-b border-[#5b6659]">
                 <div className="flex justify-between text-sm">
                   <span className="text-[#d7d2c5]">Room Charges</span>
-                  <span className="font-medium text-[#efece6]">${booking.roomPrice.toFixed(2)}</span>
+                  <span className="font-medium text-[#efece6]">₹{booking.roomPrice.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[#d7d2c5]">Taxes</span>
-                  <span className="font-medium text-[#efece6]">${booking.taxes.toFixed(2)}</span>
+                  <span className="font-medium text-[#efece6]">₹{booking.taxes.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-[#d7d2c5]">Service Charges</span>
-                  <span className="font-medium text-[#efece6]">${booking.serviceCharges.toFixed(2)}</span>
+                  <span className="font-medium text-[#efece6]">₹{booking.serviceCharges.toFixed(2)}</span>
                 </div>
               </div>
 
               <div className="flex justify-between items-center mb-6">
                 <span className="text-lg font-semibold text-[#efece6]">Total Amount</span>
-                <span className="text-3xl font-bold text-[#efece6]">${booking.totalPrice.toFixed(2)}</span>
+                <span className="text-3xl font-bold text-[#efece6]">₹{booking.totalPrice.toFixed(2)}</span>
               </div>
 
               <div className="space-y-3">

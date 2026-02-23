@@ -221,6 +221,7 @@ const Profile = () => {
           guests: booking.guests,
           specialRequests: booking.specialRequests || '',
           status: booking.status || 'pending',
+          paymentStatus: booking.paymentStatus || 'pending',
           bookingDate: new Date(booking.bookingDate || Date.now()),
         }));
         setServiceBookingsState(normalized);
@@ -233,6 +234,11 @@ const Profile = () => {
     };
 
     loadServiceBookings();
+
+    // Listen for refreshServiceBookings event to reload service bookings after payment
+    const handler = () => loadServiceBookings();
+    window.addEventListener('refreshServiceBookings', handler);
+    return () => window.removeEventListener('refreshServiceBookings', handler);
   }, [API_BASE, isAdmin, user]);
 
   if (!user) {
@@ -412,7 +418,7 @@ const Profile = () => {
   const statusColors = {
     'pending': 'bg-amber-100 text-amber-800',
     'confirmed': 'bg-emerald-100 text-emerald-800',
-    'check-in': 'bg-blue-100 text-blue-800',
+    'checked-in': 'bg-blue-100 text-blue-800',
     'check-out': 'bg-[#343a30] text-[#efece6]',
     'cancelled': 'bg-red-100 text-red-800',
   };
@@ -743,9 +749,22 @@ const Profile = () => {
             {/* Bookings Tab */}
             {!isAdmin && activeTab === 'bookings' && (
               <div className="bg-[#2f3a32]/90 border border-[#4b5246] rounded-3xl shadow-xl p-6 lg:p-8">
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold text-[#efece6]">My Bookings</h2>
-                  <p className="text-sm text-[#c9c3b6] mt-1">Manage your reservations</p>
+                <div className="mb-6 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-[#efece6]">My Bookings</h2>
+                    <p className="text-sm text-[#c9c3b6] mt-1">Manage your reservations</p>
+                  </div>
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                    onClick={() => {
+                      // Manual refresh handler
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new Event('refreshBookings'));
+                      }
+                    }}
+                  >
+                    Refresh Bookings
+                  </Button>
                 </div>
 
                 {bookings.length === 0 ? (
@@ -822,7 +841,8 @@ const Profile = () => {
                                   </Button>
                                 )}
                                 {/* Hide Check-In button if already checked-in or checked-out */}
-                                {booking.status === 'checked-in' && (
+                                {/* Show Check Out button if checked-in and payment is paid */}
+                                {booking.status === 'checked-in' && booking.paymentStatus === 'paid' && (
                                   <Button
                                     size="sm"
                                     onClick={() => navigate(`/checkout/${booking.id}`)}
@@ -831,12 +851,19 @@ const Profile = () => {
                                     Check Out
                                   </Button>
                                 )}
-                                {/* Show Total Pending if not paid and checked-in */}
+                                {/* Optionally, show disabled Check Out button if not paid */}
                                 {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
-                                  <span className="text-sm font-semibold text-red-600">Total Pending</span>
+                                  <Button
+                                    size="sm"
+                                    className="bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed"
+                                    disabled
+                                    title="Please pay full amount before check-out"
+                                  >
+                                    Check Out
+                                  </Button>
                                 )}
-                                {/* Show Pay Now if ID approved, not paid, and confirmed */}
-                                {booking.idVerified === 'approved' && booking.paymentStatus !== 'paid' && booking.status === 'confirmed' && (
+                                {/* Show Pay Now if not paid and checked-in or confirmed */}
+                                {booking.paymentStatus !== 'paid' && (booking.status === 'checked-in' || booking.status === 'confirmed') && (
                                   <Button
                                     size="sm"
                                     onClick={() => navigate(`/payment/${booking.id}`)}
@@ -967,15 +994,17 @@ const Profile = () => {
                           </div>
                         )}
 
-                        {/* Pay Now button for unpaid service bookings */}
+                        {/* Hide Pay Now button if payment is done; only show for confirmed service bookings and not paid */}
                         {booking.status === 'confirmed' && booking.paymentStatus !== 'paid' && (
                           <Button
-                            className="mt-3 bg-[#d7d0bf] hover:bg-[#e5ddca] text-[#1f241f] rounded-lg"
+                            size="sm"
+                            className="bg-[#d7d0bf] hover:bg-[#e5ddca] text-[#1f241f] rounded-lg"
                             onClick={() => navigate(`/payment/service/${booking.id}`)}
                           >
                             Pay Now
                           </Button>
                         )}
+                        {/* Show Paid button if already paid */}
                         {booking.status === 'confirmed' && booking.paymentStatus === 'paid' && (
                           <Button
                             className="mt-3 rounded-lg border-emerald-200 text-emerald-700"
