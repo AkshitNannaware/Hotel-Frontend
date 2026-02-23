@@ -109,10 +109,21 @@ const Footer = ({ isAdmin = false }) => {
                   <Twitter className="w-4 h-4" />
                 </a>
               </div>
-              <Button className="bg-[#6b7262] text-[#232a22] hover:bg-[#efece6] hover:text-[#232a22] font-bold uppercase tracking-widest w-full">
-                <Link to="/select-dates" className="w-full h-full block text-center">
-                  Book Now
-                </Link>
+              <Button
+                className="bg-[#6b7262] text-[#232a22] hover:bg-[#efece6] hover:text-[#232a22] font-bold uppercase tracking-widest w-full"
+                onClick={() => {
+                  if (window.location.pathname === '/' || window.location.pathname === '/home') {
+                    // Scroll to search bar on Home
+                    const searchSection = document.querySelector('section');
+                    if (searchSection) {
+                      searchSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  } else {
+                    window.location.href = '/#search';
+                  }
+                }}
+              >
+                Book Now
               </Button>
             </div>
           </div>

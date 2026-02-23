@@ -6,8 +6,6 @@ import Signup from './pages/Signup';
 
 import RoomListing from './pages/RoomListing';
 import RoomDetails from './pages/RoomDetails';
-import RoomSelectionPage from './pages/RoomSelectionPage';
-import DateGuestSelectionPage from './pages/DateGuestSelectionPage';
 import Booking from './pages/Booking';
 import Payment from './pages/Payment';
 import Services from './pages/Services';
@@ -36,8 +34,6 @@ export const router = createBrowserRouter([
       { index: true, Component: Home },
       { path: 'rooms', Component: RoomListing },
       { path: 'room/:id', Component: RoomDetails },
-      { path: 'room-selection', Component: RoomSelectionPage },
-      { path: 'select-dates', Component: DateGuestSelectionPage },
       { path: 'booking', Component: Booking },
       { path: 'payment/:bookingId', Component: Payment },
       { path: 'payment/service/:serviceBookingId', Component: Payment },
