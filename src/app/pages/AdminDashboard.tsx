@@ -1,27 +1,28 @@
-﻿
-  // Update booking status (e.g., for check-out)
-  const updateBookingStatus = async (bookingId: string, status: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/bookings/${bookingId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          // Add auth header if needed
-        },
-        body: JSON.stringify({ status }),
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update booking status');
-      }
-      toast.success(`Booking status updated to ${status}`);
-      // Use navigate from useNavigate hook
-
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update booking status');
+﻿// Update booking status (e.g., for check-out)
+const updateBookingStatus = async (bookingId: string, status: string) => {
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/bookings/${bookingId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add auth header if needed
+      },
+      body: JSON.stringify({ status }),
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update booking status');
     }
-  };
+    toast.success(`Booking status updated to ${status}`);
+    // Use navigate from useNavigate hook
+
+  } catch (err: any) {
+    toast.error(err.message || 'Failed to update booking status');
+  }
+};
 import React, { useEffect, useState } from 'react';
+import Footer from '../components/Footer';
+import { useSwipeable } from 'react-swipeable';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { 
@@ -53,6 +54,8 @@ import {
   Waves
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -177,7 +180,7 @@ const AdminDashboard = () => {
     }
     return 'dashboard';
   });
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Default to open on desktop
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [roomsState, setRoomsState] = useState<Room[]>([]);
   const [bookingsState, setBookingsState] = useState<AdminBooking[]>([]);
   const [serviceBookingsState, setServiceBookingsState] = useState<AdminServiceBooking[]>([]);
@@ -199,6 +202,8 @@ const AdminDashboard = () => {
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
   const [serviceBookingStatusFilter, setServiceBookingStatusFilter] = useState('all');
+  const [swipedBookingId, setSwipedBookingId] = useState<string | null>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [roomForm, setRoomForm] = useState({
     name: '',
     type: 'Single',
@@ -252,7 +257,7 @@ const AdminDashboard = () => {
     guestPhone: '',
     checkIn: '',
     checkOut: '',
-    status: 'confirmed' as const,
+    status: 'pending' as const,
     totalPrice: '',
   });
   const [serviceBookingForm, setServiceBookingForm] = useState({
@@ -274,7 +279,6 @@ const AdminDashboard = () => {
     phone: user?.phone || '',
   });
 
-  // Sync profileSettings with user after refresh or login
   useEffect(() => {
     setProfileSettings({
       name: user?.name || '',
@@ -282,6 +286,7 @@ const AdminDashboard = () => {
       phone: user?.phone || '',
     });
   }, [user]);
+  
   const [securityForm, setSecurityForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -321,7 +326,6 @@ const AdminDashboard = () => {
     action: null,
   });
 
-  // Admin Create User Form State
   const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', phone: '', password: '', role: 'user' });
   const [createUserError, setCreateUserError] = useState('');
   const [createUserLoading, setCreateUserLoading] = useState(false);
@@ -1731,7 +1735,7 @@ const AdminDashboard = () => {
       guestPhone: '',
       checkIn: '',
       checkOut: '',
-      status: 'confirmed',
+      status: 'pending',
       totalPrice: '',
     });
     setBookingIdProofFile(null);
@@ -1824,8 +1828,241 @@ const AdminDashboard = () => {
     }
   };
 
+  // Swipeable Booking Row Component
+  const SwipeableBookingRow = ({ 
+    booking, 
+    room, 
+    isMobile, 
+    swipedBookingId, 
+    setSwipedBookingId,
+    onIdVerificationChange,
+    onUpdateStatus 
+  }: { 
+    booking: AdminBooking; 
+    room: Room | undefined; 
+    isMobile: boolean;
+    swipedBookingId: string | null;
+    setSwipedBookingId: (id: string | null) => void;
+    onIdVerificationChange: (booking: AdminBooking, status: 'approved' | 'rejected') => void;
+    onUpdateStatus: (id: string, status: string) => void;
+  }) => {
+    const swipeHandlers = useSwipeable({
+      onSwipedLeft: () => setSwipedBookingId(booking.id),
+      onSwipedRight: () => setSwipedBookingId(null),
+      trackMouse: false,
+    });
+
+    // Desktop view
+    if (!isMobile) {
+      return (
+        <tr className="border-b border-stone-100 hover:bg-stone-50">
+          <td className="py-4 px-4">{booking.id}</td>
+          <td className="py-4 px-4">
+            <div>{booking.guestName}</div>
+            <div className="text-sm text-stone-600">{booking.guestEmail}</div>
+          </td>
+          <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
+          <td className="py-4 px-4">{room?.name}</td>
+          <td className="py-4 px-4">
+            <div className="text-sm">
+              {new Date(booking.checkIn).toLocaleDateString()} -
+            </div>
+            <div className="text-sm">
+              {new Date(booking.checkOut).toLocaleDateString()}
+            </div>
+          </td>
+          <td className="py-4 px-4">
+            <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+              {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+            </span>
+          </td>
+          <td className="py-4 px-4">
+            {booking.idProofUrl ? (
+              <div className="space-y-1">
+                <a
+                  href={`${API_BASE}${booking.idProofUrl}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  View ID
+                </a>
+                <div className="text-xs text-stone-500">
+                  {booking.idProofType ? booking.idProofType.replace(/-/g, ' ') : 'Document'}
+                </div>
+                {booking.idProofUploadedAt && (
+                  <div className="text-xs text-stone-500">
+                    {new Date(booking.idProofUploadedAt).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm text-stone-500">Not uploaded</span>
+            )}
+          </td>
+          <td className="py-4 px-4">
+            <span className={`px-3 py-1 rounded-full text-sm ${idVerifiedBadgeClass(booking.idVerified)}`}>
+              {booking.idVerified || 'pending'}
+            </span>
+          </td>
+          <td className="py-4 px-4">
+            <span className={`px-3 py-1 rounded-full text-sm ${
+              booking.paymentStatus === 'paid' 
+                ? 'bg-green-100 text-green-800' 
+                : booking.paymentStatus === 'failed'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-amber-100 text-amber-800'
+            }`}>
+              {booking.paymentStatus || 'pending'}
+            </span>
+          </td>
+          <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
+          <td className="py-4 px-4">
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="rounded-full">
+                    <MoreVertical className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {booking.idVerified === 'pending' && (
+                    <>
+                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'approved')}>Approve</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>Reject</DropdownMenuItem>
+                    </>
+                  )}
+                  {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
+                    <DropdownMenuItem onClick={() => {
+                      if(window.confirm("Check in this user now?")) {
+                        onUpdateStatus(booking.id, 'checked-in');
+                      }
+                    }}>Check-In</DropdownMenuItem>
+                  )}
+                  {booking.status === 'checked-in' && (
+                    <DropdownMenuItem onClick={() => {
+                      if(window.confirm("Confirm Check-Out?")) {
+                        onUpdateStatus(booking.id, 'checked-out');
+                      }
+                    }}>Check Out</DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+
+    // Mobile view: remove actions field, show actions only on three dots click
+    return (
+      <tr className="border-b border-stone-100 hover:bg-stone-50" style={{ position: 'relative' }}>
+        <td colSpan={11} style={{ padding: 0, background: 'transparent', position: 'relative' }}>
+          <div {...swipeHandlers} className={`flex w-full transition-transform duration-300 ${swipedBookingId === booking.id ? 'translate-x-[-120px]' : ''}`}> 
+            {/* Swipeable fields */}
+            <div className="flex-1 grid grid-cols-11">
+              <div className="py-4 px-4">{booking.id}</div>
+              <div className="py-4 px-4">
+                <div>{booking.guestName}</div>
+                <div className="text-sm text-stone-600">{booking.guestEmail}</div>
+              </div>
+              <div className="py-4 px-4">{booking.guestPhone || 'N/A'}</div>
+              <div className="py-4 px-4">{room?.name}</div>
+              <div className="py-4 px-4">
+                <div className="text-sm">
+                  {new Date(booking.checkIn).toLocaleDateString()} -
+                </div>
+                <div className="text-sm">
+                  {new Date(booking.checkOut).toLocaleDateString()}
+                </div>
+              </div>
+              <div className="py-4 px-4">
+                <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
+                  {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                </span>
+              </div>
+              <div className="py-4 px-4">
+                {booking.idProofUrl ? (
+                  <div className="space-y-1">
+                    <a
+                      href={`${API_BASE}${booking.idProofUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      View ID
+                    </a>
+                    <div className="text-xs text-stone-500">
+                      {booking.idProofType ? booking.idProofType.replace(/-/g, ' ') : 'Document'}
+                    </div>
+                    {booking.idProofUploadedAt && (
+                      <div className="text-xs text-stone-500">
+                        {new Date(booking.idProofUploadedAt).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-stone-500">Not uploaded</span>
+                )}
+              </div>
+              <div className="py-4 px-4">
+                <span className={`px-3 py-1 rounded-full text-sm ${idVerifiedBadgeClass(booking.idVerified)}`}> 
+                  {booking.idVerified || 'pending'}
+                </span>
+              </div>
+              <div className="py-4 px-4">
+                <span className={`px-3 py-1 rounded-full text-sm ${
+                  booking.paymentStatus === 'paid' 
+                    ? 'bg-green-100 text-green-800' 
+                    : booking.paymentStatus === 'failed'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {booking.paymentStatus || 'pending'}
+                </span>
+              </div>
+              <div className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</div>
+            </div>
+            {/* Three dots for actions */}
+            <div style={{ minWidth: 48, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="rounded-full">
+                    <MoreVertical className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {booking.idVerified === 'pending' && (
+                    <>
+                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'approved')}>Approve</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>Reject</DropdownMenuItem>
+                    </>
+                  )}
+                  {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
+                    <DropdownMenuItem onClick={() => {
+                      if(window.confirm("Check in this user now?")) {
+                        onUpdateStatus(booking.id, 'checked-in');
+                      }
+                    }}>Check-In</DropdownMenuItem>
+                  )}
+                  {booking.status === 'checked-in' && (
+                    <DropdownMenuItem onClick={() => {
+                      if(window.confirm("Confirm Check-Out?")) {
+                        onUpdateStatus(booking.id, 'checked-out');
+                      }
+                    }}>Check Out</DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
-    <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10 pl-17">
+    <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10 pl-0">
       {/* Background Gradients */}
       <div 
         className="absolute inset-0 pointer-events-none"
@@ -1836,11 +2073,11 @@ const AdminDashboard = () => {
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(90deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:220px_100%]" />
       <div className="absolute inset-0 pointer-events-none opacity-25 bg-[linear-gradient(180deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:100%_160px]" />
       
-      <div className="relative w-full flex flex-col lg:flex-row">
+      <div className="relative w-full flex flex-col lg:flex-row pl-17">
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="fixed top-20 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden "
+            className="fixed top-20 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden"
             aria-label="Open menu"
           >
             <Menu className="w-6 h-6" />
@@ -1854,96 +2091,96 @@ const AdminDashboard = () => {
           />
         )}
 
-      {/* Sidebar Container */}
-       <div
-        id="admin-sideview"
-        className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-72' : 'w-20'}`}
-      >
-      {/* Header Section */}
-      <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
-        <div className="flex items-center justify-between w-full">
-          {isSidebarOpen && (
-        <div>
-          <h2 className="text-2xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
-          <p className="text-[#cbbfa8] text-sm">Admin User</p>
-        </div>
-      )}
-      <button
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className=" m-4 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
-        aria-label={isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
-      >
-        <Menu className="w-6 h-6" />
-      </button>
-    </div>
-  </div>
-
-  {/* Navigation Links */}
-  <nav className="flex-1 flex flex-col gap-2 px-2 overflow-y-auto custom-scrollbar">
-    {[
-      { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-      { id: 'rooms', icon: Edit, label: 'Manage Rooms' },
-      { id: 'services', icon: Bell, label: 'Manage Services' },
-      { id: 'offers', icon: Tag, label: 'Manage Offers' },
-      { id: 'bookings', icon: Calendar, label: 'Bookings' },
-      { id: 'service-bookings', icon: ClipboardList, label: 'Service Bookings' },
-      { id: 'payments', icon: FaIndianRupeeSign, label: 'Payments' },
-      { id: 'contact-messages', icon: Mail, label: 'Contact Messages', section: 'contacts' },
-      { id: 'newsletter', icon: MdSubscriptions, label: 'News Letter', section: 'newsletter' },
-      { id: 'guests', icon: Users, label: 'Guests' },
-    ].map((item) => {
-      const IconComponent = item.icon;
-      return (
-        <button
-          key={item.id}
-          onClick={() => {
-            if (item.section) {
-              setActiveTab(item.section);
-            } else {
-              handleNavSelect(item.id);
-            }
-          }}
-          className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
-            activeTab === (item.section || item.id)
-              ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
-              : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
-          } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
-          title={!isSidebarOpen ? item.label : '' }
+        {/* Sidebar Container */}
+        <div
+          id="admin-sideview"
+          className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-70' : 'w-20'}`}
         >
-          <IconComponent className={`w-5 h-5 shrink-0 ${activeTab === (item.section || item.id) ? 'text-[#1b1e18]' : ''}`} />
-          {isSidebarOpen && (
-            <span className="text-[15px] font-medium whitespace-nowrap">
-              {item.label}
-            </span>
-          )}
-        </button>
-      );
-    })}
-  </nav>
+          {/* Header Section */}
+          <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
+            <div className="flex items-center justify-between w-full">
+              {isSidebarOpen && (
+                <div>
+                  <h2 className="text-2xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
+                  <p className="text-[#cbbfa8] text-sm">Admin User</p>
+                </div>
+              )}
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className=" m-4 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
+                aria-label={isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
 
-  {/* Footer Section */}
-  <div className={`p-4 mt-auto border-t border-[#3f473d] ${isSidebarOpen ? 'px-6' : 'px-2'}`}>
-    <div className="flex flex-col gap-2">
-      {/* Settings Link */}
-      <button
-        onClick={() => handleNavSelect('settings')}
-        className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
-          activeTab === 'settings'
-            ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
-            : 'text-[#cbbfa8] hover:bg-[#2d342d] rounded-2xl'
-        } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
-        title={!isSidebarOpen ? 'Settings' : ''}
-      >
-        <Settings className="w-5 h-5" />
-        {isSidebarOpen && <span className="text-[15px] font-medium">Settings</span>}
-      </button>
-    </div>
-  </div>
-</div>
+          {/* Navigation Links */}
+          <nav className="flex-1 flex flex-col gap-2 px-2 overflow-y-auto custom-scrollbar">
+            {[
+              { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+              { id: 'rooms', icon: Edit, label: 'Manage Rooms' },
+              { id: 'services', icon: Bell, label: 'Manage Services' },
+              { id: 'offers', icon: Tag, label: 'Manage Offers' },
+              { id: 'bookings', icon: Calendar, label: 'Bookings' },
+              { id: 'service-bookings', icon: ClipboardList, label: 'Service Bookings' },
+              { id: 'payments', icon: FaIndianRupeeSign, label: 'Payments' },
+              { id: 'contact-messages', icon: Mail, label: 'Contact Messages', section: 'contacts' },
+              { id: 'newsletter', icon: MdSubscriptions, label: 'News Letter', section: 'newsletter' },
+              { id: 'guests', icon: Users, label: 'Guests' },
+            ].map((item) => {
+              const IconComponent = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    if (item.section) {
+                      setActiveTab(item.section);
+                    } else {
+                      handleNavSelect(item.id);
+                    }
+                  }}
+                  className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
+                    activeTab === (item.section || item.id)
+                      ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
+                      : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
+                  } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
+                  title={!isSidebarOpen ? item.label : '' }
+                >
+                  <IconComponent className={`w-5 h-5 shrink-0 ${activeTab === (item.section || item.id) ? 'text-[#1b1e18]' : ''}`} />
+                  {isSidebarOpen && (
+                    <span className="text-[15px] font-medium whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Footer Section */}
+          <div className={`p-4 mt-auto border-t border-[#3f473d] ${isSidebarOpen ? 'px-6' : 'px-2'}`}>
+            <div className="flex flex-col gap-2">
+              {/* Settings Link */}
+              <button
+                onClick={() => handleNavSelect('settings')}
+                className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
+                  activeTab === 'settings'
+                    ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
+                    : 'text-[#cbbfa8] hover:bg-[#2d342d] rounded-2xl'
+                } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
+                title={!isSidebarOpen ? 'Settings' : ''}
+              >
+                <Settings className="w-5 h-5" />
+                {isSidebarOpen && <span className="text-[15px] font-medium">Settings</span>}
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Main Content */}
-        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-52' : ''}`}>
-          <div className="p-4 sm:p-6 lg:p-8 relative">
+        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-72' : ''}`}> 
+          <div className="p-2 sm:p-4 md:p-6 lg:p-8 relative">
             {isLoading && (
               <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
                 Loading admin data...
@@ -1957,8 +2194,8 @@ const AdminDashboard = () => {
             
             {activeTab === 'dashboard' && (
               <div>
-                <div className="mb-8 rounded-[28px] border border-[#5b6255] bg-[#4a5449]/40 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
-                  <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="mb-8 rounded-[28px] border border-[#5b6255] bg-[#4a5449]/40 p-4 sm:p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                  <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                     <div>
                       <h1 className="mt-2 text-4xl sm:text-5xl font-serif tracking-tight text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
                         Dashboard Overview
@@ -1985,7 +2222,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                   <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
@@ -2043,7 +2280,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Recent Room Bookings */}
-                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
+                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-4 sm:p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                     <h2 className="text-2xl font-serif">Recent Room Bookings</h2>
                     <Button
@@ -2056,8 +2293,8 @@ const AdminDashboard = () => {
                     </Button>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full min-w-[600px]">
                       <thead>
                         <tr className="border-b border-[#5b6255]">
                           <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
@@ -2116,7 +2353,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Recent Service Bookings */}
-                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
+                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-4 sm:p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
                     <h2 className="text-2xl font-serif">Recent Service Bookings</h2>
                     <Button
@@ -2129,8 +2366,8 @@ const AdminDashboard = () => {
                     </Button>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full min-w-[700px]">
                       <thead>
                         <tr className="border-b border-[#5b6255]">
                           <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
@@ -3064,13 +3301,13 @@ const AdminDashboard = () => {
                 )}
 
                 <div className="bg-white rounded-3xl p-8 shadow-sm">
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto" style={{ paddingBottom: 16, minWidth: '100%' }}>
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-stone-200">
                           <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
                           <th className="text-left py-3 px-4 text-stone-600">Guest Details</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
+                          <th className="text-left py-3 px-4 text-stone-600">Phone No.</th>
                           <th className="text-left py-3 px-4 text-stone-600">Room</th>
                           <th className="text-left py-3 px-4 text-stone-600">Dates</th>
                           <th className="text-left py-3 px-4 text-stone-600">Status</th>
@@ -3085,109 +3322,16 @@ const AdminDashboard = () => {
                         {filteredBookings.map((booking) => {
                           const room = roomsState.find(r => r.id === booking.roomId);
                           return (
-                            <tr key={booking.id} className="border-b border-stone-100 hover:bg-stone-50">
-                              <td className="py-4 px-4">{booking.id}</td>
-                              <td className="py-4 px-4">
-                                <div>{booking.guestName}</div>
-                                <div className="text-sm text-stone-600">{booking.guestEmail}</div>
-                              </td>
-                              <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
-                              <td className="py-4 px-4">{room?.name}</td>
-                              <td className="py-4 px-4">
-                                <div className="text-sm">
-                                  {new Date(booking.checkIn).toLocaleDateString()} -
-                                </div>
-                                <div className="text-sm">
-                                  {new Date(booking.checkOut).toLocaleDateString()}
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-                                  {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4">
-                                {booking.idProofUrl ? (
-                                  <div className="space-y-1">
-                                    <a
-                                      href={`${API_BASE}${booking.idProofUrl}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-sm text-blue-600 hover:underline"
-                                    >
-                                      View ID
-                                    </a>
-                                    <div className="text-xs text-stone-500">
-                                      {booking.idProofType ? booking.idProofType.replace(/-/g, ' ') : 'Document'}
-                                    </div>
-                                    {booking.idProofUploadedAt && (
-                                      <div className="text-xs text-stone-500">
-                                        {new Date(booking.idProofUploadedAt).toLocaleDateString()}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-stone-500">Not uploaded</span>
-                                )}
-                              </td>
-                              <td className="py-4 px-4">
-                                <span className={`px-3 py-1 rounded-full text-sm ${idVerifiedBadgeClass(booking.idVerified)}`}>
-                                  {booking.idVerified || 'pending'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4">
-                                <span className={`px-3 py-1 rounded-full text-sm ${
-                                  booking.paymentStatus === 'paid' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : booking.paymentStatus === 'failed'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-amber-100 text-amber-800'
-                                }`}>
-                                  {booking.paymentStatus || 'pending'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
-                              <td className="py-4 px-4">
-                                <div className="flex items-center gap-2">
-                                  {/* 1. If status is pending, show Approve/Reject buttons */}
-                                  {booking.status === 'pending' && (
-                                    <>
-                                      <Button size="sm" variant="outline" onClick={() => handleIdVerificationChange(booking, 'approved')}>Approve</Button>
-                                      <Button size="sm" variant="outline" className="text-red-500" onClick={() => handleIdVerificationChange(booking, 'rejected')}>Reject</Button>
-                                    </>
-                                  )}
-                                  {/* 2. If status is confirmed, show Check-In button */}
-                                  {booking.status === 'confirmed' && (
-                                    <Button
-                                      size="sm"
-                                      className="bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm"
-                                      onClick={() => {
-                                        if(window.confirm("Check in this user now?")) {
-                                          updateBookingStatus(booking.id, 'checked-in');
-                                        }
-                                      }}
-                                    >
-                                      Check-In
-                                    </Button>
-                                  )}
-                                  {/* 3. If status is checked-in, show Check-Out button */}
-                                  {booking.status === 'checked-in' && (
-                                    <Button
-                                      size="sm"
-                                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
-                                      onClick={() => {
-                                        if(window.confirm("Confirm Check-Out?")) {
-                                           updateBookingStatus(booking.id, 'checked-out');
-                                        }
-                                      }}
-                                    >
-                                      Check Out
-                                    </Button>
-                                  )}
-                                  {/* 4. If status is checked-out or cancelled, show nothing */}
-                                </div>
-                              </td>
-                            </tr>
+                            <SwipeableBookingRow
+                              key={booking.id}
+                              booking={booking}
+                              room={room}
+                              isMobile={isMobile}
+                              swipedBookingId={swipedBookingId}
+                              setSwipedBookingId={setSwipedBookingId}
+                              onIdVerificationChange={handleIdVerificationChange}
+                              onUpdateStatus={updateBookingStatus}
+                            />
                           );
                         })}
                       </tbody>
@@ -3562,9 +3706,6 @@ const AdminDashboard = () => {
               <div>
                 <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
                 
-                {/* Admin Create User Form */}
-                {/* Removed Create New User form from guests section */}
-
                 {/* Users List */}
                 <div className="bg-[#232b23] rounded-3xl p-8 shadow-lg border border-[#3a463a] text-[#f5f1e8]">
                   {usersState.length === 0 ? (
@@ -4049,6 +4190,7 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+      <Footer isAdmin />
     </div>
   );
 };

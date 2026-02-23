@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Search, Calendar, Users, MapPin, Star, ChevronLeft, ChevronRight, Menu, ArrowDown } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import Footer from '../components/Footer';
 import { toast } from 'sonner';
 import type { Room } from '../types/room';
 
@@ -115,6 +116,15 @@ const Home = () => {
     if (!imageUrl) return fallbackRoomImage;
     return imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl;
   };
+  const resolveRoomVideo = (room: Room | null) => {
+    const videoUrl = room?.video || '';
+    if (!videoUrl) return '';
+    if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) return videoUrl;
+    if (videoUrl.startsWith('/uploads/')) return `${API_BASE}${videoUrl}`;
+    if (videoUrl.startsWith('uploads/')) return `${API_BASE}/${videoUrl}`;
+    if (videoUrl.startsWith('/')) return `${API_BASE}${videoUrl}`;
+    return `${API_BASE}/${videoUrl}`;
+  };
   const resolveServiceImage = (service: any) => {
     const imageUrl = String(service?.image || '').trim();
     if (!imageUrl) {
@@ -133,6 +143,15 @@ const Home = () => {
       return `${API_BASE}${imageUrl}`;
     }
     return `${API_BASE}/${imageUrl}`;
+  };
+  const resolveServiceVideo = (service: any) => {
+    const videoUrl = String(service?.video || '').trim();
+    if (!videoUrl) return '';
+    if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) return videoUrl;
+    if (videoUrl.startsWith('/uploads/')) return `${API_BASE}${videoUrl}`;
+    if (videoUrl.startsWith('uploads/')) return `${API_BASE}/${videoUrl}`;
+    if (videoUrl.startsWith('/')) return `${API_BASE}${videoUrl}`;
+    return `${API_BASE}/${videoUrl}`;
   };
   const resolveRoomMeta = (room: Room | null) => {
     if (!room) {
@@ -226,8 +245,8 @@ const Home = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#3f4a40]">
+	return (
+		<div className="min-h-screen bg-[#3f4a40]">
 			{/* Hero Section */}
 			<section className="relative min-h-[100svh] sm:min-h-screen bg-stone-900">
 				<video
@@ -416,11 +435,23 @@ const Home = () => {
           {/* Arched Container */}
           <div className="relative mb-4">
             <div className="w-full aspect-[3/4] rounded-[200px] rounded-b-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-300">
-              <img 
-                src={resolveServiceImage(service)} 
-                alt={service.name} 
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-              />
+              {resolveServiceVideo(service) ? (
+                <video
+                  src={resolveServiceVideo(service)}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  poster={resolveServiceImage(service) || undefined}
+                />
+              ) : (
+                <img 
+                  src={resolveServiceImage(service)} 
+                  alt={service.name} 
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                />
+              )}
               {/* Overlay gradient */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
             </div>
@@ -487,21 +518,45 @@ const Home = () => {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-6 items-center">
             <div className="hidden lg:block">
               <div className="relative rounded-[24px] overflow-hidden shadow-lg">
+              {resolveRoomVideo(prevAccommodation) ? (
+                <video
+                  src={resolveRoomVideo(prevAccommodation)}
+                  className="h-[220px] sm:h-[300px] md:h-[360px] w-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  poster={resolveRoomImage(prevAccommodation) || undefined}
+                />
+              ) : (
                 <img
                   src={resolveRoomImage(prevAccommodation)}
                   alt={prevAccommodation?.name || 'Previous room'}
                   className="h-[220px] sm:h-[300px] md:h-[360px] w-full object-cover"
                 />
+              )}
                 <div className="absolute inset-0 bg-black/35" />
               </div>
             </div>
 
             <div className="relative rounded-[28px] overflow-hidden shadow-2xl">
-              <img
-                src={resolveRoomImage(activeAccommodation)}
-                alt={activeAccommodation?.name || 'Featured room'}
-                className="h-[260px] sm:h-[340px] md:h-[420px] w-full object-cover"
-              />
+              {resolveRoomVideo(activeAccommodation) ? (
+                <video
+                  src={resolveRoomVideo(activeAccommodation)}
+                  className="h-[260px] sm:h-[340px] md:h-[420px] w-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  poster={resolveRoomImage(activeAccommodation) || undefined}
+                />
+              ) : (
+                <img
+                  src={resolveRoomImage(activeAccommodation)}
+                  alt={activeAccommodation?.name || 'Featured room'}
+                  className="h-[260px] sm:h-[340px] md:h-[420px] w-full object-cover"
+                />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
               <button
                 type="button"
@@ -538,11 +593,23 @@ const Home = () => {
 
             <div className="hidden lg:block">
               <div className="relative rounded-[24px] overflow-hidden shadow-lg">
+              {resolveRoomVideo(nextAccommodation) ? (
+                <video
+                  src={resolveRoomVideo(nextAccommodation)}
+                  className="h-[220px] sm:h-[300px] md:h-[360px] w-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  poster={resolveRoomImage(nextAccommodation) || undefined}
+                />
+              ) : (
                 <img
                   src={resolveRoomImage(nextAccommodation)}
                   alt={nextAccommodation?.name || 'Next room'}
                   className="h-[220px] sm:h-[300px] md:h-[360px] w-full object-cover"
                 />
+              )}
                 <div className="absolute inset-0 bg-black/35" />
               </div>
             </div>
@@ -620,11 +687,23 @@ const Home = () => {
                 {restaurantServices.map((restaurant, idx) => (
                   <div key={restaurant._id || restaurant.id || idx} className="group relative">
                     <div className="relative rounded-[24px] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500">
-                      <img
-                        src={resolveServiceImage(restaurant)}
-                        alt={restaurant.name}
-                        className="h-[260px] sm:h-[320px] md:h-[380px] w-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                      />
+                      {resolveServiceVideo(restaurant) ? (
+                        <video
+                          src={resolveServiceVideo(restaurant)}
+                          className="h-[260px] sm:h-[320px] md:h-[380px] w-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          poster={resolveServiceImage(restaurant) || undefined}
+                        />
+                      ) : (
+                        <img
+                          src={resolveServiceImage(restaurant)}
+                          alt={restaurant.name}
+                          className="h-[260px] sm:h-[320px] md:h-[380px] w-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                        />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                       
                       {/* Badge */}
@@ -757,8 +836,8 @@ const Home = () => {
           </div>
         </div>
       </section>
-    </div>
-  );
+			<Footer isAdmin={false} />
+		</div>
+	);
 };
-
 export default Home;

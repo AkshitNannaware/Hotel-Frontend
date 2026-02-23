@@ -154,8 +154,18 @@ const Footer = ({ isAdmin = false }) => {
                   </Link>
                 </li>
                 <li>
+                  <Link to="/admin/service-bookings" className="hover:text-white transition-colors">
+                    Service Bookings
+                  </Link>
+                </li>
+                <li>
                   <Link to="/admin/offers" className="hover:text-white transition-colors">
                     All Offers
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/admin/settings" className="hover:text-white transition-colors">
+                    Settings
                   </Link>
                 </li>
                 <li>Admin Tools & Reports</li>

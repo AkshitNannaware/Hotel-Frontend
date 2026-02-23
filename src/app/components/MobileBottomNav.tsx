@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, BedDouble, ConciergeBell, Info, CalendarCheck } from 'lucide-react';
+import DateGuestSelectionPage from '../pages/DateGuestSelectionPage';
 
 const navItems = [
   { label: 'Home', to: '/', icon: Home },
   { label: 'Accomodation', to: '/rooms', icon: BedDouble },
   { label: 'Services', to: '/services', icon: ConciergeBell },
   { label: 'About Us', to: '/about', icon: Info },
-  { label: 'Book Now', to: '/rooms', icon: CalendarCheck },
+  { label: 'Book Now', to: '/select-dates', icon: CalendarCheck },
 ];
 
 const MobileBottomNav = () => {

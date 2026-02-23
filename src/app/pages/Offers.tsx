@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import Footer from '../components/Footer';
 
 type Offer = {
   id: string;
@@ -229,6 +230,7 @@ const Offers = () => {
           </div>
         </div>
       </section>
+      <Footer isAdmin={false} />
     </div>
   );
 };

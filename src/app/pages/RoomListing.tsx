@@ -7,6 +7,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import type { Room } from '../types/room';
+import Footer from '../components/Footer';
 
 const RoomListing = () => {
   const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
@@ -362,6 +363,8 @@ const RoomListing = () => {
           </div>
         </div>
       </section>
+        {/* Footer placed inside main return */}
+        <Footer isAdmin={false} />
     </div>
   );
 };

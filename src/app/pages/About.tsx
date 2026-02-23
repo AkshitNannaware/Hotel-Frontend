@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router';
 import { Plus, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
+import Footer from '../components/Footer';
 
 const About = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -285,6 +287,8 @@ const About = () => {
           </div>
         </div>
       </section>
+      {/* Footer placed inside main return */}
+      <Footer isAdmin={false} />
     </div>
   );
 };

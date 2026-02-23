@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import { Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import Footer from '../components/Footer';
 
 type Service = {
   id: string;
@@ -333,6 +334,8 @@ const Services = () => {
           </div>
         </div>
       </section>
+        {/* Footer placed inside main return */}
+        <Footer isAdmin={false} />
     </div>
   );
 };

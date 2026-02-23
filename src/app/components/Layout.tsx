@@ -17,7 +17,7 @@ const Layout = () => {
       <main className="flex-1">
         <Outlet />
       </main>
-      <Footer />
+      {/* <Footer /> removed to prevent double footer in admin pages */}
       <MobileBottomNav />
     </div>
   );

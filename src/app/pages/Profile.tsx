@@ -2,8 +2,8 @@ import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { User, Mail, Phone, Calendar, LogOut, Settings, Bell, CreditCard, Edit2, Save, X, AlertCircle, CheckCircle2, Award, Star, TrendingUp, MapPin, Gift, Shield, Menu } from 'lucide-react';
 import { Button } from '../components/ui/button';
-// ...existing imports...
-// Utility to download a file from a URL
+import Footer from '../components/Footer'; 
+
 function downloadFile(url: string, filename: string) {
   fetch(url, {
     headers: {
@@ -552,19 +552,21 @@ const Profile = () => {
                     </button>
                     <button
                       onClick={() => handleTabChange('notifications')}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-shadow ${
+                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-shadow ${
                         activeTab === 'notifications' 
                           ? 'bg-[#d7d0bf] text-[#1f241f] hover:shadow-lg'
                           : 'text-[#c9c3b6] hover:shadow-lg'
                       }`}
                     >
+                      <span className="flex items-center gap-3">
+                        Notifications
+                        {bookings.filter(b => b.status === 'confirmed').length > 0 && (
+                          <span className="ml-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                            {bookings.filter(b => b.status === 'confirmed').length}
+                          </span>
+                        )}
+                      </span>
                       <Bell className="w-4 h-4" />
-                      Notifications
-                      {bookings.filter(b => b.status === 'confirmed').length > 0 && (
-                        <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                          {bookings.filter(b => b.status === 'confirmed').length}
-                        </span>
-                      )}
                     </button>
                     <button
                       onClick={() => handleTabChange('settings')}
@@ -1431,6 +1433,7 @@ const Profile = () => {
           </div>
         </div>
       </div>
+      <Footer isAdmin={false} />
     </div>
   );
 };
