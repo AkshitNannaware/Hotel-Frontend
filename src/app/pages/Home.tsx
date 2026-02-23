@@ -114,7 +114,10 @@ const Home = () => {
   const resolveRoomImage = (room: Room | null) => {
     const imageUrl = room?.images?.[0] || fallbackRoomImage;
     if (!imageUrl) return fallbackRoomImage;
-    return imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+    if (imageUrl.startsWith('/uploads/')) return `${API_BASE}${imageUrl}`;
+    if (!imageUrl.startsWith('/')) return `${API_BASE}/uploads/rooms/${imageUrl}`;
+    return `${API_BASE}${imageUrl}`;
   };
   const resolveRoomVideo = (room: Room | null) => {
     const videoUrl = room?.video || '';
