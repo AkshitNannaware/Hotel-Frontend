@@ -808,35 +808,32 @@ const Profile = () => {
                               </div>
 
                               <div className="flex flex-wrap gap-2">
-                                {booking.status === 'confirmed' && (
+                                {/* Show Check-In button only if status is confirmed and ID is approved */}
+                                {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
                                   <Button
                                     size="sm"
                                     onClick={() => navigate(`/checkin/${booking.id}`)}
-                                    disabled={booking.idVerified !== 'approved'}
                                     className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
                                   >
                                     <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                                     Check In
                                   </Button>
                                 )}
-                                {booking.status === 'check-in' && !allPaid && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => navigate(`/payment/${booking.id}`)}
-                                    className="bg-[#d7d0bf] hover:bg-[#e5ddca] text-[#1f241f] rounded-lg"
-                                  >
-                                    Pay Now
-                                  </Button>
-                                )}
-                                {booking.status === 'check-in' && allPaid && (
+                                {/* Hide Check-In button if already checked-in or checked-out */}
+                                {booking.status === 'checked-in' && (
                                   <Button
                                     size="sm"
                                     onClick={() => navigate(`/checkout/${booking.id}`)}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
                                   >
                                     Check Out
                                   </Button>
                                 )}
+                                {/* Show Total Pending if not paid and checked-in */}
+                                {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
+                                  <span className="text-sm font-semibold text-red-600">Total Pending</span>
+                                )}
+                                {/* Show Pay Now if ID approved, not paid, and confirmed */}
                                 {booking.idVerified === 'approved' && booking.paymentStatus !== 'paid' && booking.status === 'confirmed' && (
                                   <Button
                                     size="sm"
@@ -846,6 +843,7 @@ const Profile = () => {
                                     Pay Now
                                   </Button>
                                 )}
+                                {/* Show Paid if payment done and confirmed */}
                                 {booking.paymentStatus === 'paid' && booking.status === 'confirmed' && (
                                   <Button
                                     size="sm"

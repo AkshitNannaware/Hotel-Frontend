@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router';
 import { Facebook, Instagram, MessageCircle, Youtube, Twitter } from 'lucide-react';
 import { Button } from './ui/button';
-import BookNowFooterButton from './BookNowFooterButton';
+import DateGuestSelectionPage from '../pages/DateGuestSelectionPage';
 
 const Footer = ({ isAdmin = false }) => {
   // Accept brandingSettings as prop for social links
@@ -110,7 +110,7 @@ const Footer = ({ isAdmin = false }) => {
                 </a>
               </div>
               <Button className="bg-[#6b7262] text-[#232a22] hover:bg-[#efece6] hover:text-[#232a22] font-bold uppercase tracking-widest w-full">
-                <Link to="/rooms" className="w-full h-full block text-center">
+                <Link to="/select-dates" className="w-full h-full block text-center">
                   Book Now
                 </Link>
               </Button>

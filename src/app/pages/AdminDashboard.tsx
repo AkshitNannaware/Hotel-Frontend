@@ -1,4 +1,27 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿
+  // Update booking status (e.g., for check-out)
+  const updateBookingStatus = async (bookingId: string, status: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/bookings/${bookingId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth header if needed
+        },
+        body: JSON.stringify({ status }),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update booking status');
+      }
+      toast.success(`Booking status updated to ${status}`);
+      // Use navigate from useNavigate hook
+
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update booking status');
+    }
+  };
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { 
@@ -30,6 +53,7 @@ import {
   Waves
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { useAuth } from '../context/AuthContext';
@@ -136,6 +160,7 @@ type AdminServiceBooking = {
   guestPhone: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   bookingDate?: string | Date;
+  paymentStatus?: 'pending' | 'paid';
 };
 
 const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
@@ -168,6 +193,8 @@ const AdminDashboard = () => {
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [isServiceFormOpen, setIsServiceFormOpen] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+  const [serviceDeleteLoading, setServiceDeleteLoading] = useState(false);
   const [isOfferFormOpen, setIsOfferFormOpen] = useState(false);
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
@@ -238,6 +265,7 @@ const AdminDashboard = () => {
     guests: '1',
     status: 'pending' as const,
     specialRequests: '',
+    paymentStatus: 'pending' as const,
   });
 
   const [profileSettings, setProfileSettings] = useState({
@@ -713,7 +741,7 @@ const AdminDashboard = () => {
           fetchJson('/api/admin/bookings'),
           fetchJson('/api/admin/users'),
           fetchJson('/api/admin/contacts'),
-          fetchJson('/api/services'),
+          fetchJson('/api/admin/services'),
           fetchJson('/api/admin/service-bookings'),
           fetchJson('/api/admin/offers'),
         ]);
@@ -827,9 +855,9 @@ const AdminDashboard = () => {
 
   const serviceCategories = [
     { key: 'restaurant', label: 'Restaurant' },
+    { key: 'dining', label: 'In-room dining' },
     { key: 'spa', label: 'Spa & wellness' },
     { key: 'bar', label: 'Bar & lounge' },
-    { key: 'dining', label: 'In-room dining' },
   ] as const;
 
   const recentBookings = [...bookingsState]
@@ -1065,21 +1093,27 @@ const AdminDashboard = () => {
     setIsServiceFormOpen(true);
   };
 
-  const handleDeleteService = async (serviceId: string) => {
-    if (!window.confirm('Are you sure you want to delete this service?')) {
-      return;
-    }
+  const handleDeleteService = (serviceId: string) => {
+    setServiceToDelete(serviceId);
+  };
 
+  const confirmDeleteService = async () => {
+    if (!serviceToDelete) return;
+    setServiceDeleteLoading(true);
     try {
-      await fetchJson(`/api/services/${serviceId}`, { method: 'DELETE' });
-      setServicesState((prev) => prev.filter((service) => service.id !== serviceId));
-      if (editingServiceId === serviceId) {
+      await fetchJson(`/api/admin/services/${serviceToDelete}`, { method: 'DELETE' });
+      setServicesState((prev) => prev.filter((service) => service.id !== serviceToDelete));
+      if (editingServiceId === serviceToDelete) {
         setEditingServiceId(null);
         setIsServiceFormOpen(false);
         resetServiceForm();
       }
+      setServiceToDelete(null);
     } catch (error) {
       setLoadError('Failed to delete service');
+      setServiceToDelete(null);
+    } finally {
+      setServiceDeleteLoading(false);
     }
   };
 
@@ -1106,13 +1140,13 @@ const AdminDashboard = () => {
       let updatedService: any;
 
       if (editingServiceId) {
-        updatedService = await fetchJson(`/api/services/${editingServiceId}`, {
+        updatedService = await fetchJson(`/api/admin/services/${editingServiceId}`, {
           method: 'PUT',
           body: JSON.stringify(payload),
         });
         serviceId = editingServiceId;
       } else {
-        updatedService = await fetchJson('/api/services', {
+        updatedService = await fetchJson('/api/admin/services', {
           method: 'POST',
           body: JSON.stringify(payload),
         });
@@ -1123,7 +1157,7 @@ const AdminDashboard = () => {
         try {
           const formData = new FormData();
           formData.append('image', serviceImageFile);
-          const uploadResponse = await fetchJson(`/api/services/${serviceId}/upload-image`, {
+          const uploadResponse = await fetchJson(`/api/admin/services/${serviceId}/upload-image`, {
             method: 'POST',
             body: formData,
             isFormData: true,
@@ -1139,7 +1173,7 @@ const AdminDashboard = () => {
         try {
           const formData = new FormData();
           formData.append('video', serviceVideoFile);
-          const uploadResponse = await fetchJson(`/api/services/${serviceId}/upload-video`, {
+          const uploadResponse = await fetchJson(`/api/admin/services/${serviceId}/upload-video`, {
             method: 'POST',
             body: formData,
             isFormData: true,
@@ -1527,6 +1561,7 @@ const AdminDashboard = () => {
       guests: '1',
       status: 'pending',
       specialRequests: '',
+      paymentStatus: 'pending',
     });
     setIsServiceBookingFormOpen(true);
   };
@@ -1545,6 +1580,7 @@ const AdminDashboard = () => {
         guests: Number(serviceBookingForm.guests) || 1,
         status: 'pending',
         specialRequests: serviceBookingForm.specialRequests.trim(),
+        paymentStatus: serviceBookingForm.paymentStatus || 'pending',
       };
 
       const response = await fetchJson('/api/admin/service-bookings', {
@@ -1855,31 +1891,34 @@ const AdminDashboard = () => {
       { id: 'contact-messages', icon: Mail, label: 'Contact Messages', section: 'contacts' },
       { id: 'newsletter', icon: MdSubscriptions, label: 'News Letter', section: 'newsletter' },
       { id: 'guests', icon: Users, label: 'Guests' },
-    ].map((item) => (
-      <button
-        key={item.id}
-        onClick={() => {
-          if (item.section) {
-            setActiveTab(item.section);
-          } else {
-            handleNavSelect(item.id);
-          }
-        }}
-        className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
-          activeTab === (item.section || item.id)
-            ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
-            : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
-        } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
-        title={!isSidebarOpen ? item.label : '' }
-      >
-        <item.icon className={`w-5 h-5 shrink-0 ${activeTab === (item.section || item.id) ? 'text-[#1b1e18]' : ''}`} />
-        {isSidebarOpen && (
-          <span className="text-[15px] font-medium whitespace-nowrap">
-            {item.label}
-          </span>
-        )}
-      </button>
-    ))}
+    ].map((item) => {
+      const IconComponent = item.icon;
+      return (
+        <button
+          key={item.id}
+          onClick={() => {
+            if (item.section) {
+              setActiveTab(item.section);
+            } else {
+              handleNavSelect(item.id);
+            }
+          }}
+          className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${
+            activeTab === (item.section || item.id)
+              ? 'bg-[#e7d6ad] text-[#1b1e18] rounded-2xl shadow-md'
+              : 'text-[#cbbfa8] hover:bg-[#2d342d] hover:text-[#fff1d6] rounded-2xl'
+          } ${isSidebarOpen ? 'gap-4 justify-start px-4 py-3' : 'justify-center p-3'}`}
+          title={!isSidebarOpen ? item.label : '' }
+        >
+          <IconComponent className={`w-5 h-5 shrink-0 ${activeTab === (item.section || item.id) ? 'text-[#1b1e18]' : ''}`} />
+          {isSidebarOpen && (
+            <span className="text-[15px] font-medium whitespace-nowrap">
+              {item.label}
+            </span>
+          )}
+        </button>
+      );
+    })}
   </nav>
 
   {/* Footer Section */}
@@ -2052,7 +2091,7 @@ const AdminDashboard = () => {
                                 <td className="py-4 px-4">{new Date(booking.checkIn).toLocaleDateString()}</td>
                                 <td className="py-4 px-4">
                                   <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}> 
-                                    {booking.status}
+                                    {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                   </span>
                                 </td>
                                 <td className="py-4 px-4">
@@ -2625,14 +2664,32 @@ const AdminDashboard = () => {
                                   >
                                     Edit
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
-                                    onClick={() => handleDeleteService(service.id)}
-                                  >
-                                    Delete
-                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
+                                        onClick={() => handleDeleteService(service.id)}
+                                      >
+                                        Delete
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Service</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete this service? This action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={() => setServiceToDelete(null)} disabled={serviceDeleteLoading}>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={confirmDeleteService} disabled={serviceDeleteLoading} className="bg-red-600 hover:bg-red-700 text-white">
+                                          {serviceDeleteLoading ? 'Deleting...' : 'Delete'}
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
                                 </div>
                               </div>
                             </div>
@@ -3046,7 +3103,7 @@ const AdminDashboard = () => {
                               </td>
                               <td className="py-4 px-4">
                                 <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-                                  {booking.status}
+                                  {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                 </span>
                               </td>
                               <td className="py-4 px-4">
@@ -3089,32 +3146,46 @@ const AdminDashboard = () => {
                                   {booking.paymentStatus || 'pending'}
                                 </span>
                               </td>
-                                <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
+                              <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
                               <td className="py-4 px-4">
-                                {booking.idVerified === 'approved' ? (
-                                  <span className="text-sm text-green-600 font-medium">Approved</span>
-                                ) : (
-                                  <div className="flex flex-wrap gap-2">
+                                <div className="flex items-center gap-2">
+                                  {/* 1. If status is pending, show Approve/Reject buttons */}
+                                  {booking.status === 'pending' && (
+                                    <>
+                                      <Button size="sm" variant="outline" onClick={() => handleIdVerificationChange(booking, 'approved')}>Approve</Button>
+                                      <Button size="sm" variant="outline" className="text-red-500" onClick={() => handleIdVerificationChange(booking, 'rejected')}>Reject</Button>
+                                    </>
+                                  )}
+                                  {/* 2. If status is confirmed, show Check-In button */}
+                                  {booking.status === 'confirmed' && (
                                     <Button
                                       size="sm"
-                                      variant="outline"
-                                      onClick={() => handleIdVerificationChange(booking, 'approved')}
-                                      disabled={!booking.idProofUrl}
-                                      title={!booking.idProofUrl ? 'Awaiting ID proof upload' : undefined}
+                                      className="bg-green-600 hover:bg-green-700 text-white rounded-lg shadow-sm"
+                                      onClick={() => {
+                                        if(window.confirm("Check in this user now?")) {
+                                          updateBookingStatus(booking.id, 'checked-in');
+                                        }
+                                      }}
                                     >
-                                      Approve
+                                      Check-In
                                     </Button>
+                                  )}
+                                  {/* 3. If status is checked-in, show Check-Out button */}
+                                  {booking.status === 'checked-in' && (
                                     <Button
                                       size="sm"
-                                      variant="outline"
-                                      onClick={() => handleIdVerificationChange(booking, 'rejected')}
-                                      disabled={!booking.idProofUrl}
-                                      title={!booking.idProofUrl ? 'Awaiting ID proof upload' : undefined}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
+                                      onClick={() => {
+                                        if(window.confirm("Confirm Check-Out?")) {
+                                           updateBookingStatus(booking.id, 'checked-out');
+                                        }
+                                      }}
                                     >
-                                      Reject
+                                      Check Out
                                     </Button>
-                                  </div>
-                                )}
+                                  )}
+                                  {/* 4. If status is checked-out or cancelled, show nothing */}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -3277,6 +3348,15 @@ const AdminDashboard = () => {
                         <option value="pending">Pending</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="cancelled">Cancelled</option>
+                      </select>
+                      <select
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                        value={serviceBookingForm.paymentStatus || 'pending'}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, paymentStatus: event.target.value as any })}
+                        required
+                      >
+                        <option value="pending">Payment Pending</option>
+                        <option value="paid">Paid</option>
                       </select>
                     </div>
                     <Textarea

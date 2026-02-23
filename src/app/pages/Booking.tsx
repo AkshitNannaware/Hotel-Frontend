@@ -14,6 +14,11 @@ const Booking = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const { currentBooking, confirmBooking, submitIdProof } = useBooking();
+  const [adminBooking, setAdminBooking] = useState(null);
+  const [loadingAdminBooking, setLoadingAdminBooking] = useState(false);
+  const [adminBookingError, setAdminBookingError] = useState(null);
+  const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5000';
+  const bookingIdFromUrl = window.location.pathname.split('/').pop();
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
@@ -22,7 +27,6 @@ const Booking = () => {
   const [idProof, setIdProof] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [saveToProfile, setSaveToProfile] = useState(false);
-  const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5000';
   const [room, setRoom] = useState<Room | null>(null);
   const [roomLoadError, setRoomLoadError] = useState<string | null>(null);
   const fallbackRoomImage = 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=1200';
@@ -42,6 +46,108 @@ const Booking = () => {
   }, [user]);
 
   if (user?.role === 'admin') {
+    // If admin is on /checkin/:bookingId, fetch booking by ID
+    if (bookingIdFromUrl && bookingIdFromUrl.length > 10) {
+      useEffect(() => {
+        setLoadingAdminBooking(true);
+        setAdminBookingError(null);
+        const auth = localStorage.getItem('auth');
+        let token = '';
+        if (auth) {
+          try {
+            token = JSON.parse(auth).token;
+          } catch {}
+        }
+        fetch(`${API_BASE}/api/admin/bookings/${bookingIdFromUrl}`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
+        })
+          .then(res => res.ok ? res.json() : Promise.reject('Booking not found'))
+          .then(data => {
+            setAdminBooking(data);
+            setLoadingAdminBooking(false);
+          })
+          .catch(err => {
+            setAdminBookingError('Booking not found');
+            setLoadingAdminBooking(false);
+          });
+      }, [bookingIdFromUrl]);
+      if (loadingAdminBooking) {
+        return <div className="min-h-screen flex items-center justify-center"><div>Loading booking...</div></div>;
+      }
+      if (adminBookingError) {
+        return <div className="min-h-screen flex items-center justify-center"><div className="text-center"><h2 className="text-2xl mb-4">Booking not found</h2><Button onClick={() => navigate('/profile')}>Back to Profile</Button></div></div>;
+      }
+      if (adminBooking) {
+        // Render check-in info page for adminBooking
+        return (
+          <div className="min-h-screen bg-[#3f4a40] text-[#efece6] pt-10">
+            <section className="relative overflow-hidden">
+              <div className="absolute inset-0 bg-[#3f4a40]"/>
+              <div className="absolute inset-0 opacity-20 bg-[linear-gradient(90deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:220px_100%]" />
+              <div className="relative max-w-6xl mx-auto px-4 py-12">
+                <div className="rounded-[2rem] border border-[#4b5246] bg-[#3a4035]/95 shadow-2xl overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-b border-[#4b5246]">
+                    <h1 className="text-2xl sm:text-3xl text-[#efece6]">Check-In Information</h1>
+                    <button type="button" onClick={() => navigate(-1)} className="h-9 w-9 rounded-full border border-[#5b6255] text-[#d7d0bf] hover:bg-white/10 flex items-center justify-center" aria-label="Close"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 p-6 lg:p-8">
+                    <div>
+                      <div className="mb-6">
+                        <h2 className="text-xl text-[#efece6]">Check-in Date</h2>
+                        <div className="h-px w-20 bg-[#5b6255] mt-3" />
+                        <div className="mt-2 text-lg">{new Date(adminBooking.checkIn).toLocaleDateString()}</div>
+                      </div>
+                      <div className="mb-6">
+                        <h2 className="text-xl text-[#efece6]">Select Check-in Time *</h2>
+                        <select className="mt-2 w-full h-11 px-4 rounded-xl bg-[#343a30] border border-[#4b5246] text-[#efece6]">
+                          <option>2:00 PM (Standard)</option>
+                        </select>
+                        <div className="mt-2 text-xs text-[#c9c3b6]">Standard check-in time is 2:00 PM. Early check-in subject to availability.</div>
+                      </div>
+                      <div className="mb-6">
+                        <h2 className="text-xl text-[#efece6]">ID Type *</h2>
+                        <select className="mt-2 w-full h-11 px-4 rounded-xl bg-[#343a30] border border-[#4b5246] text-[#efece6]">
+                          <option>Government ID</option>
+                        </select>
+                      </div>
+                      <div className="mb-6">
+                        <h2 className="text-xl text-[#efece6]">Upload ID Proof *</h2>
+                        <input type="file" className="mt-2 w-full h-11 px-4 rounded-xl border border-[#4b5246] bg-[#343a30] text-sm text-[#c9c3b6]" />
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-[#4b5246] bg-[#343a30] p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm uppercase tracking-[0.2em] text-[#c9c3b6]">Booking Details</h3>
+                        <span className="text-xs text-[#c9c3b6]">ID: {adminBooking.id.slice(-6)}</span>
+                      </div>
+                      <div className="space-y-2 text-sm text-[#d7d0bf]">
+                        <div className="flex justify-between"><span>Check-in</span><span>{new Date(adminBooking.checkIn).toLocaleDateString()}</span></div>
+                        <div className="flex justify-between"><span>Check-out</span><span>{new Date(adminBooking.checkOut).toLocaleDateString()}</span></div>
+                        <div className="flex justify-between"><span>Nights</span><span>{(() => {
+                          const checkInDate = new Date(adminBooking.checkIn);
+                          const checkOutDate = new Date(adminBooking.checkOut);
+                          const nights = Math.max(1, Number((checkOutDate.getTime() - checkInDate.getTime()) / (1000*60*60*24)));
+                          return nights;
+                        })()}</span></div>
+                        <div className="flex justify-between"><span>Guests</span><span>{adminBooking.guests}</span></div>
+                        <div className="flex justify-between"><span>Room Charges</span><span>₹{adminBooking.roomPrice.toFixed(2)}</span></div>
+                        <div className="flex justify-between"><span>Status</span><span className="text-green-600">{adminBooking.status}</span></div>
+                      </div>
+                      <Button className="mt-5 w-full rounded-xl border border-[#5b6255] bg-[#efece6] text-[#232b23] hover:bg-[#e5ddca]">Complete Check-In <CheckCircle2 className="w-4 h-4 ml-2" /></Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        );
+      }
+      // fallback
+      return null;
+    }
+    // fallback for admin not on checkin page
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -115,7 +221,7 @@ const Booking = () => {
       const booking = await confirmBooking({
         name: guestName,
         email: guestEmail,
-        phone: guestPhone,
+        phone: guestPhone.replace(/^\+/, ''),
       });
 
       setIsUploading(true);
@@ -180,7 +286,23 @@ const Booking = () => {
   if (currentBooking.checkOutTime && currentBooking.checkOutTime > STANDARD_CHECKOUT) {
     lateCheckOutFee = LATE_CHECKOUT_FEE;
   }
-  const totalWithExtras = currentBooking.totalPrice + earlyCheckInFee + lateCheckOutFee;
+
+  // GST calculation based on room price per night
+  let gstRate = 0;
+  if (room) {
+    if (room.price < 1000) {
+      gstRate = 0;
+    } else if (room.price >= 1000 && room.price <= 7500) {
+      gstRate = 0.05;
+    } else if (room.price > 7500) {
+      gstRate = 0.18;
+    }
+  }
+  const gstAmount = room ? room.price * gstRate * nights : 0;
+
+  // Update taxes to use GST
+  const taxes = gstAmount;
+  const totalWithExtras = currentBooking.roomPrice + taxes + currentBooking.serviceCharges + earlyCheckInFee + lateCheckOutFee;
 
   return (
     <div className="min-h-screen bg-[#3f4a40] text-[#efece6] pt-10">
@@ -284,7 +406,7 @@ const Booking = () => {
                         id="guestPhone"
                         type="tel"
                         placeholder="Enter your phone number"
-                        value={guestPhone}
+                        value={guestPhone.replace(/^\+/, '')}
                         onChange={(e) => setGuestPhone(e.target.value)}
                         className="pl-10 h-11 rounded-xl bg-[#343a30] border-[#4b5246] text-[#efece6] placeholder:text-[#9aa191]"
                         required
@@ -422,32 +544,32 @@ const Booking = () => {
                 <div className="mt-4 pt-4 border-t border-[#4b5246] text-sm text-[#d7d0bf] space-y-2">
                   <div className="flex justify-between">
                     <span>Room Charges</span>
-                    <span>${currentBooking.roomPrice.toFixed(2)}</span>
+                    <span>₹{currentBooking.roomPrice.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Taxes</span>
-                    <span>${currentBooking.taxes.toFixed(2)}</span>
+                    <span>GST ({gstRate * 100}%)</span>
+                    <span>₹{taxes.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Service Charges</span>
-                    <span>${currentBooking.serviceCharges.toFixed(2)}</span>
+                    <span>₹{currentBooking.serviceCharges.toFixed(2)}</span>
                   </div>
                 </div>
                 {earlyCheckInFee > 0 && (
                   <div className="flex justify-between text-[#eab308]">
                     <span>Early Check-In Fee</span>
-                    <span>${earlyCheckInFee.toFixed(2)}</span>
+                    <span>₹{earlyCheckInFee.toFixed(2)}</span>
                   </div>
                 )}
                 {lateCheckOutFee > 0 && (
                   <div className="flex justify-between text-[#eab308]">
                     <span>Late Check-Out Fee</span>
-                    <span>${lateCheckOutFee.toFixed(2)}</span>
+                    <span>₹{lateCheckOutFee.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="mt-4 pt-4 border-t border-[#4b5246] flex items-center justify-between text-[#efece6]">
                   <span className="text-sm">Grand Total</span>
-                  <span className="text-lg">${totalWithExtras.toFixed(2)}</span>
+                  <span className="text-lg">₹{totalWithExtras.toFixed(2)}</span>
                 </div>
                 <Button
                   type="submit"

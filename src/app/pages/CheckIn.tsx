@@ -8,11 +8,13 @@ import { useBooking } from '../context/BookingContext';
 import { toast } from 'sonner';
 import { format, differenceInCalendarDays } from 'date-fns';
 import type { Room } from '../types/room';
+import { useAuth } from '../context/AuthContext';
 
 const CheckIn = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
   const { bookings, bookingsLoading, updateBookingStatus, submitIdProof, refreshBookings } = useBooking();
+  const { isAdmin } = useAuth();
   const booking = bookings.find(b => b.id === bookingId);
   const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [room, setRoom] = useState<Room | null>(null);
@@ -96,45 +98,46 @@ const CheckIn = () => {
   };
 
   const handleCheckIn = async () => {
-    if (!checkInTime) {
-      toast.error('Please select check-in time');
-      return;
-    }
-
-    if (booking.idVerified !== 'approved') {
-      toast.error('Your ID verification is still pending');
-      return;
-    }
-
-    // Early check-in fee logic
-    const STANDARD_CHECKIN = '14:00';
-    let earlyCheckInFee = 0;
-    if (checkInTime < STANDARD_CHECKIN) {
-      earlyCheckInFee = 30; // Flat fee, can be changed
-    }
-
-    // If early check-in, update booking with pending fee
-    if (earlyCheckInFee > 0) {
-      try {
-        const token = localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')).token : null;
-        await fetch(`${API_BASE}/api/bookings/${booking.id}/early-checkin-fee`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ earlyCheckInFee }),
-        });
-        toast.info('Early check-in fee added. Please pay the pending amount.');
-      } catch (err) {
-        toast.error('Failed to add early check-in fee.');
+    if (!isAdmin) {
+      if (!checkInTime) {
+        toast.error('Please select check-in time');
+        return;
+      }
+      if (booking.idVerified !== 'approved') {
+        toast.error('Your ID verification is still pending');
+        return;
+      }
+      // Early check-in fee logic
+      const STANDARD_CHECKIN = '14:00';
+      let earlyCheckInFee = 0;
+      if (checkInTime < STANDARD_CHECKIN) {
+        earlyCheckInFee = 30; // Flat fee, can be changed
+      }
+      // If early check-in, update booking with pending fee
+      if (earlyCheckInFee > 0) {
+        try {
+          const token = localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')).token : null;
+          await fetch(`${API_BASE}/api/bookings/${booking.id}/early-checkin-fee`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ earlyCheckInFee }),
+          });
+          toast.info('Early check-in fee added. Please pay the pending amount.');
+        } catch (err) {
+          toast.error('Failed to add early check-in fee.');
+        }
       }
     }
-
+    // For admin, skip checks and check-in directly
     await updateBookingStatus(booking.id, 'check-in');
     setStep(2);
     toast.success('Check-in successful!');
   };
+
+
 
   // Handle loading state after all hooks
   if (bookingsLoading) {
@@ -431,14 +434,18 @@ const CheckIn = () => {
                   </span>
                 </div>
 
-                <Button
-                  onClick={handleCheckIn}
-                  className="mt-5 w-full rounded-xl border border-[#5b6255] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#e5ddca]"
-                  disabled={booking.idVerified !== 'approved'}
-                >
-                  Complete Check-In
-                  <CheckCircle className="w-4 h-4 ml-2" />
-                </Button>
+
+                {/* Hide check-in button if already checked in */}
+                {booking.status !== 'check-in' && (
+                  <Button
+                    onClick={handleCheckIn}
+                    className="mt-5 w-full rounded-xl border border-[#5b6255] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#e5ddca]"
+                    disabled={!isAdmin && booking.idVerified !== 'approved'}
+                  >
+                    {isAdmin ? 'Check-In (Admin)' : 'Complete Check-In'}
+                    <CheckCircle className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
 
                 {!room && roomLoadError && (
                   <div className="mt-4 rounded-xl border border-red-200 bg-red-950/40 px-4 py-3 text-sm text-red-200">

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import { Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -21,10 +21,34 @@ const Services = () => {
   const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) || 'http://localhost:5000';
 
   const categories = {
-    dining: 'In-Room Dining',
-    restaurant: 'Restaurant',
+    restaurant: 'Bite Book (Restaurant)',
+    dining: 'Room Service (In-room dining)',
     spa: 'Spa & Wellness',
     bar: 'Bar & Lounge',
+  };
+
+  // Refs for each category section
+  const categoryRefs = {
+    dining: useRef<HTMLDivElement>(null),
+    restaurant: useRef<HTMLDivElement>(null),
+    spa: useRef<HTMLDivElement>(null),
+    bar: useRef<HTMLDivElement>(null),
+  };
+
+  // Map display name to internal key
+  const displayNameToKey = {
+    'Bite Book (Restaurant)': 'restaurant',
+    'Room Service (In-room dining)': 'dining',
+    'Spa & Wellness': 'spa',
+    'Bar & Lounge': 'bar',
+  } as const;
+
+  const handleCategoryClick = (displayName: string) => {
+    const key = displayNameToKey[displayName];
+    const ref = categoryRefs[key];
+    if (ref && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const resolveImageUrl = (imageUrl: string) => {
@@ -75,16 +99,35 @@ const Services = () => {
           throw new Error(`Failed to load services (${response.status})`);
         }
         const data = (await response.json()) as any[];
-        const normalized = data.map((service) => ({
-          id: service._id || service.id,
-          name: service.name,
-          category: (String(service.category || '').toLowerCase() as 'dining' | 'restaurant' | 'spa' | 'bar'),
-          description: service.description || '',
-          image: service.image || '',
-          video: service.video || '',
-          priceRange: service.priceRange || '',
-          availableTimes: service.availableTimes || [],
-        }));
+        // Map backend category to internal key
+        const categoryMap: Record<string, 'dining' | 'restaurant' | 'spa' | 'bar'> = {
+          'in-room dining': 'dining',
+          'bite book': 'restaurant',
+          'spa&wellness': 'spa',
+          'bar&lounge': 'bar',
+        };
+        const normalized = data.map((service) => {
+          // Normalize category to internal key
+          let rawCat = String(service.category || '').trim().toLowerCase();
+          // Remove spaces and special chars for matching
+          rawCat = rawCat.replace(/\s|&/g, '');
+          let key: 'dining' | 'restaurant' | 'spa' | 'bar' = 'dining';
+          if (rawCat === 'restaurant' || rawCat.includes('restaurant')) key = 'restaurant';
+          else if (rawCat.includes('bitebook')) key = 'restaurant';
+          else if (rawCat.includes('dining')) key = 'dining';
+          else if (rawCat.includes('spa')) key = 'spa';
+          else if (rawCat.includes('bar')) key = 'bar';
+          return {
+            id: service._id || service.id,
+            name: service.name,
+            category: key,
+            description: service.description || '',
+            image: service.image || '',
+            video: service.video || '',
+            priceRange: service.priceRange || '',
+            availableTimes: service.availableTimes || [],
+          };
+        });
         setServices(normalized);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load services';
@@ -125,13 +168,15 @@ const Services = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              {Object.entries(categories).map(([key, label]) => (
-                <span
-                  key={key}
-                  className="rounded-full border border-[#5b6659] bg-[#2f3a32]/70 px-4 py-2 text-xs text-[#d7d2c5]"
+              {Object.values(categories).map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="rounded-full border border-[#5b6659] bg-[#2f3a32]/70 px-4 py-2 text-xs text-[#d7d2c5] hover:bg-[#3a463a] focus:outline-none focus:ring-2 focus:ring-amber-400 transition-colors"
+                  onClick={() => handleCategoryClick(label)}
                 >
                   {label}
-                </span>
+                </button>
               ))}
             </div>
           </div>
@@ -176,11 +221,13 @@ const Services = () => {
               {!isLoading && !loadError && services.length > 0 &&
                 Object.entries(categories).map(([category, title]) => {
                   const categoryServices = services.filter((service) => service.category === category);
-                  if (categoryServices.length === 0) {
-                    return null;
-                  }
                   return (
-                    <div key={category} id={`services-${category}`} className="mb-14 scroll-mt-24">
+                    <div
+                      key={category}
+                      id={`services-${category}`}
+                      ref={categoryRefs[category as keyof typeof categories]}
+                      className="mb-14 scroll-mt-24"
+                    >
                       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 items-start">
                         <div className="rounded-3xl border border-[#5b6659] bg-[#2f3a32]/90 p-5">
                           <p className="text-xs uppercase tracking-[0.2em] text-[#cfc9bb]">
