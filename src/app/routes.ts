@@ -21,7 +21,6 @@ import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentFailed from './pages/PaymentFailed';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminSignup from './pages/AdminSignup';
-import AdminNewsletter from './pages/AdminNewsletter';
 import ForgotPassword from './pages/ForgotPassword';
 import Notifications from './pages/Notifications';
 
@@ -48,8 +47,7 @@ export const router = createBrowserRouter([
       { path: 'about', Component: About },
       // Admin routes as children of Layout
       { path: 'admin', Component: AdminDashboard },
-      { path: 'admin/newsletters', Component: AdminNewsletter },
-        { path: 'admin-signup', Component: AdminSignup },
+      { path: 'admin-signup', Component: AdminSignup },
       { path: 'notifications', Component: Notifications },
     ],
   },

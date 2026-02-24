@@ -200,6 +200,8 @@ const AdminDashboard = () => {
   const [offersState, setOffersState] = useState<AdminOffer[]>([]);
   const [contactsState, setContactsState] = useState<AdminContact[]>([]);
   const [contactStatsState, setContactStatsState] = useState<ContactStats | null>(null);
+  const [newsletterSubscriptions, setNewsletterSubscriptions] = useState<any[]>([]);
+  const [newsletterLoading, setNewsletterLoading] = useState(false);
   const [statsState, setStatsState] = useState<AdminStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -444,15 +446,18 @@ const AdminDashboard = () => {
 
     if (!response.ok) {
       let message = `Request failed (${response.status})`;
+      let errorData: any = null;
       try {
-        const data = await response.json();
-        if (data?.message) {
-          message = data.message;
+        errorData = await response.json();
+        if (errorData?.message) {
+          message = errorData.message;
         }
       } catch {
         // ignore
       }
-      throw new Error(message);
+      const error = new Error(message);
+      (error as any).errorData = errorData;
+      throw error;
     }
 
     return response.json();
@@ -764,6 +769,7 @@ const AdminDashboard = () => {
           servicesData,
           serviceBookingsData,
           offersData,
+          newslettersData,
         ] = await Promise.all([
           fetchJson('/api/admin/stats'),
           fetchJson('/api/admin/rooms'),
@@ -773,6 +779,7 @@ const AdminDashboard = () => {
           fetchJson('/api/admin/services'),
           fetchJson('/api/admin/service-bookings'),
           fetchJson('/api/admin/offers'),
+          fetchJson('/api/admin/newsletters'),
         ]);
 
         setStatsState(statsData as AdminStats);
@@ -810,6 +817,7 @@ const AdminDashboard = () => {
         setServicesState((servicesData as any[]).map(normalizeService));
         setServiceBookingsState((serviceBookingsData as any[]).map(normalizeServiceBooking));
         setOffersState((offersData as any[]).map(normalizeOffer));
+        setNewsletterSubscriptions(newslettersData as any[] || []);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load admin data';
         setLoadError(message);
@@ -1694,6 +1702,46 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteNewsletterSubscription = async (id: string) => {
+    try {
+      await fetchJson(`/api/admin/newsletters/${id}`, { method: 'DELETE' });
+      toast.success('Subscription deleted');
+      setNewsletterSubscriptions(prev => prev.filter(sub => sub._id !== id));
+    } catch (error) {
+      toast.error('Failed to delete subscription');
+    }
+  };
+
+  const handleExportNewsletterSubscriptions = async () => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${API_BASE}/api/admin/newsletters/export`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export subscriptions');
+      }
+
+      const csv = await response.text();
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'newsletter-subscriptions.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Exported subscriptions');
+    } catch (error) {
+      toast.error('Failed to export subscriptions');
+    }
+  };
+
   const handleImportServiceBookingsFromExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const file = event.target.files?.[0];
@@ -1728,29 +1776,48 @@ const AdminDashboard = () => {
       const invalidRows: number[] = [];
       const allowedStatuses = new Set(['pending', 'confirmed', 'cancelled']);
 
+      // Debug: Log column names from first row to see what we're working with
+      if (jsonData.length > 0) {
+        console.log('Excel column names found:', Object.keys(jsonData[0]));
+        console.log('First row sample:', jsonData[0]);
+      }
+
       const bookings = jsonData
         .map((row, index) => {
-          const serviceId = String(row['Service ID'] ?? '').trim();
-          const serviceName = String(row['Service Name'] ?? '').trim();
-          const guestName = String(row['Guest Name'] ?? '').trim();
-          const guestEmail = String(row['Guest Email'] ?? '').trim();
-          const guestPhone = String(row['Guest Phone'] ?? '').trim() || 'N/A';
-          const date = toIsoDate(row['Date']);
-          const time = String(row['Time'] ?? '').trim();
-          const guests = Number(row['Guests'] ?? 1) || 1;
-          const statusRaw = String(row['Status'] ?? '').trim().toLowerCase();
+          // Try multiple possible column name variations
+          const serviceId = String(row['Service ID'] ?? row['serviceId'] ?? row['ServiceID'] ?? '').trim();
+          const serviceName = String(row['Service Name'] ?? row['serviceName'] ?? row['ServiceName'] ?? '').trim();
+          const guestName = String(row['Guest Name'] ?? row['guestName'] ?? row['GuestName'] ?? '').trim();
+          const guestEmail = String(row['Guest Email'] ?? row['guestEmail'] ?? row['GuestEmail'] ?? '').trim();
+          const guestPhone = String(row['Guest Phone'] ?? row['guestPhone'] ?? row['GuestPhone'] ?? '').trim() || 'N/A';
+          const date = toIsoDate(row['Date'] ?? row['date']);
+          const time = String(row['Time'] ?? row['time'] ?? '').trim();
+          const guests = Number(row['Guests'] ?? row['guests'] ?? 1) || 1;
+          const statusRaw = String(row['Status'] ?? row['status'] ?? '').trim().toLowerCase();
           const status = allowedStatuses.has(statusRaw) ? statusRaw : 'pending';
 
           if ((!serviceId && !serviceName) || !guestName || !guestEmail || !date || !time) {
             invalidRows.push(index + 2);
+            if (index === 0) {
+              console.log('First row validation failed:', {
+                serviceId,
+                serviceName,
+                guestName,
+                guestEmail,
+                date,
+                time,
+                guests,
+                rowKeys: Object.keys(row)
+              });
+            }
             return null;
           }
 
           return {
-            id: row['Booking ID'] || `SERVICE-${Date.now()}-${index}`,
+            id: row['Booking ID'] ?? row['bookingId'] ?? row['BookingID'] ?? `SERVICE-${Date.now()}-${index}`,
             serviceId: serviceId || undefined,
             serviceName: serviceName || undefined,
-            category: row['Category'] || undefined,
+            category: row['Category'] ?? row['category'] ?? undefined,
             date,
             time,
             guests,
@@ -1758,7 +1825,7 @@ const AdminDashboard = () => {
             guestEmail,
             guestPhone,
             status,
-            specialRequests: row['Special Requests'] || '',
+            specialRequests: row['Special Requests'] ?? row['specialRequests'] ?? row['SpecialRequests'] ?? '',
           };
         })
         .filter(Boolean);
@@ -1768,6 +1835,16 @@ const AdminDashboard = () => {
         return;
       }
 
+      if (bookings.length === 0) {
+        alert('No valid bookings found in the file. Please check your Excel file format.');
+        return;
+      }
+
+      // Debug: Log first booking to see what we're sending
+      console.log('Sample booking data being sent:', JSON.stringify(bookings[0], null, 2));
+      console.log('All bookings being sent:', JSON.stringify(bookings.slice(0, 3), null, 2));
+      console.log('Total bookings to import:', bookings.length);
+
       const response = await fetchJson('/api/admin/service-bookings/bulk-import', {
         method: 'POST',
         body: JSON.stringify({ bookings }),
@@ -1776,11 +1853,74 @@ const AdminDashboard = () => {
       if (response.success) {
         const updated = await fetchJson('/api/admin/service-bookings');
         setServiceBookingsState((updated as any[]).map(normalizeServiceBooking));
-        alert(`Successfully imported ${response.count} service bookings!`);
+        let message = `Successfully imported ${response.count} service booking(s)!`;
+        if (response.errors && response.errors.length > 0) {
+          message += `\n\n⚠️ ${response.errors.length} row(s) had errors:\n${response.errors.slice(0, 10).join('\n')}`;
+          if (response.errors.length > 10) {
+            message += `\n... and ${response.errors.length - 10} more error(s)`;
+          }
+        }
+        toast.success(message);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to import service bookings from Excel';
+      let message = 'Failed to import service bookings from Excel';
+      let errorDetails: any = null;
+      
+      // Try to extract detailed error message from response
+      if (error instanceof Error) {
+        // Check if errorData was attached
+        if ((error as any).errorData) {
+          errorDetails = (error as any).errorData;
+        } else {
+          const errorMatch = error.message.match(/Request failed \(400\): (.+)/);
+          if (errorMatch) {
+            try {
+              errorDetails = JSON.parse(errorMatch[1]);
+            } catch {
+              message = errorMatch[1];
+            }
+          }
+        }
+      }
+      
+      if (errorDetails) {
+        if (errorDetails.errors && Array.isArray(errorDetails.errors) && errorDetails.errors.length > 0) {
+          message = `Import failed:\n\n${errorDetails.errors.slice(0, 10).join('\n')}`;
+          if (errorDetails.errors.length > 10) {
+            message += `\n... and ${errorDetails.errors.length - 10} more error(s)`;
+          }
+        } else if (errorDetails.message) {
+          message = errorDetails.message;
+          if (errorDetails.errors && Array.isArray(errorDetails.errors) && errorDetails.errors.length > 0) {
+            message += `\n\nErrors:\n${errorDetails.errors.slice(0, 10).join('\n')}`;
+          }
+        }
+      }
+      
+      // Show error in alert for better visibility (toast might be too small)
+      console.error('Import error:', error);
+      console.error('Error details:', errorDetails);
+      console.error('Full error object:', JSON.stringify(errorDetails, null, 2));
+      
+      // Build comprehensive error message
+      if (errorDetails) {
+        if (errorDetails.errors && Array.isArray(errorDetails.errors) && errorDetails.errors.length > 0) {
+          message = `Import Failed!\n\n${errorDetails.message || 'No valid bookings to import'}\n\nErrors found:\n${errorDetails.errors.slice(0, 15).join('\n')}`;
+          if (errorDetails.errors.length > 15) {
+            message += `\n... and ${errorDetails.errors.length - 15} more error(s)`;
+          }
+        } else {
+          message = errorDetails.message || message;
+          if (errorDetails.totalRows !== undefined) {
+            message += `\n\nTotal rows: ${errorDetails.totalRows}`;
+            message += `\nValid rows: ${errorDetails.validRows || 0}`;
+            message += `\nInvalid rows: ${errorDetails.invalidRows || errorDetails.totalRows}`;
+          }
+        }
+      }
+      
       alert(message);
+      toast.error('Import failed - see alert for details', { duration: 5000 });
     }
 
     event.target.value = '';
@@ -4274,6 +4414,94 @@ const AdminDashboard = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'newsletter' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Newsletter Subscriptions</h1>
+                    <p className="text-[#cbbfa8] mt-1 text-sm">Manage newsletter subscribers and export the latest list</p>
+                  </div>
+                  <Button
+                    onClick={handleExportNewsletterSubscriptions}
+                    className="h-12 px-6 rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
+
+                {newsletterLoading && (
+                  <div className="rounded-xl border border-[#5b6255] bg-[#2f3a32]/80 px-4 py-3 text-sm text-[#d7d2c5] mb-6">
+                    Loading subscriptions...
+                  </div>
+                )}
+
+                {newsletterSubscriptions.length === 0 && !newsletterLoading && (
+                  <div className="rounded-2xl border border-[#5b6255] bg-[#2f3a32]/80 px-4 py-10 text-center text-[#d7d2c5]">
+                    <Mail className="w-8 h-8 mx-auto mb-3 text-[#a89f90]" />
+                    No newsletter subscriptions yet.
+                  </div>
+                )}
+
+                {newsletterSubscriptions.length > 0 && (
+                  <div className="rounded-2xl border border-[#5b6255] bg-[#2f3a32]/90 overflow-hidden shadow-xl">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-[#384237]">
+                          <tr>
+                            <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-widest text-[#cfc9bb]">
+                              Email
+                            </th>
+                            <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-widest text-[#cfc9bb]">
+                              Subscribed At
+                            </th>
+                            <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-widest text-[#cfc9bb]">
+                              Status
+                            </th>
+                            <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-widest text-[#cfc9bb]">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {newsletterSubscriptions.map((sub) => (
+                            <tr key={sub._id} className="border-b border-[#465045] last:border-b-0">
+                              <td className="px-6 py-4 text-sm text-[#efece6]">{sub.email}</td>
+                              <td className="px-6 py-4 text-sm text-[#cfc9bb]">
+                                {new Date(sub.subscribedAt).toLocaleDateString()}
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                <span
+                                  className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                    sub.active
+                                      ? 'bg-emerald-500/20 text-emerald-200'
+                                      : 'bg-rose-500/20 text-rose-200'
+                                  }`}
+                                >
+                                  {sub.active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-rose-300/40 text-rose-200 hover:bg-rose-500/10"
+                                  onClick={() => handleDeleteNewsletterSubscription(sub._id)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  Delete
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
