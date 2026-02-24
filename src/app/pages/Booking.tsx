@@ -41,7 +41,7 @@ const Booking = () => {
     if (user) {
       setGuestName(user.name || '');
       setGuestEmail(user.email || '');
-      setGuestPhone(user.phone || '');
+      setGuestPhone((user.phone || '').replace(/^\+/, ''));
     }
   }, [user]);
 
@@ -407,7 +407,7 @@ const Booking = () => {
                         type="tel"
                         placeholder="Enter your phone number"
                         value={guestPhone.replace(/^\+/, '')}
-                        onChange={(e) => setGuestPhone(e.target.value)}
+                        onChange={(e) => setGuestPhone(e.target.value.replace(/^\+/, ''))}
                         className="pl-10 h-11 rounded-xl bg-[#343a30] border-[#4b5246] text-[#efece6] placeholder:text-[#9aa191]"
                         required
                       />

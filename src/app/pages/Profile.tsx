@@ -79,7 +79,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editedName, setEditedName] = React.useState(user?.name || '');
   const [editedEmail, setEditedEmail] = React.useState(user?.email || '');
-  const [editedPhone, setEditedPhone] = React.useState(user?.phone || '');
+  const [editedPhone, setEditedPhone] = React.useState((user?.phone || '').replace(/^\+/, ''));
   const [isSecurityOpen, setIsSecurityOpen] = React.useState(false);
   const [isTwoFactorOpen, setIsTwoFactorOpen] = React.useState(false);
   const [securityForm, setSecurityForm] = React.useState({
@@ -106,7 +106,7 @@ const Profile = () => {
   React.useEffect(() => {
     setEditedName(user?.name || '');
     setEditedEmail(user?.email || '');
-    setEditedPhone(user?.phone || '');
+    setEditedPhone((user?.phone || '').replace(/^\+/, ''));
   }, [user]);
 
   const handleTabChange = (tab: string) => {
@@ -282,7 +282,7 @@ const Profile = () => {
         body: JSON.stringify({
           name: editedName,
           email: editedEmail,
-          phone: editedPhone
+          phone: editedPhone.replace(/^\+/, '')
         })
       });
 
@@ -307,7 +307,7 @@ const Profile = () => {
   const handleCancelEdit = () => {
     setEditedName(user?.name || '');
     setEditedEmail(user?.email || '');
-    setEditedPhone(user?.phone || '');
+    setEditedPhone((user?.phone || '').replace(/^\+/, ''));
     setIsEditing(false);
   };
 
@@ -702,7 +702,7 @@ const Profile = () => {
                     ) : (
                       <div className="flex items-center gap-2 mt-1">
                         <Phone className="w-4 h-4 text-[#c9c3b6]" />
-                        <span className="font-medium text-[#efece6]">{user.phone || 'Not provided'}</span>
+                        <span className="font-medium text-[#efece6]">{(user.phone || 'Not provided').replace(/^\+/, '')}</span>
                       </div>
                     )}
                   </div>

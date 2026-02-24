@@ -59,7 +59,9 @@ import {
   Coffee,
   LogOut,
   Waves,
-  Search
+  Search,
+  LogIn,
+  DoorOpen
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MoreVertical } from 'lucide-react';
@@ -260,6 +262,7 @@ const AdminDashboard = () => {
   const [offerImageFile, setOfferImageFile] = useState<File | null>(null);
   const [isServiceBookingFormOpen, setIsServiceBookingFormOpen] = useState(false);
   const [activeServiceCategory, setActiveServiceCategory] = useState<AdminService['category']>('restaurant');
+  const [activeServiceBookingCategory, setActiveServiceBookingCategory] = useState<AdminService['category']>('restaurant');
   const [expandedServiceBookingCategories, setExpandedServiceBookingCategories] = useState<Set<string>>(new Set(['restaurant']));
   const [bookingForm, setBookingForm] = useState({
     roomId: '',
@@ -948,6 +951,10 @@ const AdminDashboard = () => {
   const servicesForActiveCategory = servicesState
     .filter((service) => service.category === activeServiceCategory)
     .slice(0, 5);
+  
+  const serviceBookingsForActiveCategory = filteredServiceBookings
+    .filter((booking) => booking.category === activeServiceBookingCategory);
+  
   const settingsInputClass =
     'mt-1 bg-[#2f3a32]/90 border border-[#5b6659] text-[#efece6] placeholder:text-[#cfc9bb] focus-visible:ring-2 focus-visible:ring-amber-500/60';
 
@@ -1631,7 +1638,7 @@ const AdminDashboard = () => {
         serviceId: serviceBookingForm.serviceId,
         guestName: serviceBookingForm.guestName.trim(),
         guestEmail: serviceBookingForm.guestEmail.trim(),
-        guestPhone: serviceBookingForm.guestPhone.trim(),
+        guestPhone: serviceBookingForm.guestPhone.trim().replace(/^\+/, ''),
         date: new Date(serviceBookingForm.date).toISOString(),
         time: serviceBookingForm.time.trim(),
         guests: Number(serviceBookingForm.guests) || 1,
@@ -1804,7 +1811,7 @@ const AdminDashboard = () => {
         roomId: bookingForm.roomId,
         guestName: bookingForm.guestName.trim(),
         guestEmail: bookingForm.guestEmail.trim(),
-        guestPhone: bookingForm.guestPhone.trim(),
+        guestPhone: bookingForm.guestPhone.trim().replace(/^\+/, ''),
         checkIn: new Date(bookingForm.checkIn).toISOString(),
         checkOut: new Date(bookingForm.checkOut).toISOString(),
         status: bookingForm.status,
@@ -1915,7 +1922,7 @@ const AdminDashboard = () => {
             <div>{booking.guestName}</div>
             <div className="text-sm text-stone-600">{booking.guestEmail}</div>
           </td>
-          <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
+          <td className="py-4 px-4">{(booking.guestPhone || 'N/A').replace(/^\+/, '')}</td>
           <td className="py-4 px-4">{room?.name}</td>
           <td className="py-4 px-4">
             <div className="text-sm">
@@ -1926,9 +1933,41 @@ const AdminDashboard = () => {
             </div>
           </td>
           <td className="py-4 px-4">
-            <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-              {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-            </span>
+            <div className="flex flex-col gap-2">
+              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+              </span>
+              {/* Show Check-In button if status is confirmed and ID is approved */}
+              {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 h-auto"
+                  onClick={() => {
+                    if (window.confirm("Check in this guest now?")) {
+                      onUpdateStatus(booking.id, 'checked-in');
+                    }
+                  }}
+                >
+                  <LogIn className="w-3 h-3 mr-1" />
+                  Check-In
+                </Button>
+              )}
+              {/* Show Check-Out button if status is checked-in */}
+              {booking.status === 'checked-in' && (
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1 h-auto"
+                  onClick={() => {
+                    if (window.confirm("Confirm Check-Out for this guest?")) {
+                      onUpdateStatus(booking.id, 'checked-out');
+                    }
+                  }}
+                >
+                  <DoorOpen className="w-3 h-3 mr-1" />
+                  Check-Out
+                </Button>
+              )}
+            </div>
           </td>
           <td className="py-4 px-4">
             {booking.idProofUrl ? (
@@ -1988,58 +2027,41 @@ const AdminDashboard = () => {
                       <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>Reject</DropdownMenuItem>
                     </>
                   )}
-                  {/* Show Check-In button if status is confirmed and ID is approved */}
-                  {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
-                    <DropdownMenuItem onClick={() => {
-                      if (window.confirm("Check in this user now?")) {
-                        onUpdateStatus(booking.id, 'checked-in');
-                      }
-                    }}>Check-In</DropdownMenuItem>
-                  )}
-                  {booking.status === 'checked-in' && (
-                    <>
-                      {/* Pay Now button if payment is not paid */}
-                      {booking.paymentStatus !== 'paid' && (
-                        <DropdownMenuItem>
-                          <div className="flex flex-col">
-                            <span className="font-semibold mb-1">Pay Now</span>
-                            <div className="flex gap-2">
-                              <button
-                                className="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await onUpdateStatus(booking.id, 'checked-in', 'paid', 'cash');
-                                    setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'cash', paymentStatus: 'paid' } : b));
-                                    window.location.reload();
-                                  } catch { }
-                                }}
-                              >
-                                Cash
-                              </button>
-                              <button
-                                className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await onUpdateStatus(booking.id, 'checked-in', 'paid', 'online');
-                                    setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'online', paymentStatus: 'paid' } : b));
-                                    window.location.reload();
-                                  } catch { }
-                                }}
-                              >
-                                Online
-                              </button>
-                            </div>
-                          </div>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => {
-                        if (window.confirm("Confirm Check-Out?")) {
-                          onUpdateStatus(booking.id, 'checked-out');
-                        }
-                      }}>Check Out</DropdownMenuItem>
-                    </>
+                  {/* Pay Now button if payment is not paid and checked-in */}
+                  {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
+                    <DropdownMenuItem>
+                      <div className="flex flex-col">
+                        <span className="font-semibold mb-1">Pay Now</span>
+                        <div className="flex gap-2">
+                          <button
+                            className="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await onUpdateStatus(booking.id, 'checked-in', 'paid', 'cash');
+                                setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'cash', paymentStatus: 'paid' } : b));
+                                window.location.reload();
+                              } catch { }
+                            }}
+                          >
+                            Cash
+                          </button>
+                          <button
+                            className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await onUpdateStatus(booking.id, 'checked-in', 'paid', 'online');
+                                setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'online', paymentStatus: 'paid' } : b));
+                                window.location.reload();
+                              } catch { }
+                            }}
+                          >
+                            Online
+                          </button>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -2061,7 +2083,7 @@ const AdminDashboard = () => {
                 <div>{booking.guestName}</div>
                 <div className="text-sm text-stone-600">{booking.guestEmail}</div>
               </div>
-              <div className="py-4 px-4">{booking.guestPhone || 'N/A'}</div>
+              <div className="py-4 px-4">{(booking.guestPhone || 'N/A').replace(/^\+/, '')}</div>
               <div className="py-4 px-4">{room?.name}</div>
               <div className="py-4 px-4">
                 <div className="text-sm">
@@ -2072,9 +2094,39 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <div className="py-4 px-4">
-                <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-                  {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                </span>
+                <div className="flex flex-col gap-2">
+                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                    {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                  </span>
+                  {/* Show Check-In button if status is confirmed and ID is approved */}
+                  {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
+                    <button
+                      className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs flex items-center gap-1"
+                      onClick={() => {
+                        if (window.confirm("Check in this guest now?")) {
+                          onUpdateStatus(booking.id, 'checked-in');
+                        }
+                      }}
+                    >
+                      <LogIn className="w-3 h-3" />
+                      Check-In
+                    </button>
+                  )}
+                  {/* Show Check-Out button if status is checked-in */}
+                  {booking.status === 'checked-in' && (
+                    <button
+                      className="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs flex items-center gap-1"
+                      onClick={() => {
+                        if (window.confirm("Confirm Check-Out for this guest?")) {
+                          onUpdateStatus(booking.id, 'checked-out');
+                        }
+                      }}
+                    >
+                      <DoorOpen className="w-3 h-3" />
+                      Check-Out
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="py-4 px-4">
                 {booking.idProofUrl ? (
@@ -2134,19 +2186,41 @@ const AdminDashboard = () => {
                       <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>Reject</DropdownMenuItem>
                     </>
                   )}
-                  {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
-                    <DropdownMenuItem onClick={() => {
-                      if (window.confirm("Check in this user now?")) {
-                        onUpdateStatus(booking.id, 'checked-in');
-                      }
-                    }}>Check-In</DropdownMenuItem>
-                  )}
-                  {booking.status === 'checked-in' && (
-                    <DropdownMenuItem onClick={() => {
-                      if (window.confirm("Confirm Check-Out?")) {
-                        onUpdateStatus(booking.id, 'checked-out');
-                      }
-                    }}>Check Out</DropdownMenuItem>
+                  {/* Pay Now button if payment is not paid and checked-in */}
+                  {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
+                    <DropdownMenuItem>
+                      <div className="flex flex-col">
+                        <span className="font-semibold mb-1">Pay Now</span>
+                        <div className="flex gap-2">
+                          <button
+                            className="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await onUpdateStatus(booking.id, 'checked-in', 'paid', 'cash');
+                                setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'cash', paymentStatus: 'paid' } : b));
+                                window.location.reload();
+                              } catch { }
+                            }}
+                          >
+                            Cash
+                          </button>
+                          <button
+                            className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await onUpdateStatus(booking.id, 'checked-in', 'paid', 'online');
+                                setBookingsState((prev) => prev.map(b => b.id === booking.id ? { ...b, paymentMethod: 'online', paymentStatus: 'paid' } : b));
+                                window.location.reload();
+                              } catch { }
+                            }}
+                          >
+                            Online
+                          </button>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -2461,7 +2535,7 @@ const AdminDashboard = () => {
                           recentBookings.map((booking) => {
                             const room = roomsState.find(r => r.id === booking.roomId);
                             const user = usersState.find(u => u.id === booking.userId);
-                            const phone = booking.guestPhone || user?.phone || 'N/A';
+                            const phone = (booking.guestPhone || user?.phone || 'N/A').replace(/^\+/, '');
                             return (
                               <tr key={booking.id} className="border-b border-[#4b5246]">
                                 <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
@@ -2543,7 +2617,7 @@ const AdminDashboard = () => {
                               <tr key={booking.id} className="border-b border-[#4b5246]">
                                 <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
                                 <td className="py-4 px-4">{booking.guestName}</td>
-                                <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
+                                <td className="py-4 px-4">{(booking.guestPhone || 'N/A').replace(/^\+/, '')}</td>
                                 <td className="py-4 px-4">{service?.name || booking.serviceName || 'N/A'}</td>
                                 <td className="py-4 px-4">{new Date(booking.date).toLocaleDateString()}</td>
                                 <td className="py-4 px-4">{booking.time}</td>
@@ -3376,8 +3450,8 @@ const AdminDashboard = () => {
                         <Input
                           className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
                           placeholder="Guest Phone"
-                          value={bookingForm.guestPhone}
-                          onChange={(event) => setBookingForm({ ...bookingForm, guestPhone: event.target.value })}
+                          value={bookingForm.guestPhone.replace(/^\+/, '')}
+                          onChange={(event) => setBookingForm({ ...bookingForm, guestPhone: event.target.value.replace(/^\+/, '') })}
                           required
                         />
                       </div>
@@ -3600,8 +3674,8 @@ const AdminDashboard = () => {
                       <Input
                         className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                         placeholder="Guest Phone"
-                        value={serviceBookingForm.guestPhone}
-                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestPhone: event.target.value })}
+                        value={serviceBookingForm.guestPhone.replace(/^\+/, '')}
+                        onChange={(event) => setServiceBookingForm({ ...serviceBookingForm, guestPhone: event.target.value.replace(/^\+/, '') })}
                         required
                       />
                       <Input
@@ -3693,120 +3767,128 @@ const AdminDashboard = () => {
                     <p className="text-stone-600">No service bookings yet</p>
                   </div>
                 ) : (
-                  <div className="space-y-8">
-                    {serviceCategories.map((category) => {
-                      const categoryBookings = filteredServiceBookings.filter((booking) => booking.category === category.key);
-                      const categoryColor: Record<string, string> = {
-                        restaurant: 'border-[#e7d6ad]',
-                        spa: 'border-[#cbbfa8]',
-                        bar: 'border-[#d7d0bf]',
-                        dining: 'border-[#efece6]',
-                      };
-                      const isExpanded = expandedServiceBookingCategories.has(category.key);
-
-                      return (
-                        <div key={category.key}>
+                  <div>
+                    <div className="flex flex-wrap gap-3 mb-6">
+                      {serviceCategories.map((category) => {
+                        const isActive = activeServiceBookingCategory === category.key;
+                        return (
                           <button
-                            onClick={() => toggleServiceBookingCategory(category.key)}
-                            className={`w-full flex items-center justify-between gap-3 mb-4 pb-3 border-b-2 ${categoryColor[category.key] || 'border-[#3a463a]'} bg-[#232b23] text-[#f5f1e8] px-2 py-2 -mx-2 rounded-2xl transition-colors shadow-lg`}
+                            key={category.key}
+                            type="button"
+                            onClick={() => setActiveServiceBookingCategory(category.key)}
+                            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide border transition-colors ${isActive
+                              ? 'bg-amber-500 text-stone-900 border-amber-400'
+                              : 'bg-[#2f3931] text-[#d7d2c5] border-[#5b6659] hover:bg-[#364036]'
+                              }`}
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="text-2xl">🍴🧖🍹🍽️</div>
-                              <div className="text-left">
-                                <h2 className="text-lg font-bold text-stone-900">{category.label}</h2>
-                                <p className="text-xs text-stone-500">{categoryBookings.length} booking{categoryBookings.length !== 1 ? 's' : ''}</p>
-                              </div>
-                            </div>
-                            <div className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-                              <svg className="w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                              </svg>
-                            </div>
+                            {category.label}
                           </button>
+                        );
+                      })}
+                    </div>
 
-                          {isExpanded && (
-                            <>
-                              {categoryBookings.length === 0 ? (
-                                <p className="text-sm text-stone-500 py-6">No bookings</p>
-                              ) : (
-                                <div className="bg-[#232b23] rounded-2xl border border-[#3a463a] overflow-hidden mb-8 shadow-lg">
-                                  <div className="overflow-x-auto text-sm">
-                                    <table className="w-full">
-                                      <thead>
-                                        <tr className="bg-[#2e362e] border-b border-[#3a463a]">
-                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Guest</th>
-                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Phone No.</th>
-                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Service</th>
-                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Date</th>
-                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Time</th>
-                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Status</th>
-                                          <th className="text-left py-3 px-4 font-semibold text-[#f5f1e8]">Actions</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {categoryBookings.map((booking) => (
-                                          <tr key={booking.id} className="border-b border-[#3a463a] hover:bg-[#2e362e]">
-                                            <td className="py-3 px-4">
-                                              <div className="font-medium text-[#efece6]">{booking.guestName}</div>
-                                              <div className="text-xs text-[#b6b6b6]">{booking.guestEmail}</div>
-                                            </td>
-                                            <td className="py-4 px-4">{booking.guestPhone || 'N/A'}</td>
-                                            <td className="py-3 px-4 text-[#f5f1e8]">{booking.serviceName || 'N/A'}</td>
-                                            <td className="py-3 px-4 text-[#f5f1e8]">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                                            <td className="py-3 px-4 text-[#f5f1e8]">{booking.time}</td>
-                                            <td className="py-3 px-4">
-                                              <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
-                                                {booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Approved' : booking.status === 'cancelled' ? 'Rejected' : booking.status}
-                                              </span>
-                                            </td>
-                                            <td className="py-3 px-4">
-                                              {booking.status === 'pending' ? (
-                                                <div className="flex flex-wrap gap-2">
-                                                  <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none"
-                                                    onClick={(e) => {
-                                                      e.preventDefault();
-                                                      e.stopPropagation();
-                                                      handleServiceBookingActionClick(booking.id, 'approve');
-                                                    }}
-                                                  >
-                                                    Approve
-                                                  </Button>
-                                                  <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="bg-rose-200 text-rose-800 hover:bg-rose-300 border-none"
-                                                    onClick={(e) => {
-                                                      e.preventDefault();
-                                                      e.stopPropagation();
-                                                      handleServiceBookingActionClick(booking.id, 'reject');
-                                                    }}
-                                                  >
-                                                    Reject
-                                                  </Button>
-                                                </div>
-                                              ) : booking.status === 'confirmed' ? (
-                                                <span className="inline-block px-3 py-1 rounded-full bg-green-100 text-green-800 text-xs font-semibold">Approved</span>
-                                              ) : booking.status === 'cancelled' ? (
-                                                <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-semibold">Rejected</span>
-                                              ) : null}
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {serviceBookingsForActiveCategory.length === 0 ? (
+                      <p className="text-sm text-[#cbbfa8] py-8">No service bookings in this category</p>
+                    ) : (
+                      <div className="bg-white rounded-3xl p-8 shadow-sm">
+                        <div className="overflow-x-auto" style={{ paddingBottom: 16, minWidth: '100%' }}>
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-stone-200">
+                                <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Guest Details</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Phone No.</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Service</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Date</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Time</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Guests</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Status</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Payment</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Amount</th>
+                                <th className="text-left py-3 px-4 text-stone-600">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {serviceBookingsForActiveCategory.map((booking) => {
+                            return (
+                              <tr key={booking.id} className="border-b border-stone-100 hover:bg-stone-50">
+                                <td className="py-4 px-4">
+                                  <div className="text-sm font-mono text-stone-600">{booking.id.slice(0, 8)}</div>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="font-medium text-stone-900">{booking.guestName}</div>
+                                  <div className="text-sm text-stone-600">{booking.guestEmail}</div>
+                                </td>
+                                <td className="py-4 px-4">{(booking.guestPhone || 'N/A').replace(/^\+/, '')}</td>
+                                <td className="py-4 px-4">
+                                  <div className="font-medium text-stone-900">{booking.serviceName || 'N/A'}</div>
+                                  <div className="text-xs text-stone-500">{serviceCategoryLabel(booking.category)}</div>
+                                </td>
+                                <td className="py-4 px-4">{new Date(booking.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                                <td className="py-4 px-4">{booking.time}</td>
+                                <td className="py-4 px-4">{booking.guests}</td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                                    {booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Approved' : booking.status === 'cancelled' ? 'Rejected' : booking.status}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <span className={`px-3 py-1 rounded-full text-sm ${
+                                    booking.paymentStatus === 'paid' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : booking.paymentStatus === 'failed'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                    {booking.paymentStatus === 'paid' ? 'Paid' : booking.paymentStatus === 'failed' ? 'Failed' : 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="py-4 px-4">
+                                  <div className="font-semibold text-stone-900">₹{(booking.totalPrice || 0).toFixed(2)}</div>
+                                  {booking.priceRange && (
+                                    <div className="text-xs text-stone-500">{booking.priceRange}</div>
+                                  )}
+                                </td>
+                                <td className="py-4 px-4">
+                                  {booking.status === 'pending' ? (
+                                    <div className="flex flex-wrap gap-2">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
+                                        onClick={() => handleServiceBookingActionClick(booking.id, 'approve')}
+                                      >
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                                        onClick={() => handleServiceBookingActionClick(booking.id, 'reject')}
+                                      >
+                                        Reject
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                                      booking.status === 'confirmed' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : 'bg-red-100 text-red-800'
+                                    }`}>
+                                      {booking.status === 'confirmed' ? 'Approved' : 'Rejected'}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                    )}
                   </div>
                 )}
               </div>

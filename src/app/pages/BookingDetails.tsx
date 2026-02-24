@@ -168,7 +168,7 @@ const BookingDetails = () => {
                   <Phone className="w-5 h-5 text-[#d7d2c5] mt-0.5" />
                   <div>
                     <p className="text-sm text-[#d7d2c5]">Phone</p>
-                    <p className="font-medium text-[#efece6]">{booking.guestPhone}</p>
+                    <p className="font-medium text-[#efece6]">{(booking.guestPhone || '').replace(/^\+/, '')}</p>
                   </div>
                 </div>
               </div>
