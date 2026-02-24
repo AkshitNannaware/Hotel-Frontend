@@ -52,7 +52,7 @@ type ServiceBooking = {
 
 const Profile = () => {
   const { user, logout, updateUser } = useAuth();
-  const { bookings, cancelBooking } = useBooking();
+  const { bookings, cancelBooking, refreshBookings } = useBooking();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = user?.role === 'admin';
@@ -220,8 +220,8 @@ const Profile = () => {
           time: booking.time,
           guests: booking.guests,
           specialRequests: booking.specialRequests || '',
-          status: booking.status || 'pending',
-          paymentStatus: booking.paymentStatus || 'pending',
+          status: booking.status ?? 'pending',
+          paymentStatus: booking.paymentStatus ?? 'pending',
           bookingDate: new Date(booking.bookingDate || Date.now()),
         }));
         setServiceBookingsState(normalized);
@@ -756,11 +756,9 @@ const Profile = () => {
                   </div>
                   <Button
                     className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
-                    onClick={() => {
-                      // Manual refresh handler
-                      if (typeof window !== 'undefined') {
-                        window.dispatchEvent(new Event('refreshBookings'));
-                      }
+                    onClick={async () => {
+                      await refreshBookings();
+                      toast.success('Bookings refreshed');
                     }}
                   >
                     Refresh Bookings
@@ -829,6 +827,17 @@ const Profile = () => {
                               </div>
 
                               <div className="flex flex-wrap gap-2">
+                                {/* Show Confirmed indicator when booking is confirmed */}
+                                {booking.status === 'confirmed' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled
+                                    className="rounded-lg border-emerald-300 text-emerald-500 bg-emerald-500/10"
+                                  >
+                                    Confirmed
+                                  </Button>
+                                )}
                                 {/* Show Check-In button only if status is confirmed and ID is approved */}
                                 {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
                                   <Button
@@ -891,7 +900,7 @@ const Profile = () => {
                                 >
                                   View Details
                                 </Button>
-                                {booking.status === 'confirmed' && booking.idVerified !== 'approved' && (
+                                {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.idVerified !== 'approved')) && (
                                   <Button
                                     size="sm"
                                     variant="outline"

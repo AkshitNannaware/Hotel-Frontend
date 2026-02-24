@@ -50,16 +50,17 @@ const Header = () => {
 
   if (hideHeader) return null;
   return (
-    <header className="absolute top-0 left-0 right-0 z-50 w-full">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full">
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Admin Dashboard Header */}
         {isAdminDashboard ? (
           <nav className="flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold justify-center pt-2">
             <span onClick={() => navigate('/admin', { state: { tab: 'dashboard' } })} className="hover:text-white transition-colors cursor-pointer">Home</span>
             <span onClick={() => navigate('/admin', { state: { tab: 'rooms' } })} className="hover:text-white transition-colors cursor-pointer">Manage Rooms</span>
-            <span onClick={() => navigate('/admin', { state: { tab: 'bookings' } })} className="hover:text-white transition-colors cursor-pointer">Bookings</span>
-            <span onClick={() => navigate('/admin', { state: { tab: 'services' } })} className="hover:text-white transition-colors cursor-pointer">Manage Services</span>
-            <span onClick={() => navigate('/admin', { state: { tab: 'service-bookings' } })} className="hover:text-white transition-colors cursor-pointer">Service Bookings</span>
+            {/* Hide these fields on mobile */}
+            <span className="hidden md:inline" onClick={() => navigate('/admin', { state: { tab: 'bookings' } })}>Bookings</span>
+            <span className="hidden md:inline" onClick={() => navigate('/admin', { state: { tab: 'services' } })}>Manage Services</span>
+            <span className="hidden md:inline" onClick={() => navigate('/admin', { state: { tab: 'service-bookings' } })}>Service Bookings</span>
             <span onClick={() => navigate('/admin', { state: { tab: 'payments' } })} className="hover:text-white transition-colors cursor-pointer">Payments</span>
             {/* Notification Bell */}
             <button
@@ -187,22 +188,26 @@ const Header = () => {
                </button>
             </div>
             <nav className="flex flex-col items-center gap-8 p-6 text-center">
-              <Link to="/" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Home</Link>
-              <Link to="/rooms" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Rooms</Link>
-              <Link to="/services" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Services</Link>
-              <Link to="/offers" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Offers</Link>
-              <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">About Us</Link>
-              <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Contact</Link>
-
-              {user ? (
+              {user && user.role === 'admin' ? (
                 <>
-                  {user.role === 'admin' && (
-                    <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Admin Dashboard</Link>
-                  )}
+                  <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Home</Link>
+                  <Link to="/admin?tab=rooms" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Manage Rooms</Link>
+                  {/* Bookings, Manage Services, Service Bookings removed for mobile responsive */}
+                  {/* <Link to="/admin?tab=bookings" ...>Bookings</Link> */}
+                  {/* <Link to="/admin?tab=services" ...>Manage Services</Link> */}
+                  {/* <Link to="/admin?tab=service-bookings" ...>Service Bookings</Link> */}
+                  <Link to="/admin?tab=payments" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Payments</Link>
                   <Link to="/profile?tab=profile" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Profile</Link>
                 </>
               ) : (
                 <>
+                  <Link to="/" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Home</Link>
+                  <Link to="/rooms" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Rooms</Link>
+                  <Link to="/services" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Services</Link>
+                  <Link to="/offers" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Offers</Link>
+                  <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">About Us</Link>
+                  <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Contact</Link>
+                  <Link to="/profile?tab=profile" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Profile</Link>
                   <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light">Login&Signup</Link>
                   <Link to="/notifications" onClick={() => setMobileMenuOpen(false)} className="text-2xl text-white uppercase tracking-widest font-light flex items-center gap-2">
                     <FaBell className="w-6 h-6" /> Notifications

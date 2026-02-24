@@ -674,7 +674,7 @@ const Home = () => {
         )}
 
         {(() => {
-          const restaurantServices = servicesState.filter((service) => service.category === 'restaurant');
+          const restaurantServices = servicesState.filter((service) => service.category === 'restaurant' || service.category === 'dining');
           
           if (restaurantServices.length === 0 && !servicesLoading) {
             return (

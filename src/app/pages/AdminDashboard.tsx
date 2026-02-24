@@ -619,30 +619,27 @@ const AdminDashboard = () => {
         body: JSON.stringify({ idVerified }),
       });
 
-      setBookingsState((prev) =>
-        prev.map((booking) => {
-          if (booking.id === bookingId) {
-            // If ID is approved and status is still pending, auto-confirm booking
-            if (idVerified === 'approved' && booking.status === 'pending') {
-              return {
-                ...booking,
-                idVerified: updated.idVerified,
-                idProofUrl: updated.idProofUrl,
-                idProofType: updated.idProofType,
-                idProofUploadedAt: updated.idProofUploadedAt,
-                status: 'confirmed',
-              };
-            }
-            return {
-              ...booking,
-              idVerified: updated.idVerified,
-              idProofUrl: updated.idProofUrl,
-              idProofType: updated.idProofType,
-              idProofUploadedAt: updated.idProofUploadedAt,
-            };
-          }
-          return booking;
-        })
+      // Backend automatically confirms booking when ID is approved
+      // Always fetch latest bookings from backend to ensure we have the correct status
+      const bookings = await fetchJson('/api/admin/bookings');
+      setBookingsState(
+        (bookings as any[]).map((booking) => ({
+          id: booking._id || booking.id,
+          roomId: booking.roomId,
+          userId: booking.userId,
+          guestName: booking.guestName,
+          guestEmail: booking.guestEmail,
+          checkIn: booking.checkIn,
+          checkOut: booking.checkOut,
+          bookingDate: booking.bookingDate,
+          status: booking.status, // Use status directly from backend
+          paymentStatus: booking.paymentStatus,
+          idVerified: booking.idVerified || 'pending',
+          idProofUrl: booking.idProofUrl,
+          idProofType: booking.idProofType,
+          idProofUploadedAt: booking.idProofUploadedAt,
+          totalPrice: booking.totalPrice,
+        }))
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update ID status';
@@ -2139,17 +2136,19 @@ const AdminDashboard = () => {
       <div className="absolute inset-0 pointer-events-none opacity-25 bg-[linear-gradient(180deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:100%_160px]" />
 
       <div className="relative w-full flex flex-col lg:flex-row pl-17">
-        {!isSidebarOpen && (
+        {/* Hamburger menu for mobile */}
+        {isMobile && !isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="fixed top-20 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden"
+            className="fixed top-20 left-4 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden"
             aria-label="Open menu"
           >
             <Menu className="w-6 h-6" />
           </button>
         )}
 
-        {isSidebarOpen && (
+        {/* Overlay for mobile when sidebar is open */}
+        {isMobile && isSidebarOpen && (
           <div
             className="fixed inset-0 z-30 bg-black/40 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
@@ -2159,25 +2158,67 @@ const AdminDashboard = () => {
         {/* Sidebar Container */}
         <div
           id="admin-sideview"
-          className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-70' : 'w-20'}`}
+          className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-70' : 'w-20'} ${isMobile && !isSidebarOpen ? 'hidden' : ''}`}
         >
           {/* Header Section */}
+          {/* <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
+          
+            {!isMobile && (
+              <div className="flex items-center justify-between w-full">
+                {isSidebarOpen && (
+                  <div>
+                    <h2 className="text-2xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
+                    <p className="text-[#cbbfa8] text-sm">Admin User</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className=" m-4 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
+                  aria-label={isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              </div>
+            )}
+          </div> */}
+
+          {/* Header Section */}
           <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
-            <div className="flex items-center justify-between w-full">
-              {isSidebarOpen && (
+            {/* Desktop header - only shown on laptop when sidebar is open */}
+            {!isMobile && (
+              <div className="flex items-center justify-between w-full">
+                {isSidebarOpen && (
+                  <div>
+                    <h2 className="text-2xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
+                    <p className="text-[#cbbfa8] text-sm">Admin User</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className=" m-4 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
+                  aria-label={isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
+                >
+                  <Menu className="w-6 h-6" />
+                </button>
+              </div>
+            )}
+
+            {/* Mobile header - only shown on mobile when sidebar is open */}
+            {isMobile && isSidebarOpen && (
+              <div className="flex items-center justify-between w-full">
                 <div>
-                  <h2 className="text-2xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
-                  <p className="text-[#cbbfa8] text-sm">Admin User</p>
+                  <h2 className="text-xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
+                  <p className="text-[#cbbfa8] text-xs">Admin User</p>
                 </div>
-              )}
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className=" m-4 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
-                aria-label={isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-            </div>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-2 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
+                  aria-label="Close Sidebar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Navigation Links */}
@@ -2234,8 +2275,8 @@ const AdminDashboard = () => {
                   }
                 }}
                 className={`flex items-center transition-all focus:outline-none focus:ring-2 focus:ring-red-400 ${isSidebarOpen
-                    ? 'gap-4 justify-start px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-2xl'
-                    : 'justify-center p-3 text-red-400 hover:bg-red-500/10 rounded-2xl'
+                  ? 'gap-4 justify-start px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-2xl'
+                  : 'justify-center p-3 text-red-400 hover:bg-red-500/10 rounded-2xl'
                   }`}
                 title={!isSidebarOpen ? 'Logout' : ''}
               >
