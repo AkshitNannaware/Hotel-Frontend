@@ -58,7 +58,8 @@ import {
   Car,
   Coffee,
   LogOut,
-  Waves
+  Waves,
+  Search
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MoreVertical } from 'lucide-react';
@@ -210,6 +211,8 @@ const AdminDashboard = () => {
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
   const [serviceBookingStatusFilter, setServiceBookingStatusFilter] = useState('all');
+  const [bookingSearchQuery, setBookingSearchQuery] = useState('');
+  const [serviceBookingSearchQuery, setServiceBookingSearchQuery] = useState('');
   const [swipedBookingId, setSwipedBookingId] = useState<string | null>(null);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [roomForm, setRoomForm] = useState({
@@ -899,13 +902,44 @@ const AdminDashboard = () => {
     })
     .slice(0, 5);
 
-  const filteredBookings = bookingStatusFilter === 'all'
-    ? bookingsState
-    : bookingsState.filter((booking) => booking.status === bookingStatusFilter);
+  const filteredBookings = [...bookingsState]
+    .filter((booking) => {
+      if (bookingStatusFilter !== 'all' && booking.status !== bookingStatusFilter) {
+        return false;
+      }
+      if (!bookingSearchQuery.trim()) return true;
+      const query = bookingSearchQuery.toLowerCase();
+      return (
+        booking.guestName?.toLowerCase().includes(query) ||
+        booking.guestPhone?.toLowerCase().includes(query) ||
+        booking.guestEmail?.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      const aDate = new Date(a.bookingDate || a.checkIn).getTime();
+      const bDate = new Date(b.bookingDate || b.checkIn).getTime();
+      return bDate - aDate; // newest first
+    });
 
-  const filteredServiceBookings = serviceBookingStatusFilter === 'all'
-    ? serviceBookingsState
-    : serviceBookingsState.filter((booking) => booking.status === serviceBookingStatusFilter);
+  const filteredServiceBookings = [...serviceBookingsState]
+    .filter((booking) => {
+      if (serviceBookingStatusFilter !== 'all' && booking.status !== serviceBookingStatusFilter) {
+        return false;
+      }
+      if (!serviceBookingSearchQuery.trim()) return true;
+      const query = serviceBookingSearchQuery.toLowerCase();
+      return (
+        booking.guestName?.toLowerCase().includes(query) ||
+        booking.guestPhone?.toLowerCase().includes(query) ||
+        booking.guestEmail?.toLowerCase().includes(query) ||
+        booking.serviceName?.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      const aDate = new Date(a.bookingDate || a.date).getTime();
+      const bDate = new Date(b.bookingDate || b.date).getTime();
+      return bDate - aDate; // newest first
+    });
 
   const selectedServiceForBooking = servicesState.find(
     (service) => service.id === serviceBookingForm.serviceId
@@ -3283,6 +3317,16 @@ const AdminDashboard = () => {
                       <Upload className="w-4 h-4 mr-2" />
                       Sample
                     </a>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <Input
+                        type="text"
+                        placeholder="Search by name or phone..."
+                        value={bookingSearchQuery}
+                        onChange={(e) => setBookingSearchQuery(e.target.value)}
+                        className="pl-9 pr-3 h-10 rounded-xl border border-stone-300 bg-stone-50 text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -3505,6 +3549,16 @@ const AdminDashboard = () => {
                       <Upload className="w-4 h-4 mr-2" />
                       Sample
                     </a>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                      <Input
+                        type="text"
+                        placeholder="Search by name or phone..."
+                        value={serviceBookingSearchQuery}
+                        onChange={(e) => setServiceBookingSearchQuery(e.target.value)}
+                        className="pl-9 pr-3 h-10 rounded-xl border border-stone-300 bg-stone-50 text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
 

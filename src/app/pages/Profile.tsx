@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { User, Mail, Phone, Calendar, LogOut, Settings, Bell, CreditCard, Edit2, Save, X, AlertCircle, CheckCircle2, Award, Star, TrendingUp, MapPin, Gift, Shield, Menu, Search } from 'lucide-react';
+import { User, Mail, Phone, Calendar, LogOut, Settings, Bell, CreditCard, Edit2, Save, X, AlertCircle, CheckCircle2, Award, Star, TrendingUp, MapPin, Gift, Shield, Menu } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import Footer from '../components/Footer'; 
 
@@ -48,9 +48,6 @@ type ServiceBooking = {
   roomBookingId?: string;
   paymentStatus?: string;
   totalPrice?: number;
-  guestName?: string;
-  guestEmail?: string;
-  guestPhone?: string;
 };
 
 const Profile = () => {
@@ -79,8 +76,6 @@ const Profile = () => {
   const [serviceBookingsState, setServiceBookingsState] = React.useState<ServiceBooking[]>([]);
   const [serviceBookingsError, setServiceBookingsError] = React.useState<string | null>(null);
   const [serviceBookingsLoading, setServiceBookingsLoading] = React.useState(false);
-  const [bookingSearchQuery, setBookingSearchQuery] = React.useState('');
-  const [serviceBookingSearchQuery, setServiceBookingSearchQuery] = React.useState('');
   const [isEditing, setIsEditing] = React.useState(false);
   const [editedName, setEditedName] = React.useState(user?.name || '');
   const [editedEmail, setEditedEmail] = React.useState(user?.email || '');
@@ -228,9 +223,6 @@ const Profile = () => {
           status: booking.status ?? 'pending',
           paymentStatus: booking.paymentStatus ?? 'pending',
           bookingDate: new Date(booking.bookingDate || Date.now()),
-          guestName: booking.guestName || '',
-          guestEmail: booking.guestEmail || '',
-          guestPhone: booking.guestPhone || '',
         }));
         setServiceBookingsState(normalized);
       } catch (error) {
@@ -773,49 +765,7 @@ const Profile = () => {
                   </Button>
                 </div>
 
-                {/* Search Bar */}
-                {bookings.length > 0 && (
-                  <div className="mb-6">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#c9c3b6]" />
-                      <Input
-                        type="text"
-                        placeholder="Search by name or phone number..."
-                        value={bookingSearchQuery}
-                        onChange={(e) => setBookingSearchQuery(e.target.value)}
-                        className="pl-10 bg-[#343a30] border-[#4b5246] text-[#efece6] placeholder:text-[#c9c3b6] rounded-xl"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {(() => {
-                  // Filter and sort bookings
-                  const filteredBookings = bookings
-                    .filter((booking) => {
-                      if (!bookingSearchQuery.trim()) return true;
-                      const query = bookingSearchQuery.toLowerCase();
-                      return (
-                        booking.guestName?.toLowerCase().includes(query) ||
-                        booking.guestPhone?.toLowerCase().includes(query) ||
-                        booking.guestEmail?.toLowerCase().includes(query)
-                      );
-                    })
-                    .sort((a, b) => {
-                      // Sort by bookingDate descending (most recent first)
-                      return new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime();
-                    });
-
-                  if (filteredBookings.length === 0 && bookings.length > 0) {
-                    return (
-                      <div className="text-center py-12">
-                        <p className="text-[#c9c3b6]">No bookings found matching your search.</p>
-                      </div>
-                    );
-                  }
-
-                  if (filteredBookings.length === 0) {
-                    return (
+                {bookings.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 bg-[#343a30] rounded-full flex items-center justify-center mx-auto mb-4">
                       <Calendar className="w-8 h-8 text-[#d7d0bf]" />
@@ -827,12 +777,9 @@ const Profile = () => {
                       Browse Rooms
                     </Button>
                   </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-4">
-                      {filteredBookings.map((booking) => {
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => {
                       const room = roomsState.find(r => r.id === booking.roomId);
                       // Find all confirmed service bookings for this room booking
                       const relatedServices = serviceBookingsState.filter(s => s.roomBookingId === booking.id && s.status === 'confirmed');
@@ -978,10 +925,9 @@ const Profile = () => {
                           </div>
                         </div>
                       );
-                      })}
-                    </div>
-                  );
-                })()}
+                    })}
+                  </div>
+                )}
                 {roomsLoadError && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                     {roomsLoadError}
@@ -999,65 +945,20 @@ const Profile = () => {
                   <p className="text-sm text-[#c9c3b6] mt-1">Your dining, spa, and lounge reservations</p>
                 </div>
 
-                {/* Search Bar */}
-                {!serviceBookingsLoading && serviceBookingsState.length > 0 && (
-                  <div className="mb-6">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#c9c3b6]" />
-                      <Input
-                        type="text"
-                        placeholder="Search by name or phone number..."
-                        value={serviceBookingSearchQuery}
-                        onChange={(e) => setServiceBookingSearchQuery(e.target.value)}
-                        className="pl-10 bg-[#343a30] border-[#4b5246] text-[#efece6] placeholder:text-[#c9c3b6] rounded-xl"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {serviceBookingsLoading ? (
                   <div className="text-sm text-[#c9c3b6]">Loading service bookings...</div>
-                ) : (() => {
-                  // Filter and sort service bookings
-                  const filteredServiceBookings = serviceBookingsState
-                    .filter((booking) => {
-                      if (!serviceBookingSearchQuery.trim()) return true;
-                      const query = serviceBookingSearchQuery.toLowerCase();
-                      return (
-                        booking.guestName?.toLowerCase().includes(query) ||
-                        booking.guestPhone?.toLowerCase().includes(query) ||
-                        booking.guestEmail?.toLowerCase().includes(query) ||
-                        booking.serviceName?.toLowerCase().includes(query)
-                      );
-                    })
-                    .sort((a, b) => {
-                      // Sort by bookingDate descending (most recent first)
-                      return new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime();
-                    });
-
-                  if (filteredServiceBookings.length === 0 && serviceBookingsState.length > 0) {
-                    return (
-                      <div className="text-center py-12">
-                        <p className="text-[#c9c3b6]">No service bookings found matching your search.</p>
-                      </div>
-                    );
-                  }
-
-                  if (filteredServiceBookings.length === 0) {
-                    return (
-                      <div className="text-center py-12">
-                        <div className="w-16 h-16 bg-[#343a30] rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Calendar className="w-8 h-8 text-[#d7d0bf]" />
-                        </div>
-                        <h3 className="text-lg font-medium text-[#efece6] mb-2">No service bookings yet</h3>
-                        <p className="text-[#c9c3b6]">Reserve a dining or spa experience to see it here</p>
-                      </div>
-                    );
-                  }
-
-                  return (
+                ) : serviceBookingsState.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-[#343a30] rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Calendar className="w-8 h-8 text-[#d7d0bf]" />
+                    </div>
+                    <h3 className="text-lg font-medium text-[#efece6] mb-2">No service bookings yet</h3>
+                    <p className="text-[#c9c3b6]">Reserve a dining or spa experience to see it here</p>
+                  </div>
+                ) : (
+                  <>
                     <div className="space-y-4">
-                      {filteredServiceBookings.map((booking) => (
+                      {serviceBookingsState.map((booking) => (
                       <div key={booking.id} className="border border-[#4b5246] rounded-xl p-4 hover:shadow-md transition-shadow bg-[#343a30]">
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                           <div>
@@ -1125,13 +1026,13 @@ const Profile = () => {
                         )}
                       </div>
                     ))}
-                  </div>
-                )}
-
-                {serviceBookingsError && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                    {serviceBookingsError}
-                  </div>
+                    </div>
+                    {serviceBookingsError && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                        {serviceBookingsError}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
