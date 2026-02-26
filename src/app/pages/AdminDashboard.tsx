@@ -218,6 +218,10 @@ const AdminDashboard = () => {
   const [bookingSearchQuery, setBookingSearchQuery] = useState('');
   const [serviceBookingSearchQuery, setServiceBookingSearchQuery] = useState('');
   const [swipedBookingId, setSwipedBookingId] = useState<string | null>(null);
+  const [bookingsPage, setBookingsPage] = useState(1);
+  const [serviceBookingsPage, setServiceBookingsPage] = useState(1);
+  const [bookingsPerPage, setBookingsPerPage] = useState(10);
+  const [serviceBookingsPerPage, setServiceBookingsPerPage] = useState(10);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [roomForm, setRoomForm] = useState({
     name: '',
@@ -828,6 +832,15 @@ const AdminDashboard = () => {
     loadAdminData();
   }, [isAdmin]);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setBookingsPage(1);
+  }, [bookingStatusFilter, bookingSearchQuery]);
+
+  useEffect(() => {
+    setServiceBookingsPage(1);
+  }, [serviceBookingStatusFilter, serviceBookingSearchQuery, activeServiceBookingCategory]);
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -952,6 +965,12 @@ const AdminDashboard = () => {
       return bDate - aDate; // newest first
     });
 
+  // Pagination logic for bookings
+  const bookingsTotalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
+  const bookingsStartIndex = (bookingsPage - 1) * bookingsPerPage;
+  const bookingsEndIndex = bookingsStartIndex + bookingsPerPage;
+  const paginatedBookings = filteredBookings.slice(bookingsStartIndex, bookingsEndIndex);
+
   const selectedServiceForBooking = servicesState.find(
     (service) => service.id === serviceBookingForm.serviceId
   );
@@ -962,6 +981,12 @@ const AdminDashboard = () => {
   
   const serviceBookingsForActiveCategory = filteredServiceBookings
     .filter((booking) => booking.category === activeServiceBookingCategory);
+  
+  // Pagination logic for service bookings (based on active category)
+  const serviceBookingsTotalPages = Math.ceil(serviceBookingsForActiveCategory.length / serviceBookingsPerPage);
+  const serviceBookingsStartIndex = (serviceBookingsPage - 1) * serviceBookingsPerPage;
+  const serviceBookingsEndIndex = serviceBookingsStartIndex + serviceBookingsPerPage;
+  const paginatedServiceBookings = serviceBookingsForActiveCategory.slice(serviceBookingsStartIndex, serviceBookingsEndIndex);
   
   const settingsInputClass =
     'mt-1 bg-[#2f3a32]/90 border border-[#5b6659] text-[#efece6] placeholder:text-[#cfc9bb] focus-visible:ring-2 focus-visible:ring-amber-500/60';
@@ -2371,6 +2396,126 @@ const AdminDashboard = () => {
     );
   };
 
+  // Pagination Component
+  const PaginationControls = ({
+    currentPage,
+    totalPages,
+    totalItems,
+    itemsPerPage,
+    onPageChange,
+    onItemsPerPageChange,
+    startIndex,
+    endIndex,
+  }: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    onPageChange: (page: number) => void;
+    onItemsPerPageChange: (items: number) => void;
+    startIndex: number;
+    endIndex: number;
+  }) => {
+    const getPageNumbers = () => {
+      const pages: (number | string)[] = [];
+      const maxVisible = 5;
+      
+      if (totalPages <= maxVisible) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        if (currentPage <= 3) {
+          for (let i = 1; i <= 4; i++) {
+            pages.push(i);
+          }
+          pages.push('...');
+          pages.push(totalPages);
+        } else if (currentPage >= totalPages - 2) {
+          pages.push(1);
+          pages.push('...');
+          for (let i = totalPages - 3; i <= totalPages; i++) {
+            pages.push(i);
+          }
+        } else {
+          pages.push(1);
+          pages.push('...');
+          for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+            pages.push(i);
+          }
+          pages.push('...');
+          pages.push(totalPages);
+        }
+      }
+      return pages;
+    };
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-stone-200">
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-stone-600">
+            Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} bookings
+          </span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              onItemsPerPageChange(Number(e.target.value));
+              onPageChange(1);
+            }}
+            className="px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-sm text-stone-700 focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+          >
+            <option value={5}>5 per page</option>
+            <option value={10}>10 per page</option>
+            <option value={20}>20 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </Button>
+          <div className="flex items-center gap-1">
+            {getPageNumbers().map((page, index) => (
+              page === '...' ? (
+                <span key={`ellipsis-${index}`} className="px-2 text-stone-400">...</span>
+              ) : (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onPageChange(page as number)}
+                  className={
+                    currentPage === page
+                      ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600"
+                      : "border-stone-300 text-stone-700 hover:bg-stone-50"
+                  }
+                >
+                  {page}
+                </Button>
+              )
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10 pl-0">
       {/* Background Gradients */}
@@ -3683,24 +3828,44 @@ const AdminDashboard = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredBookings.map((booking) => {
-                          const room = roomsState.find(r => r.id === booking.roomId);
-                          return (
-                            <SwipeableBookingRow
-                              key={booking.id}
-                              booking={booking}
-                              room={room}
-                              isMobile={isMobile}
-                              swipedBookingId={swipedBookingId}
-                              setSwipedBookingId={setSwipedBookingId}
-                              onIdVerificationChange={handleIdVerificationChange}
-                              onUpdateStatus={updateBookingStatus}
-                            />
-                          );
-                        })}
+                        {paginatedBookings.length === 0 ? (
+                          <tr>
+                            <td colSpan={11} className="py-8 px-4 text-center text-stone-500">
+                              No bookings found
+                            </td>
+                          </tr>
+                        ) : (
+                          paginatedBookings.map((booking) => {
+                            const room = roomsState.find(r => r.id === booking.roomId);
+                            return (
+                              <SwipeableBookingRow
+                                key={booking.id}
+                                booking={booking}
+                                room={room}
+                                isMobile={isMobile}
+                                swipedBookingId={swipedBookingId}
+                                setSwipedBookingId={setSwipedBookingId}
+                                onIdVerificationChange={handleIdVerificationChange}
+                                onUpdateStatus={updateBookingStatus}
+                              />
+                            );
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>
+                  {filteredBookings.length > 0 && (
+                    <PaginationControls
+                      currentPage={bookingsPage}
+                      totalPages={bookingsTotalPages}
+                      totalItems={filteredBookings.length}
+                      itemsPerPage={bookingsPerPage}
+                      onPageChange={setBookingsPage}
+                      onItemsPerPageChange={setBookingsPerPage}
+                      startIndex={bookingsStartIndex}
+                      endIndex={bookingsEndIndex}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -3949,7 +4114,14 @@ const AdminDashboard = () => {
                               </tr>
                             </thead>
                             <tbody>
-                              {serviceBookingsForActiveCategory.map((booking) => {
+                              {paginatedServiceBookings.length === 0 ? (
+                                <tr>
+                                  <td colSpan={11} className="py-8 px-4 text-center text-stone-500">
+                                    No service bookings found
+                                  </td>
+                                </tr>
+                              ) : (
+                                paginatedServiceBookings.map((booking) => {
                             return (
                               <tr key={booking.id} className="border-b border-stone-100 hover:bg-stone-50">
                                 <td className="py-4 px-4">
@@ -4023,10 +4195,22 @@ const AdminDashboard = () => {
                                 </td>
                               </tr>
                             );
-                          })}
+                          }))}
                         </tbody>
                       </table>
                     </div>
+                    {serviceBookingsForActiveCategory.length > 0 && (
+                      <PaginationControls
+                        currentPage={serviceBookingsPage}
+                        totalPages={serviceBookingsTotalPages}
+                        totalItems={serviceBookingsForActiveCategory.length}
+                        itemsPerPage={serviceBookingsPerPage}
+                        onPageChange={setServiceBookingsPage}
+                        onItemsPerPageChange={setServiceBookingsPerPage}
+                        startIndex={serviceBookingsStartIndex}
+                        endIndex={serviceBookingsEndIndex}
+                      />
+                    )}
                   </div>
                     )}
                   </div>
