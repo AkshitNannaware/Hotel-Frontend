@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { Hotel, User, Menu, X, LogIn, LogOut } from 'lucide-react';
-import { FaBell, FaCheck, FaTimes, FaUserPlus, FaShoppingCart, FaClipboardList } from 'react-icons/fa';
+import { FaBell, FaCheck, FaTimes, FaUserPlus, FaClipboardList } from 'react-icons/fa';
 import { useNotifications } from '../hooks/useNotifications';
 // Notification pop-up logic and data
 const notificationIcons = {
-  sale: <FaShoppingCart color="#eab308" size={20} />, // Admin
-  order: <FaClipboardList color="#22c55e" size={20} />, // Admin
-  user: <FaUserPlus color="#3b82f6" size={20} />, // Admin
-  booking: <FaClipboardList color="#fbbf24" size={20} />, // User
-  message: <FaUserPlus color="#22c55e" size={20} />, // User
+  admin: <FaClipboardList color="#eab308" size={20} />,
+  user: <FaUserPlus color="#3b82f6" size={20} />,
+  all: <FaBell color="#22c55e" size={20} />,
 };
 
 import { Button } from './ui/button';
@@ -33,19 +31,8 @@ const Header = () => {
   // Hide header on /admin-signup
   const hideHeader = location.pathname === '/admin-signup';
 
-  const { notifications, loading: notifLoading, error: notifError } = useNotifications();
-  const [notificationsState, setNotificationsState] = useState<string[]>([]); // for local mark as read/delete
+  const { notifications, loading: notifLoading, error: notifError, markAsRead, deleteNotification } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
-  const markAsRead = (id: string) => {
-    // TODO: Call API to mark as read
-    // For now, just update UI
-    // setNotificationsState((prev) => [...prev, id]);
-  };
-  const deleteNotification = (id: string) => {
-    // TODO: Call API to delete notification
-    // For now, just update UI
-    // setNotificationsState((prev) => prev.filter((nid) => nid !== id));
-  };
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   if (hideHeader) return null;
@@ -140,7 +127,7 @@ const Header = () => {
                     key={n._id}
                     className={`flex items-start gap-3 px-5 py-4 rounded-xl mb-2 border transition-colors ${n.read ? 'bg-[#2e362e] border-[#3a463a]' : 'bg-[#3f4a40]/80 border-amber-200'} relative`}
                   >
-                    <div className="mt-1">{notificationIcons['default'] || <FaBell />}</div>
+                    <div className="mt-1">{notificationIcons[n.role as keyof typeof notificationIcons] || <FaBell color="#fbbf24" />}</div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <div className="font-medium text-[#efece6]">{n.title}</div>
@@ -172,9 +159,12 @@ const Header = () => {
               )}
             </div>
             <div className="mt-2 text-center pb-2">
-              <a href="#" className="text-amber-400 hover:underline text-xs font-medium flex items-center justify-center gap-1">
+              <button
+                className="text-amber-400 hover:underline text-xs font-medium flex items-center justify-center gap-1 mx-auto"
+                onClick={() => { setNotifOpen(false); navigate('/notifications'); }}
+              >
                 View all notifications <span aria-hidden="true">→</span>
-              </a>
+              </button>
             </div>
           </div>
         )}
