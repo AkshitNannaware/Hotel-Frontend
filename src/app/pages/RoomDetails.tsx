@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
-import { Calendar, X, Users, Maximize2, Wifi, Car, Coffee, Waves } from 'lucide-react';
+import { Calendar, X, Users, Maximize2, Wifi, Car, Coffee, Waves, MapPin } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
@@ -68,6 +68,7 @@ const RoomDetails = () => {
             maxGuests: data.maxGuests || 1,
             size: data.size || 0,
             available: data.available ?? true,
+            location: data.location || '',
           });
         }
       } catch (error) {
@@ -167,6 +168,12 @@ const RoomDetails = () => {
                 <div>
                   <h1 className="text-4xl lg:text-5xl mb-4 font-light">{room.name}</h1>
                   <p className="text-[#c9c3b6] uppercase tracking-[0.25em] text-xs">{room.type} Suite</p>
+                  {room.location && (
+                    <p className="flex items-center gap-1.5 text-sm text-[#c9c3b6] mt-2">
+                      <MapPin className="w-4 h-4 text-amber-400" />
+                      {room.location}
+                    </p>
+                  )}
                   <div className="h-px w-20 bg-[#5b6255] mt-6" />
                 </div>
 

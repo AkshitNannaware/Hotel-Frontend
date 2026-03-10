@@ -12,4 +12,5 @@ export interface Room {
   maxGuests: number;
   size: number;
   available: boolean;
+  location?: string;
 }

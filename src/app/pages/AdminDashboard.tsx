@@ -61,7 +61,8 @@ import {
   Waves,
   Search,
   LogIn,
-  DoorOpen
+  DoorOpen,
+  MapPin
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MoreVertical } from 'lucide-react';
@@ -174,7 +175,8 @@ type AdminServiceBooking = {
   guestPhone: string;
   status: 'pending' | 'confirmed' | 'cancelled';
   bookingDate?: string | Date;
-  paymentStatus?: 'pending' | 'paid';
+  totalPrice?: number;
+  paymentStatus?: 'pending' | 'paid' | 'failed';
 };
 
 const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
@@ -233,6 +235,7 @@ const AdminDashboard = () => {
     maxGuests: '',
     size: '20',
     available: true,
+    location: '',
   });
   const [serviceForm, setServiceForm] = useState({
     name: '',
@@ -579,6 +582,7 @@ const AdminDashboard = () => {
     maxGuests: room.maxGuests || 1,
     size: room.size || 0,
     available: room.available ?? true,
+    location: room.location || '',
   });
 
   const normalizeService = (service: any): AdminService => ({
@@ -1016,6 +1020,7 @@ const AdminDashboard = () => {
       maxGuests: '',
       size: '20',
       available: true,
+      location: '',
     });
     setRoomImageFiles([]);
     setRoomVideoFile(null);
@@ -1039,6 +1044,7 @@ const AdminDashboard = () => {
       maxGuests: room.maxGuests.toString(),
       size: room.size.toString(),
       available: room.available,
+      location: room.location || '',
     });
     setRoomImageFiles([]);
     setIsRoomFormOpen(true);
@@ -1082,6 +1088,7 @@ const AdminDashboard = () => {
       maxGuests: Number(roomForm.maxGuests) || 1,
       size: Number(roomForm.size) || 0,
       available: roomForm.available,
+      location: roomForm.location.trim(),
     };
 
     try {
@@ -1102,6 +1109,11 @@ const AdminDashboard = () => {
         roomId = updatedRoom._id || updatedRoom.id;
       }
 
+      // Always preserve fields from roomPayload as the source of truth,
+      // in case the server response is missing fields (e.g. location not yet
+      // in the DB schema on older server versions).
+      updatedRoom = { ...updatedRoom, location: updatedRoom.location ?? roomPayload.location };
+
       if (roomImageFiles.length > 0) {
         try {
           const formData = new FormData();
@@ -1115,7 +1127,8 @@ const AdminDashboard = () => {
             isFormData: true,
           });
 
-          updatedRoom = uploadResponse.room;
+          // Preserve location from the payload in case the upload response doesn't have it
+          updatedRoom = { ...uploadResponse.room, location: uploadResponse.room?.location ?? roomPayload.location };
           toast.success('Room images uploaded successfully!');
         } catch (uploadError) {
           toast.error('Failed to upload room images.');
@@ -1131,7 +1144,8 @@ const AdminDashboard = () => {
             body: formData,
             isFormData: true,
           });
-          updatedRoom = uploadResponse.room || updatedRoom;
+          const videoRoom = uploadResponse.room || updatedRoom;
+          updatedRoom = { ...videoRoom, location: videoRoom.location ?? roomPayload.location };
           toast.success('Room video uploaded successfully!');
         } catch (uploadError) {
           toast.error('Failed to upload room video.');
@@ -1146,10 +1160,12 @@ const AdminDashboard = () => {
         setRoomsState((prev) => [normalizeRoom(updatedRoom), ...prev]);
       }
 
+      toast.success(editingRoomId ? 'Room updated successfully!' : 'Room created successfully!');
       setIsRoomFormOpen(false);
       setEditingRoomId(null);
       resetRoomForm();
     } catch (error) {
+      toast.error('Failed to save room. Please try again.');
       setLoadError('Failed to save room');
     }
   };
@@ -2974,6 +2990,12 @@ const AdminDashboard = () => {
                       />
                       <Input
                         className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        placeholder="Enter location"
+                        value={roomForm.location}
+                        onChange={(event) => setRoomForm({ ...roomForm, location: event.target.value })}
+                      />
+                      <Input
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
                         placeholder="Image URLs (optional, comma separated)"
                         value={roomForm.images}
                         onChange={(event) => setRoomForm({ ...roomForm, images: event.target.value })}
@@ -3120,6 +3142,12 @@ const AdminDashboard = () => {
                               <p className="text-xs text-[#cfc9bb] mt-1">
                                 {room.type} · {room.maxGuests} guests
                               </p>
+                              {room.location && (
+                                <p className="text-xs text-[#cfc9bb] mt-0.5 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 text-amber-400" />
+                                  {room.location}
+                                </p>
+                              )}
                             </div>
                             <div className="text-right">
                               <div className="text-sm text-[#f0e7d6]">₹ {room.price} night</div>

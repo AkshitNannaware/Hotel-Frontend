@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { SlidersHorizontal, Wifi, Car, Coffee, Waves, Users, Maximize2 } from 'lucide-react';
+import { SlidersHorizontal, Wifi, Car, Coffee, Waves, Users, Maximize2, MapPin } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Slider } from '../components/ui/slider';
 import { Checkbox } from '../components/ui/checkbox';
@@ -29,6 +29,7 @@ const RoomListing = () => {
   };
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [locationSearch, setLocationSearch] = useState('');
   const [sortBy, setSortBy] = useState('price-low');
   const [showFilters, setShowFilters] = useState(false);
   const [roomsState, setRoomsState] = useState<Room[]>([]);
@@ -64,6 +65,7 @@ const RoomListing = () => {
           maxGuests: room.maxGuests || 1,
           size: room.size || 0,
           available: room.available ?? true,
+          location: room.location || '',
         }));
         setRoomsState(normalized);
       } catch (error) {
@@ -95,6 +97,11 @@ const RoomListing = () => {
     .filter(room => 
       selectedAmenities.length === 0 || 
       selectedAmenities.every(amenity => room.amenities.includes(amenity))
+    )
+    .filter(room =>
+      locationSearch.trim() === '' ||
+      (room.location || '').toLowerCase().includes(locationSearch.trim().toLowerCase()) ||
+      room.name.toLowerCase().includes(locationSearch.trim().toLowerCase())
     )
     .sort((a, b) => {
       if (sortBy === 'price-low') return a.price - b.price;
@@ -164,6 +171,23 @@ const RoomListing = () => {
                   </div>
 
                   <div className="mb-8">
+                    <h4 className="text-sm text-[#efece6] mb-3 flex items-center gap-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                      <MapPin className="w-4 h-4 text-[#cfc9bb]" />
+                      Search by Location
+                    </h4>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7a8a7a] pointer-events-none" />
+                      <input
+                        type="text"
+                        value={locationSearch}
+                        onChange={(e) => setLocationSearch(e.target.value)}
+                        placeholder="e.g. Sea View, City View..."
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-[#4b5246] bg-[#243026] text-[#efece6] text-sm placeholder:text-[#7a8a7a] focus:outline-none focus:ring-1 focus:ring-[#7a9a7a]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-8">
                     <label className="block text-xs uppercase tracking-[0.2em] text-[#cfc9bb] mb-3">
                       Price Range: ${priceRange[0]} - ${priceRange[1]}
                     </label>
@@ -223,6 +247,7 @@ const RoomListing = () => {
                       setSelectedTypes([]);
                       setSelectedAmenities([]);
                       setPriceRange([0, 1000]);
+                      setLocationSearch('');
                     }}
                   >
                     Clear All Filters
@@ -304,7 +329,14 @@ const RoomListing = () => {
                           <h3 className="text-base text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
                             {room.name}
                           </h3>
-                          <p className="text-xs text-[#cfc9bb] mt-1">Modern cozy suite · 1 queen bed</p>
+                          {room.location ? (
+                            <p className="text-xs text-[#cfc9bb] mt-1 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {room.location}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-[#cfc9bb] mt-1">Modern cozy suite · 1 queen bed</p>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="text-sm text-[#f0e7d6]">₹ {room.price} night</div>
@@ -358,6 +390,7 @@ const RoomListing = () => {
                       setSelectedTypes([]);
                       setSelectedAmenities([]);
                       setPriceRange([0, 1000]);
+                      setLocationSearch('');
                     }}
                   >
                     Clear Filters

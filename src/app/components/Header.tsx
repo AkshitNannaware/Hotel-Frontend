@@ -33,7 +33,9 @@ const Header = () => {
 
   const { notifications, loading: notifLoading, error: notifError, markAsRead, deleteNotification } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const popupNotifications = notifications.filter((n) => !dismissedIds.has(n._id));
 
   if (hideHeader) return null;
   return (
@@ -119,10 +121,10 @@ const Header = () => {
                 <div className="text-[#b6b6b6] text-center py-8">Loading notifications...</div>
               ) : notifError ? (
                 <div className="text-[#b6b6b6] text-center py-8">{notifError}</div>
-              ) : notifications.length === 0 ? (
+              ) : popupNotifications.length === 0 ? (
                 <div className="text-[#b6b6b6] text-center py-8">No notifications</div>
               ) : (
-                notifications.map((n) => (
+                popupNotifications.map((n) => (
                   <div
                     key={n._id}
                     className={`flex items-start gap-3 px-5 py-4 rounded-xl mb-2 border transition-colors ${n.read ? 'bg-[#2e362e] border-[#3a463a]' : 'bg-[#3f4a40]/80 border-amber-200'} relative`}
@@ -140,7 +142,10 @@ const Header = () => {
                       {!n.read && (
                         <button
                           title="Mark as read"
-                          onClick={() => markAsRead(n._id)}
+                          onClick={() => {
+                            markAsRead(n._id);
+                            setDismissedIds((prev) => new Set([...prev, n._id]));
+                          }}
                           className="text-green-400 hover:text-green-500 bg-transparent rounded p-1"
                         >
                           <FaCheck />
@@ -148,7 +153,10 @@ const Header = () => {
                       )}
                       <button
                         title="Delete"
-                        onClick={() => deleteNotification(n._id)}
+                        onClick={() => {
+                          deleteNotification(n._id);
+                          setDismissedIds((prev) => new Set([...prev, n._id]));
+                        }}
                         className="text-[#b6b6b6] hover:text-red-400 bg-transparent rounded p-1"
                       >
                         <FaTimes />
