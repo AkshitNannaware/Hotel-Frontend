@@ -1,4 +1,4 @@
-﻿// Update booking status (e.g., for check-out or payment)
+// Update booking status (e.g., for check-out or payment)
 const updateBookingStatus = async (
   bookingId: string,
   status: string,
@@ -28,6 +28,7 @@ const updateBookingStatus = async (
 };
 import React, { useEffect, useState } from 'react';
 import Footer from '../components/Footer';
+import MobileBottomNav from '../components/MobileBottomNavadmin';
 // import { useSwipeable } from 'react-swipeable';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
@@ -193,7 +194,12 @@ const AdminDashboard = () => {
     }
     return 'dashboard';
   });
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
   const [roomsState, setRoomsState] = useState<Room[]>([]);
   const [bookingsState, setBookingsState] = useState<AdminBooking[]>([]);
   const [serviceBookingsState, setServiceBookingsState] = useState<AdminServiceBooking[]>([]);
@@ -224,7 +230,23 @@ const AdminDashboard = () => {
   const [serviceBookingsPage, setServiceBookingsPage] = useState(1);
   const [bookingsPerPage, setBookingsPerPage] = useState(10);
   const [serviceBookingsPerPage, setServiceBookingsPerPage] = useState(10);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+      if (window.innerWidth >= 1024) {
+        setIsSidebarOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial check
+    
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [roomForm, setRoomForm] = useState({
     name: '',
     type: 'Single',
@@ -497,6 +519,30 @@ const AdminDashboard = () => {
         setLoadError('No auth token found. Please log in again.');
         return;
       }
+
+      let logoUrl = brandingSettings.logoUrl;
+
+      // Upload logo file if selected
+      if (brandingLogoFile) {
+        const formData = new FormData();
+        formData.append('logo', brandingLogoFile);
+        const uploadResponse = await fetch(`${API_BASE}/api/admin/profile/upload-logo`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+        if (!uploadResponse.ok) {
+          const data = await uploadResponse.json().catch(() => ({}));
+          throw new Error(data.message || 'Failed to upload logo');
+        }
+        const uploadData = await uploadResponse.json();
+        logoUrl = uploadData.logoUrl;
+        setBrandingSettings(prev => ({ ...prev, logoUrl }));
+        setBrandingLogoFile(null);
+      }
+
       const response = await fetch(`${API_BASE}/api/admin/profile`, {
         method: 'PATCH',
         headers: {
@@ -507,7 +553,7 @@ const AdminDashboard = () => {
           name: profileSettings.name,
           email: profileSettings.email,
           phone: profileSettings.phone,
-          logoUrl: brandingSettings.logoUrl,
+          logoUrl: logoUrl,
           facebook: brandingSettings.facebook,
           instagram: brandingSettings.instagram,
           youtube: brandingSettings.youtube,
@@ -518,6 +564,8 @@ const AdminDashboard = () => {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || 'Failed to update profile');
       }
+      const updatedUser = await response.json();
+      setBrandingSettings(prev => ({ ...prev, logoUrl: updatedUser.logoUrl || logoUrl }));
       setSettingsSavedAt(new Date().toLocaleTimeString());
       toast.success('Profile updated successfully!');
     } catch (error) {
@@ -835,6 +883,44 @@ const AdminDashboard = () => {
     };
     loadAdminData();
   }, [isAdmin]);
+
+  // Load branding settings (logo, social links) from user profile
+  useEffect(() => {
+    const loadBrandingSettings = async () => {
+      if (!isAdmin || !user) return;
+      try {
+        const token = getAuthToken();
+        if (!token) return;
+        const response = await fetch(`${API_BASE}/api/admin/profile`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.logoUrl) {
+            setBrandingSettings(prev => ({ ...prev, logoUrl: userData.logoUrl }));
+          }
+          if (userData.facebook) {
+            setBrandingSettings(prev => ({ ...prev, facebook: userData.facebook }));
+          }
+          if (userData.instagram) {
+            setBrandingSettings(prev => ({ ...prev, instagram: userData.instagram }));
+          }
+          if (userData.youtube) {
+            setBrandingSettings(prev => ({ ...prev, youtube: userData.youtube }));
+          }
+          if (userData.twitter) {
+            setBrandingSettings(prev => ({ ...prev, twitter: userData.twitter }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load branding settings:', error);
+      }
+    };
+    loadBrandingSettings();
+  }, [isAdmin, user]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -2467,9 +2553,9 @@ const AdminDashboard = () => {
     };
 
     return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-stone-200">
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-stone-600">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-stone-200">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <span className="text-xs sm:text-sm text-stone-600 text-center sm:text-left">
             Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} bookings
           </span>
           <select
@@ -2478,7 +2564,7 @@ const AdminDashboard = () => {
               onItemsPerPageChange(Number(e.target.value));
               onPageChange(1);
             }}
-            className="px-3 py-1.5 rounded-lg border border-stone-300 bg-white text-sm text-stone-700 focus:ring-2 focus:ring-amber-400 focus:border-amber-400"
+            className="px-3 py-2 sm:py-1.5 rounded-lg border border-stone-300 bg-white text-xs sm:text-sm text-stone-700 focus:ring-2 focus:ring-amber-400 focus:border-amber-400 min-h-[44px] sm:min-h-0"
           >
             <option value={5}>5 per page</option>
             <option value={10}>10 per page</option>
@@ -2487,20 +2573,20 @@ const AdminDashboard = () => {
             <option value={100}>100 per page</option>
           </select>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto justify-center">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-0 text-xs sm:text-sm px-3 sm:px-4"
           >
             Previous
           </Button>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto">
             {getPageNumbers().map((page, index) => (
               page === '...' ? (
-                <span key={`ellipsis-${index}`} className="px-2 text-stone-400">...</span>
+                <span key={`ellipsis-${index}`} className="px-1 sm:px-2 text-stone-400 text-xs sm:text-sm">...</span>
               ) : (
                 <Button
                   key={page}
@@ -2509,8 +2595,8 @@ const AdminDashboard = () => {
                   onClick={() => onPageChange(page as number)}
                   className={
                     currentPage === page
-                      ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600"
-                      : "border-stone-300 text-stone-700 hover:bg-stone-50"
+                      ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600 min-h-[44px] sm:min-h-0 min-w-[44px] sm:min-w-0 text-xs sm:text-sm"
+                      : "border-stone-300 text-stone-700 hover:bg-stone-50 min-h-[44px] sm:min-h-0 min-w-[44px] sm:min-w-0 text-xs sm:text-sm"
                   }
                 >
                   {page}
@@ -2523,7 +2609,7 @@ const AdminDashboard = () => {
             size="sm"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="border-stone-300 text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] sm:min-h-0 text-xs sm:text-sm px-3 sm:px-4"
           >
             Next
           </Button>
@@ -2544,9 +2630,9 @@ const AdminDashboard = () => {
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(90deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:220px_100%]" />
       <div className="absolute inset-0 pointer-events-none opacity-25 bg-[linear-gradient(180deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:100%_160px]" />
 
-      <div className="relative w-full flex flex-col lg:flex-row pl-17">
+      <div className="relative w-full flex flex-col lg:flex-row lg:pl-17">
         {/* Hamburger menu for mobile */}
-        {isMobile && !isSidebarOpen && (
+        {/* {isMobile && !isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="fixed top-20 left-4 z-40 p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 lg:hidden"
@@ -2554,7 +2640,7 @@ const AdminDashboard = () => {
           >
             <Menu className="w-6 h-6" />
           </button>
-        )}
+        )} */}
 
         {/* Overlay for mobile when sidebar is open */}
         {isMobile && isSidebarOpen && (
@@ -2567,33 +2653,15 @@ const AdminDashboard = () => {
         {/* Sidebar Container */}
         <div
           id="admin-sideview"
-          className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${isSidebarOpen ? 'w-70' : 'w-20'} ${isMobile && !isSidebarOpen ? 'hidden' : ''}`}
+          className={`fixed inset-y-0 left-0 z-50 bg-[#1c1f1c] border-r border-[#2e352c] shadow-[0_25px_60px_rgba(0,0,0,0.6)] transition-all duration-300 flex flex-col ${
+            isMobile 
+              ? (isSidebarOpen ? 'w-[280px] translate-x-0' : '-translate-x-full')
+              : (isSidebarOpen ? 'w-70' : 'w-20')
+          }`}
         >
           {/* Header Section */}
-          {/* <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
-          
-            {!isMobile && (
-              <div className="flex items-center justify-between w-full">
-                {isSidebarOpen && (
-                  <div>
-                    <h2 className="text-2xl font-serif tracking-wide text-[#f6edda]">Admin Panel</h2>
-                    <p className="text-[#cbbfa8] text-sm">Admin User</p>
-                  </div>
-                )}
-                <button
-                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                  className=" m-4 rounded-lg hover:bg-[#2d342d] text-[#cbbfa8] transition-colors focus:outline-none focus:ring-2 focus:ring-[#e7d6ad]"
-                  aria-label={isSidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
-                >
-                  <Menu className="w-6 h-6" />
-                </button>
-              </div>
-            )}
-          </div> */}
-
-          {/* Header Section */}
           <div className={`py-6 flex flex-col ${isSidebarOpen ? 'items-start px-6' : 'items-center px-2'} mb-4`}>
-            {/* Desktop header - only shown on laptop when sidebar is open */}
+           
             {!isMobile && (
               <div className="flex items-center justify-between w-full">
                 {isSidebarOpen && (
@@ -2612,7 +2680,7 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {/* Mobile header - only shown on mobile when sidebar is open */}
+            
             {isMobile && isSidebarOpen && (
               <div className="flex items-center justify-between w-full">
                 <div>
@@ -2653,6 +2721,10 @@ const AdminDashboard = () => {
                       setActiveTab(item.section);
                     } else {
                       handleNavSelect(item.id);
+                    }
+                    // Close sidebar on mobile after selection
+                    if (isMobile) {
+                      setIsSidebarOpen(false);
                     }
                   }}
                   className={`group flex items-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#e7d6ad] ${activeTab === (item.section || item.id)
@@ -2697,109 +2769,109 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-72' : ''}`}>
-          <div className="p-2 sm:p-4 md:p-6 lg:p-8 relative">
+        <div className={`flex-1 transition-all duration-300 w-full ${isSidebarOpen && !isMobile ? 'lg:ml-72' : ''}`}>
+          <div className="p-0 sm:p-4 md:p-6 lg:p-8 relative pt-20 sm:pt-24 lg:pt-8 pb-20 md:pb-8">
             {isLoading && (
-              <div className="mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-4 py-3 text-sm text-[#c9c3b6]">
+              <div className="mb-0 sm:mb-6 rounded-xl border border-[#4b5246] bg-[#343a30] px-3 sm:px-4 py-2 sm:py-3 text-sm text-[#c9c3b6]">
                 Loading admin data...
               </div>
             )}
             {loadError && (
-              <div className="mb-6 rounded-xl border border-red-300/60 bg-[#3a2f2f] px-4 py-3 text-sm text-red-200">
+              <div className="mb-0 sm:mb-6 rounded-xl border border-red-300/60 bg-[#3a2f2f] px-3 sm:px-4 py-2 sm:py-3 text-sm text-red-200">
                 {loadError}
               </div>
             )}
 
             {activeTab === 'dashboard' && (
               <div>
-                <div className="mb-8 rounded-[28px] border border-[#5b6255] bg-[#4a5449]/40 p-4 sm:p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
-                  <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                <div className="mb-0 sm:mb-8 mt-0 sm:mt-6 lg:mt-10 rounded-[20px] sm:rounded-[28px] border border-[#5b6255] bg-[#4a5449]/40 p-0 sm:p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                  <div className="flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h1 className="mt-2 text-4xl sm:text-5xl font-serif tracking-tight text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
+                      <h1 className="mt-2 text-3xl sm:text-4xl md:text-5xl font-serif tracking-tight text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
                         Dashboard Overview
                       </h1>
                       <p className="mt-2 text-xs uppercase tracking-[0.35em] text-[#c9c3b6]">
                         Luxury performance brief
                       </p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="rounded-xl sm:rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm">
                         <p className="text-[#c9c3b6]">Live occupancy</p>
-                        <p className="mt-1 text-lg font-serif text-[#efece6]">{stats.occupancyRate}%</p>
+                        <p className="mt-1 text-base sm:text-lg font-serif text-[#efece6]">{stats.occupancyRate}%</p>
                       </div>
-                      <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
+                      <div className="rounded-xl sm:rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm">
                         <p className="text-[#c9c3b6]">Revenue today</p>
-                        <p className="mt-1 text-lg font-serif text-[#efece6]">₹{stats.totalRevenue.toFixed(0)}</p>
+                        <p className="mt-1 text-base sm:text-lg font-serif text-[#efece6]">₹{stats.totalRevenue.toFixed(0)}</p>
                       </div>
-                      <div className="rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-4 py-3 text-sm">
+                      <div className="rounded-xl sm:rounded-2xl border border-[#5b6255] bg-[#3f463d]/60 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm">
                         <p className="text-[#c9c3b6]">Bookings</p>
-                        <p className="mt-1 text-lg font-serif text-[#efece6]">{stats.totalBookings}</p>
+                        <p className="mt-1 text-base sm:text-lg font-serif text-[#efece6]">{stats.totalBookings}</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                        <Hotel className="w-6 h-6 text-[#6f5122]" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 mb-0 sm:mb-8">
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <Hotel className="w-5 h-5 sm:w-6 sm:h-6 text-[#6f5122]" />
                       </div>
-                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#a27c2f]" />
                     </div>
-                    <div className="text-3xl mb-1 font-serif">{stats.totalRooms}</div>
-                    <div className="text-[#6b6256] text-sm">Total Rooms</div>
+                    <div className="text-2xl sm:text-3xl mb-1 font-serif">{stats.totalRooms}</div>
+                    <div className="text-[#6b6256] text-xs sm:text-sm">Total Rooms</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                        <Hotel className="w-6 h-6 text-[#6f5122]" />
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <Hotel className="w-5 h-5 sm:w-6 sm:h-6 text-[#6f5122]" />
                       </div>
-                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#a27c2f]" />
                     </div>
-                    <div className="text-3xl mb-1 font-serif">{stats.availableRooms}</div>
-                    <div className="text-[#6b6256] text-sm">Available Rooms</div>
+                    <div className="text-2xl sm:text-3xl mb-1 font-serif">{stats.availableRooms}</div>
+                    <div className="text-[#6b6256] text-xs sm:text-sm">Available Rooms</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                        <Calendar className="w-6 h-6 text-[#6f5122]" />
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#6f5122]" />
                       </div>
-                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#a27c2f]" />
                     </div>
-                    <div className="text-3xl mb-1 font-serif">{stats.totalBookings}</div>
-                    <div className="text-[#6b6256] text-sm">Total Bookings</div>
+                    <div className="text-2xl sm:text-3xl mb-1 font-serif">{stats.totalBookings}</div>
+                    <div className="text-[#6b6256] text-xs sm:text-sm">Total Bookings</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                        <FaIndianRupeeSign className="w-6 h-6 text-[#6f5122]" />
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <FaIndianRupeeSign className="w-5 h-5 sm:w-6 sm:h-6 text-[#6f5122]" />
                       </div>
-                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#a27c2f]" />
                     </div>
-                    <div className="text-3xl mb-1 font-serif">₹{stats.totalRevenue.toFixed(0)}</div>
-                    <div className="text-[#6b6256] text-sm">Total Revenue</div>
+                    <div className="text-2xl sm:text-3xl mb-1 font-serif">₹{stats.totalRevenue.toFixed(0)}</div>
+                    <div className="text-[#6b6256] text-xs sm:text-sm">Total Revenue</div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-3xl p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
-                        <CheckCircle className="w-6 h-6 text-[#6f5122]" />
+                  <div className="bg-gradient-to-br from-[#fcf8f1] via-[#f6ead7] to-[#efe1c6] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[0_18px_40px_rgba(16,18,16,0.18)] border border-[#e7d6b9] text-[#1c1f1a]">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#f1dfc0] rounded-xl flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-[#6f5122]" />
                       </div>
-                      <TrendingUp className="w-5 h-5 text-[#a27c2f]" />
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#a27c2f]" />
                     </div>
-                    <div className="text-3xl mb-1 font-serif">{stats.occupancyRate}%</div>
-                    <div className="text-[#6b6256] text-sm">Occupancy Rate</div>
+                    <div className="text-2xl sm:text-3xl mb-1 font-serif">{stats.occupancyRate}%</div>
+                    <div className="text-[#6b6256] text-xs sm:text-sm">Occupancy Rate</div>
                   </div>
                 </div>
 
                 {/* Recent Room Bookings */}
-                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-4 sm:p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-0 sm:p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-0 sm:mb-6">
                     <h2 className="text-2xl font-serif">Recent Room Bookings</h2>
                     <Button
                       size="sm"
@@ -2811,18 +2883,18 @@ const AdminDashboard = () => {
                     </Button>
                   </div>
 
-                  <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full min-w-[600px]">
+                  <div className="overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0">
+                    <table className="w-full min-w-[600px] sm:min-w-full">
                       <thead>
                         <tr className="border-b border-[#5b6255]">
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Room</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Check-in</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Payment</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Amount</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Booking ID</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Guest</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Phone No.</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Room</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Check-in</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Status</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Payment</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2839,18 +2911,18 @@ const AdminDashboard = () => {
                             const phone = (booking.guestPhone || user?.phone || 'N/A').replace(/^\+/, '');
                             return (
                               <tr key={booking.id} className="border-b border-[#4b5246]">
-                                <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
-                                <td className="py-4 px-4">{booking.guestName}</td>
-                                <td className="py-4 px-4">{phone}</td>
-                                <td className="py-4 px-4">{room?.name || 'N/A'}</td>
-                                <td className="py-4 px-4">{new Date(booking.checkIn).toLocaleDateString()}</td>
-                                <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{booking.id.substring(0, 8)}...</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{booking.guestName}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{phone}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{room?.name || 'N/A'}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{new Date(booking.checkIn).toLocaleDateString()}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                  <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${statusBadgeClass(booking.status)}`}>
                                     {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                                   </span>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${booking.paymentStatus === 'paid'
+                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                  <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${booking.paymentStatus === 'paid'
                                     ? 'bg-green-100 text-green-800'
                                     : booking.paymentStatus === 'failed'
                                       ? 'bg-red-100 text-red-800'
@@ -2859,7 +2931,7 @@ const AdminDashboard = () => {
                                     {booking.paymentStatus || 'pending'}
                                   </span>
                                 </td>
-                                <td className="py-4 px-4">₹{booking.totalPrice.toFixed(2)}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">₹{booking.totalPrice.toFixed(2)}</td>
                               </tr>
                             );
                           })
@@ -2870,8 +2942,8 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Recent Service Bookings */}
-                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-4 sm:p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                <div className="rounded-3xl border border-[#5b6255] bg-[#4a5449]/40 p-0 sm:p-8 text-[#efece6] shadow-[0_18px_40px_rgba(16,18,16,0.18)] backdrop-blur-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-0 sm:mb-6">
                     <h2 className="text-2xl font-serif">Recent Service Bookings</h2>
                     <Button
                       size="sm"
@@ -2883,25 +2955,25 @@ const AdminDashboard = () => {
                     </Button>
                   </div>
 
-                  <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full min-w-[700px]">
+                  <div className="overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0">
+                    <table className="w-full min-w-[700px] sm:min-w-full">
                       <thead>
                         <tr className="border-b border-[#5b6255]">
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Booking ID</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Guest</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Phone No.</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Service</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Date</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Time</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Status</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Payment</th>
-                          <th className="text-left py-3 px-4 text-[#c9c3b6]">Amount</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Booking ID</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Guest</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Phone No.</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Service</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Date</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Time</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Status</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Payment</th>
+                          <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-[#c9c3b6] text-xs sm:text-sm">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         {recentServiceBookings.length === 0 ? (
                           <tr>
-                            <td colSpan={9} className="py-8 px-4 text-center text-[#c9c3b6]">
+                            <td colSpan={9} className="py-6 sm:py-8 px-2 sm:px-4 text-center text-[#c9c3b6] text-xs sm:text-sm">
                               No recent service bookings
                             </td>
                           </tr>
@@ -2916,19 +2988,19 @@ const AdminDashboard = () => {
                             }
                             return (
                               <tr key={booking.id} className="border-b border-[#4b5246]">
-                                <td className="py-4 px-4">{booking.id.substring(0, 8)}...</td>
-                                <td className="py-4 px-4">{booking.guestName}</td>
-                                <td className="py-4 px-4">{(booking.guestPhone || 'N/A').replace(/^\+/, '')}</td>
-                                <td className="py-4 px-4">{service?.name || booking.serviceName || 'N/A'}</td>
-                                <td className="py-4 px-4">{new Date(booking.date).toLocaleDateString()}</td>
-                                <td className="py-4 px-4">{booking.time}</td>
-                                <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${statusBadgeClass(booking.status)}`}>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{booking.id.substring(0, 8)}...</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{booking.guestName}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{(booking.guestPhone || 'N/A').replace(/^\+/, '')}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{service?.name || booking.serviceName || 'N/A'}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{new Date(booking.date).toLocaleDateString()}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">{booking.time}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                  <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${statusBadgeClass(booking.status)}`}>
                                     {booking.status}
                                   </span>
                                 </td>
-                                <td className="py-4 px-4">
-                                  <span className={`px-3 py-1 rounded-full text-sm ${paymentStatus === 'paid'
+                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                  <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${paymentStatus === 'paid'
                                     ? 'bg-green-100 text-green-800'
                                     : paymentStatus === 'failed'
                                       ? 'bg-red-100 text-red-800'
@@ -2937,7 +3009,7 @@ const AdminDashboard = () => {
                                     {paymentStatus}
                                   </span>
                                 </td>
-                                <td className="py-4 px-4">₹{amount.toFixed(2)}</td>
+                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-xs sm:text-sm">₹{amount.toFixed(2)}</td>
                               </tr>
                             );
                           })
@@ -2951,27 +3023,27 @@ const AdminDashboard = () => {
 
             {activeTab === 'rooms' && (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-0 sm:mb-8">
                   <h1 className="text-3xl sm:text-4xl" style={{ fontFamily: "'Great Vibes', cursive" }}>Manage Rooms</h1>
-                  <Button onClick={handleAddRoomClick} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]">
+                  <Button onClick={handleAddRoomClick} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] min-h-[44px] px-4 py-2 text-sm sm:text-base">
                     <Plus className="w-5 h-5 mr-2" />
                     Add New Room
                   </Button>
                 </div>
 
                 {isRoomFormOpen && (
-                  <form onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                  <form onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-4 sm:p-8 shadow-lg mb-0 sm:mb-10 border border-[#3a463a] text-[#f5f1e8]">
                     <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingRoomId ? 'Update Room' : 'Add Room'}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <Input
-                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 h-12 sm:h-10 text-base sm:text-sm"
                         placeholder="Room name"
                         value={roomForm.name}
                         onChange={(event) => setRoomForm({ ...roomForm, name: event.target.value })}
                         required
                       />
                       <select
-                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-10 focus:ring-amber-400"
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] rounded-md px-3 h-12 sm:h-10 text-base sm:text-sm focus:ring-amber-400"
                         value={roomForm.type}
                         onChange={(event) => setRoomForm({ ...roomForm, type: event.target.value })}
                       >
@@ -3081,11 +3153,11 @@ const AdminDashboard = () => {
                         />
                         Available
                       </label>
-                      <div className="flex gap-2">
-                        <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Button type="button" variant="outline" onClick={() => setIsRoomFormOpen(false)} className="bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] border-none min-h-[44px] px-4 py-2 text-sm sm:text-base">
                           Cancel
                         </Button>
-                        <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none">
+                        <Button type="submit" className="bg-amber-400 hover:bg-amber-500 text-[#232b23] border-none min-h-[44px] px-4 py-2 text-sm sm:text-base">
                           {editingRoomId ? 'Update Room' : 'Add Room'}
                         </Button>
                       </div>
@@ -3093,7 +3165,7 @@ const AdminDashboard = () => {
                   </form>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-6">
                   {roomsState.slice(0, 5).map((room) => {
                     const imageUrl = room.images[0];
                     const displayImage = imageUrl?.startsWith('/uploads/')
@@ -3133,7 +3205,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
 
-                        <div className="p-4 text-[#efece6]">
+                        <div className="p-0 sm:p-4 text-[#efece6]">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <h3 className="text-base text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -3211,7 +3283,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'services' && (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Services</h1>
                     <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel offerings</p>
@@ -3228,7 +3300,7 @@ const AdminDashboard = () => {
                 {isServiceFormOpen && (
                   <form
                     onSubmit={handleServiceSubmit}
-                    className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]"
+                    className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-4 sm:p-8 shadow-lg mb-0 sm:mb-10 border border-[#3a463a] text-[#f5f1e8]"
                   >
                     <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingServiceId ? 'Edit Service' : 'Add Service'}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -3468,7 +3540,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'offers' && (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-bold text-stone-900" style={{ fontFamily: "'Great Vibes', cursive" }}>Offers</h1>
                     <p className="text-stone-600 mt-1 text-sm">Create and publish seasonal promotions.</p>
@@ -3480,7 +3552,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {isOfferFormOpen && (
-                  <form onSubmit={handleOfferSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-8 shadow-lg mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                  <form onSubmit={handleOfferSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-4 sm:p-8 shadow-lg mb-0 sm:mb-10 border border-[#3a463a] text-[#f5f1e8]">
                     <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingOfferId ? 'Edit Offer' : 'Add Offer'}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <Input
@@ -3649,11 +3721,11 @@ const AdminDashboard = () => {
 
             {activeTab === 'bookings' && (
               <div>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
-                  <h1 className="text-3xl sm:text-4xl font-bold" style={{ fontFamily: "'Great Vibes', cursive" }}>All Bookings</h1>
-                  <div className="flex gap-3 items-center flex-wrap">
+                <div className="mt-0 sm:mt-15 flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between mb-0 sm:mb-8">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold" style={{ fontFamily: "'Great Vibes', cursive" }}>All Bookings</h1>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center flex-wrap">
                     <select
-                      className="px-5 py-2 h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-base font-medium focus:ring-amber-400 shadow-sm"
+                      className="px-3 sm:px-5 py-2.5 sm:py-2 h-11 sm:h-12 rounded-xl border border-[#3a463a] bg-[#232b23] text-[#efece6] text-sm sm:text-base font-medium focus:ring-amber-400 shadow-sm"
                       value={bookingStatusFilter}
                       onChange={(event) => setBookingStatusFilter(event.target.value)}
                     >
@@ -3666,7 +3738,7 @@ const AdminDashboard = () => {
                     </select>
                     <Button
                       onClick={handleAddBookingClick}
-                      className="bg-amber-600 hover:bg-amber-700 text-white shadow-md"
+                      className="bg-amber-600 hover:bg-amber-700 text-white shadow-md min-h-[44px] text-sm sm:text-base"
                       title="Add booking manually"
                     >
                       <Plus className="w-4 h-4 mr-2" />
@@ -3674,7 +3746,7 @@ const AdminDashboard = () => {
                     </Button>
                     <Button
                       onClick={handleExportBookingsToExcel}
-                      className="bg-green-600 hover:bg-green-700 text-white shadow-md"
+                      className="bg-green-600 hover:bg-green-700 text-white shadow-md min-h-[44px] text-sm sm:text-base"
                       title="Download bookings as Excel"
                     >
                       <Upload className="w-4 h-4 mr-2" />
@@ -3689,7 +3761,7 @@ const AdminDashboard = () => {
                       title="Upload bookings Excel file"
                     />
                     <Button
-                      className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                      className="bg-blue-600 hover:bg-blue-700 text-white shadow-md min-h-[44px] text-sm sm:text-base"
                       onClick={() => document.getElementById('import-bookings-excel')?.click()}
                     >
                       <Download className="w-4 h-4 mr-2" />
@@ -3698,33 +3770,33 @@ const AdminDashboard = () => {
                     <a
                       href="/sample_bookings.xlsx"
                       download="sample_bookings.xlsx"
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-sm shadow-sm"
+                      className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-md border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 font-medium text-xs sm:text-sm shadow-sm min-h-[44px]"
                       title="Download sample bookings template"
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       Sample
                     </a>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                       <Input
                         type="text"
                         placeholder="Search by name or phone..."
                         value={bookingSearchQuery}
                         onChange={(e) => setBookingSearchQuery(e.target.value)}
-                        className="pl-9 pr-3 h-10 rounded-xl border border-stone-300 bg-stone-50 text-sm"
+                        className="pl-9 pr-3 h-11 sm:h-10 rounded-xl border border-stone-300 bg-stone-50 text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
                 {isBookingFormOpen && (
-                  <form onSubmit={handleSaveBooking} className="bg-[#232b23] rounded-3xl p-8 shadow-xl mb-8 border border-[#3a463a] max-w-4xl mx-auto">
-                    <h2 className="text-3xl font-serif text-[#fffbe6] mb-8 text-center">Add Booking</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  <form onSubmit={handleSaveBooking} className="bg-[#232b23] rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl mb-0 sm:mb-8 border border-[#3a463a] max-w-4xl mx-auto">
+                    <h2 className="text-2xl sm:text-3xl font-serif text-[#fffbe6] mb-4 sm:mb-8 text-center">Add Booking</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-8">
                       <div className="flex flex-col gap-2">
-                        <label className="text-[#e6e6e6] text-sm font-medium">Select Room</label>
+                        <label className="text-[#e6e6e6] text-xs sm:text-sm font-medium">Select Room</label>
                         <select
-                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base focus:ring-amber-400"
+                          className="h-11 sm:h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-3 sm:px-4 text-sm sm:text-base focus:ring-amber-400"
                           value={bookingForm.roomId}
                           onChange={(event) => setBookingForm({ ...bookingForm, roomId: event.target.value })}
                           required
@@ -3738,9 +3810,9 @@ const AdminDashboard = () => {
                         </select>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className="text-[#e6e6e6] text-sm font-medium">Guest Name</label>
+                        <label className="text-[#e6e6e6] text-xs sm:text-sm font-medium">Guest Name</label>
                         <Input
-                          className="h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-4 text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
+                          className="h-11 sm:h-12 rounded-lg border border-[#3a463a] bg-[#2e362e] text-[#efece6] px-3 sm:px-4 text-sm sm:text-base placeholder:text-[#b6b6b6] focus:ring-amber-400"
                           placeholder="Guest Name"
                           value={bookingForm.guestName}
                           onChange={(event) => setBookingForm({ ...bookingForm, guestName: event.target.value })}
@@ -3837,9 +3909,168 @@ const AdminDashboard = () => {
                   </form>
                 )}
 
-                <div className="bg-white rounded-3xl p-8 shadow-sm">
-                  <div className="overflow-x-auto" style={{ paddingBottom: 16, minWidth: '100%' }}>
-                    <table className="w-full">
+                <div className="bg-white rounded-3xl p-4 sm:p-8 shadow-sm">
+                  {/* Mobile Card View */}
+                  <div className="lg:hidden space-y-4">
+                    {paginatedBookings.length === 0 ? (
+                      <div className="py-8 text-center text-stone-500">
+                        No bookings found
+                      </div>
+                    ) : (
+                      paginatedBookings.map((booking) => {
+                        const room = roomsState.find(r => r.id === booking.roomId);
+                        return (
+                          <div key={booking.id} className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <div className="font-semibold text-stone-900 mb-1">{booking.guestName}</div>
+                                <div className="text-sm text-stone-600">{booking.guestEmail}</div>
+                                <div className="text-xs text-stone-500 mt-1">ID: {booking.id}</div>
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="rounded-full h-8 w-8">
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {booking.idVerified === 'pending' && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => handleIdVerificationChange(booking, 'approved')}>Approve ID</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleIdVerificationChange(booking, 'rejected')}>Reject ID</DropdownMenuItem>
+                                    </>
+                                  )}
+                                  {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
+                                    <DropdownMenuItem>
+                                      <div className="flex flex-col">
+                                        <span className="font-semibold mb-1">Pay Now</span>
+                                        <div className="flex gap-2">
+                                          <button
+                                            className="px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              try {
+                                                await updateBookingStatus(booking.id, 'checked-in', 'paid', 'cash');
+                                                window.location.reload();
+                                              } catch { }
+                                            }}
+                                          >
+                                            Cash
+                                          </button>
+                                          <button
+                                            className="px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              try {
+                                                await updateBookingStatus(booking.id, 'checked-in', 'paid', 'online');
+                                                window.location.reload();
+                                              } catch { }
+                                            }}
+                                          >
+                                            Online
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <div className="text-stone-500 text-xs">Phone</div>
+                                <div className="text-stone-900">{(booking.guestPhone || 'N/A').replace(/^\+/, '')}</div>
+                              </div>
+                              <div>
+                                <div className="text-stone-500 text-xs">Room</div>
+                                <div className="text-stone-900">{room?.name || 'N/A'}</div>
+                              </div>
+                              <div>
+                                <div className="text-stone-500 text-xs">Check-In</div>
+                                <div className="text-stone-900">{new Date(booking.checkIn).toLocaleDateString()}</div>
+                              </div>
+                              <div>
+                                <div className="text-stone-500 text-xs">Check-Out</div>
+                                <div className="text-stone-900">{new Date(booking.checkOut).toLocaleDateString()}</div>
+                              </div>
+                              <div>
+                                <div className="text-stone-500 text-xs">Status</div>
+                                <span className={`inline-block px-2 py-1 rounded-full text-xs ${statusBadgeClass(booking.status)}`}>
+                                  {booking.status === 'checked-in' ? 'Check-In' : booking.status === 'checked-out' ? 'Check-Out' : booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                                </span>
+                                {booking.status === 'confirmed' && booking.idVerified === 'approved' && (
+                                  <button
+                                    className="mt-2 w-full px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs flex items-center justify-center gap-1"
+                                    onClick={() => {
+                                      if (window.confirm("Check in this guest now?")) {
+                                        updateBookingStatus(booking.id, 'checked-in');
+                                      }
+                                    }}
+                                  >
+                                    <LogIn className="w-3 h-3" />
+                                    Check-In
+                                  </button>
+                                )}
+                                {booking.status === 'checked-in' && (
+                                  <button
+                                    className="mt-2 w-full px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-xs flex items-center justify-center gap-1"
+                                    onClick={() => {
+                                      if (window.confirm("Confirm Check-Out for this guest?")) {
+                                        updateBookingStatus(booking.id, 'checked-out');
+                                      }
+                                    }}
+                                  >
+                                    <DoorOpen className="w-3 h-3" />
+                                    Check-Out
+                                  </button>
+                                )}
+                              </div>
+                              <div>
+                                <div className="text-stone-500 text-xs">Payment</div>
+                                <span className={`inline-block px-2 py-1 rounded-full text-xs ${booking.paymentStatus === 'paid'
+                                  ? 'bg-green-100 text-green-800'
+                                  : booking.paymentStatus === 'failed'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                  }`}>
+                                  {booking.paymentStatus === 'paid' && booking.paymentMethod === 'cash' && 'Paid (Cash)'}
+                                  {booking.paymentStatus === 'paid' && booking.paymentMethod === 'online' && 'Paid (Online)'}
+                                  {booking.paymentStatus !== 'paid' && (booking.paymentStatus || 'pending')}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="text-stone-500 text-xs">ID Status</div>
+                                <span className={`inline-block px-2 py-1 rounded-full text-xs ${idVerifiedBadgeClass(booking.idVerified)}`}>
+                                  {booking.idVerified || 'pending'}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="text-stone-500 text-xs">Amount</div>
+                                <div className="text-stone-900 font-semibold">₹{booking.totalPrice.toFixed(2)}</div>
+                              </div>
+                              {booking.idProofUrl && (
+                                <div className="col-span-2">
+                                  <div className="text-stone-500 text-xs mb-1">ID Proof</div>
+                                  <a
+                                    href={`${API_BASE}${booking.idProofUrl}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-sm text-blue-600 hover:underline"
+                                  >
+                                    View ID Document
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  {/* Desktop Table View */}
+                  <div className="hidden lg:block overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0" style={{ paddingBottom: 16, minWidth: '100%' }}>
+                    <table className="w-full min-w-[800px] sm:min-w-full">
                       <thead>
                         <tr className="border-b border-stone-200">
                           <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
@@ -3870,7 +4101,7 @@ const AdminDashboard = () => {
                                 key={booking.id}
                                 booking={booking}
                                 room={room}
-                                isMobile={isMobile}
+                                isMobile={false}
                                 swipedBookingId={swipedBookingId}
                                 setSwipedBookingId={setSwipedBookingId}
                                 onIdVerificationChange={handleIdVerificationChange}
@@ -3900,7 +4131,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'service-bookings' && (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Service Bookings</h1>
                     <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel service reservations</p>
@@ -4246,93 +4477,17 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {/* {activeTab === 'payments' && (
-              <div>
-                <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Payment Management</h1>
-                <div className="bg-white rounded-3xl p-8 shadow-sm">
-                  {usersState.length === 0 ? (
-                    <div className="text-center py-16 text-stone-600">No payment records yet.</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-stone-200">
-                            <th className="text-left py-3 px-4 text-stone-600">User</th>
-                            <th className="text-left py-3 px-4 text-stone-600">Room Amount</th>
-                            <th className="text-left py-3 px-4 text-stone-600">Service Amount</th>
-                            <th className="text-left py-3 px-4 text-stone-600">Total Amount</th>
-                            <th className="text-left py-3 px-4 text-stone-600">Pending Amount</th>
-                            <th className="text-left py-3 px-4 text-stone-600">Payment Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {usersState.map((user) => {
-                            if (!user || !user.id) return null;
-                            const userRoomBookings = bookingsState.filter(b => b.userId === user.id);
-                            const roomTotal = userRoomBookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0);
-                                  const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
-                                  // Use paymentStatus for service bookings
-                                  const serviceTotal = userServiceBookings.reduce((sum, sb) => {
-                                    let price = 0;
-                                    if (sb.priceRange) {
-                                      const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
-                                      if (match) price = parseFloat(match[0]);
-                                    }
-                                    return sum + price;
-                                  }, 0);
-                                  const total = roomTotal + serviceTotal;
-                                  if (roomTotal === 0 && serviceTotal === 0) return null;
-                                  // Calculate paid/pending for service bookings using paymentStatus
-                                  const roomPaid = userRoomBookings.filter(b => b.paymentStatus === 'paid').reduce((sum, b) => sum + (b.totalPrice || 0), 0);
-                                  const roomPending = roomTotal - roomPaid;
-                                  const servicePaid = userServiceBookings.filter(sb => sb.paymentStatus === 'paid').reduce((sum, sb) => {
-                                    let price = 0;
-                                    if (sb.priceRange) {
-                                      const match = String(sb.priceRange).match(/\d+(\.\d+)?/);
-                                      if (match) price = parseFloat(match[0]);
-                                    }
-                                    return sum + price;
-                                  }, 0);
-                                  const servicePending = serviceTotal - servicePaid;
-                                  return (
-                                    <tr key={user.id} className="border-b border-stone-100">
-                                      <td className="py-4 px-4">{user.name} <span className="block text-xs text-stone-400">{user.email}</span></td>
-                                      <td className="py-4 px-4">₹{roomTotal.toFixed(2)}</td>
-                                      <td className="py-4 px-4">₹{serviceTotal.toFixed(2)}</td>
-                                      <td className="py-4 px-4 font-bold">₹{total.toFixed(2)}</td>
-                                      <td className="py-4 px-4">₹{(roomPending + servicePending).toFixed(2)}</td>
-                                      <td className="py-4 px-4">
-                                        {roomPending === 0 && servicePending === 0 ? (
-                                          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Paid</span>
-                                        ) : roomPending === 0 && servicePending > 0 ? (
-                                          <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Pending (Service)</span>
-                                        ) : roomPending > 0 && servicePending === 0 ? (
-                                          <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Pending (Room)</span>
-                                        ) : (
-                                          <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Pending</span>
-                                        )}
-                                      </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )} */}
             {activeTab === 'payments' && (
               <div>
-                <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>
+                <h1 className="mt-0 sm:mt-15 text-3xl sm:text-4xl mb-0 sm:mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>
                   Payment Management
                 </h1>
-                <div className="bg-white rounded-3xl p-8 shadow-sm">
+                <div className="bg-white rounded-3xl p-0 sm:p-8 shadow-sm">
                   {usersState.length === 0 ? (
                     <div className="text-center py-16 text-stone-600">No payment records yet.</div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
+                    <div className="overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0">
+                      <table className="w-full min-w-[600px] sm:min-w-full">
                         <thead>
                           <tr className="border-b border-stone-200">
                             <th className="text-left py-3 px-4 text-stone-600">User</th>
@@ -4354,24 +4509,6 @@ const AdminDashboard = () => {
                               .filter(b => b.paymentStatus === 'paid')
                               .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
                             const roomPending = roomTotal - roomPaid;
-
-                            // 2. Service Calculation Logic (Fixed for DB sync)
-                            // const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
-
-                            // const parsePrice = (range) => {
-                            //   if (!range) return 0;
-                            //   const match = String(range).match(/\d+(\.\d+)?/);
-                            //   return match ? parseFloat(match[0]) : 0;
-                            // };
-
-                            // const serviceTotal = userServiceBookings.reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
-
-                            // // Sabse important change: Status check for services
-                            // const servicePaid = userServiceBookings
-                            //   .filter(sb => sb.paymentStatus === 'paid') 
-                            //   .reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
-
-                            // const servicePending = serviceTotal - servicePaid;
 
                             // 2. Service Calculation Logic (Robust Update)
                             const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
@@ -4444,15 +4581,15 @@ const AdminDashboard = () => {
 
             {activeTab === 'guests' && (
               <div>
-                <h1 className="text-3xl sm:text-4xl mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
+                <h1 className="mt-0 sm:mt-15 text-3xl sm:text-4xl mb-0 sm:mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
 
                 {/* Users List */}
-                <div className="bg-[#232b23] rounded-3xl p-8 shadow-lg border border-[#3a463a] text-[#f5f1e8]">
+                <div className="bg-[#232b23] rounded-3xl p-0 sm:p-8 shadow-lg border border-[#3a463a] text-[#f5f1e8]">
                   {usersState.length === 0 ? (
                     <div className="text-center py-16">No guests found.</div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
+                    <div className="overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0">
+                      <table className="w-full min-w-[600px] sm:min-w-full">
                         <thead>
                           <tr className="border-b border-[#3a463a]">
                             <th className="text-left py-3 px-4 text-[#c9c3b6]">Name</th>
@@ -4488,7 +4625,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'contacts' && (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl mb-2" style={{ fontFamily: "'Great Vibes', cursive" }}>Contact Messages</h1>
                     <p className="text-stone-600">Manage customer inquiries and feedback</p>
@@ -4631,7 +4768,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'newsletter' && (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-8">
+                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Newsletter Subscriptions</h1>
                     <p className="text-[#cbbfa8] mt-1 text-sm">Manage newsletter subscribers and export the latest list</p>
@@ -4660,8 +4797,8 @@ const AdminDashboard = () => {
 
                 {newsletterSubscriptions.length > 0 && (
                   <div className="rounded-2xl border border-[#5b6255] bg-[#2f3a32]/90 overflow-hidden shadow-xl">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
+                    <div className="overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0">
+                      <table className="w-full min-w-[600px] sm:min-w-full">
                         <thead className="bg-[#384237]">
                           <tr>
                             <th className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-widest text-[#cfc9bb]">
@@ -4719,7 +4856,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'settings' && (
               <div>
-                <h1 className="text-4xl mb-2 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>Settings</h1>
+                <h1 className=" mt-15 text-4xl mb-2 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>Settings</h1>
                 <p className="text-[#cfc9bb] mb-8">Configure system settings</p>
                 {settingsSavedAt && (
                   <div className="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
@@ -4983,32 +5120,32 @@ const AdminDashboard = () => {
 
       {/* Service Booking Confirmation Dialog */}
       {serviceBookingConfirmDialog.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 border border-stone-200">
-            <h3 className="text-xl font-bold text-stone-900 mb-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 max-w-md w-full border border-stone-200">
+            <h3 className="text-lg sm:text-xl font-bold text-stone-900 mb-2">
               Confirm {serviceBookingConfirmDialog.action === 'approve' ? 'Approval' : 'Rejection'}
             </h3>
-            <p className="text-stone-600 mb-6">
+            <p className="text-sm sm:text-base text-stone-600 mb-6">
               Are you sure you want to <strong>{serviceBookingConfirmDialog.action}</strong> the service booking for{' '}
               <strong>{serviceBookingConfirmDialog.bookingName}</strong>?
             </p>
-            <div className="flex gap-3 justify-end">
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setServiceBookingConfirmDialog({ show: false, bookingId: null, action: null })}
-                className="border-stone-300 text-stone-700 hover:bg-stone-50"
+                className="border-stone-300 text-stone-700 hover:bg-stone-50 w-full sm:w-auto min-h-[44px] sm:min-h-0"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
                 onClick={handleUpdateServiceBookingStatus}
-                className={
+                className={`w-full sm:w-auto min-h-[44px] sm:min-h-0 ${
                   serviceBookingConfirmDialog.action === 'approve'
                     ? 'bg-green-600 hover:bg-green-700 text-white'
                     : 'bg-red-600 hover:bg-red-700 text-white'
-                }
+                }`}
               >
                 {serviceBookingConfirmDialog.action === 'approve' ? 'Approve' : 'Reject'}
               </Button>
@@ -5016,6 +5153,7 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+      <MobileBottomNav />
       <Footer isAdmin />
     </div>
   );

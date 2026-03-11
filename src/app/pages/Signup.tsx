@@ -117,109 +117,115 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#3f4a40] text-[#efece6] px-4">
-      <div className="w-full max-w-lg bg-[#232b23]/95 rounded-3xl shadow-2xl p-12 border border-[#5b6659]">
-        <h1 className="text-3xl font-bold text-center mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Create Account</h1>
-        <p className="text-center text-[#cfc9bb] mb-8 text-lg">
+    <div className="min-h-screen flex items-center justify-center bg-[#3f4a40] text-[#efece6] px-4 py-8 sm:py-12">
+      <div className="w-full max-w-lg bg-[#232b23]/95 rounded-2xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 md:p-12 border border-[#5b6659]">
+        <h1 className="text-2xl sm:text-3xl font-bold text-center mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Create Account</h1>
+        <p className="text-center text-[#cfc9bb] mb-6 sm:mb-8 text-base sm:text-lg">
           Join us for exclusive benefits
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5" noValidate>
           {/* Name */}
           <div>
-            <Label htmlFor="name" className="text-[#efece6]">Full Name *</Label>
+            <Label htmlFor="name" className="text-[#efece6] text-sm sm:text-base">Full Name *</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`mt-2 h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.name ? 'border-red-500' : ''}`}
+              placeholder="Enter your full name"
+              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.name ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
-            {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+            {errors.name && <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.name}</p>}
           </div>
 
           {/* Email */}
           <div>
-            <Label htmlFor="email" className="text-[#efece6]">Email *</Label>
+            <Label htmlFor="email" className="text-[#efece6] text-sm sm:text-base">Email *</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`mt-2 h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.email ? 'border-red-500' : ''}`}
+              placeholder="Enter your email"
+              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.email ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             {errors.email && (
-              <p className="text-sm text-red-500">{errors.email}</p>
+              <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.email}</p>
             )}
           </div>
 
           {/* Phone */}
           <div>
-            <Label htmlFor="phone" className="text-[#efece6]">Phone *</Label>
+            <Label htmlFor="phone" className="text-[#efece6] text-sm sm:text-base">Phone *</Label>
             <Input
               id="phone"
               type="tel"
               value={formData.phone}
               onChange={handlePhoneChange}
               onBlur={handleBlur}
-              className={`mt-2 h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.phone ? 'border-red-500' : ''}`}
+              placeholder="Enter your phone number"
+              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.phone ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             {errors.phone && (
-              <p className="text-sm text-red-500">{errors.phone}</p>
+              <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.phone}</p>
             )}
           </div>
 
           {/* Password */}
           <div>
-            <Label htmlFor="password" className="text-[#efece6]">Password *</Label>
+            <Label htmlFor="password" className="text-[#efece6] text-sm sm:text-base">Password *</Label>
             <div className="relative mt-2">
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
-                className="h-14 pr-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400"
+                placeholder="Enter your password"
+                className="h-12 sm:h-14 pr-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400"
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#b6b6b6] hover:text-[#efece6]"
+                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-[#b6b6b6] hover:text-[#efece6] p-1"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff /> : <Eye />}
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
           </div>
 
           {/* Confirm Password */}
           <div>
-            <Label htmlFor="confirmPassword" className="text-[#efece6]">Confirm Password *</Label>
+            <Label htmlFor="confirmPassword" className="text-[#efece6] text-sm sm:text-base">Confirm Password *</Label>
             <Input
               id="confirmPassword"
               type="password"
               value={formData.confirmPassword}
               onChange={handleChange}
               onBlur={handleBlur}
-              className={`mt-2 h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-lg px-5 focus:ring-2 focus:ring-amber-400 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+              placeholder="Confirm your password"
+              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.confirmPassword ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             {errors.confirmPassword && (
-              <p className="text-sm text-red-500">
+              <p className="text-xs sm:text-sm text-red-500 mt-1">
                 {errors.confirmPassword}
               </p>
             )}
           </div>
 
-          <Button type="submit" className="w-full h-12 bg-[#243026] border border-[#5b6659] text-[#efece6] hover:bg-white/10" disabled={isLoading}>
+          <Button type="submit" className="w-full h-12 sm:h-14 rounded-xl text-base sm:text-lg font-medium bg-[#243026] border border-[#5b6659] text-[#efece6] hover:bg-white/10 transition-colors" disabled={isLoading}>
             {isLoading ? 'Creating Account...' : 'Create Account'}
           </Button>
         </form>
 
-        <p className="text-center text-sm text-[#cfc9bb] mt-6">
+        <p className="text-center text-sm sm:text-base text-[#cfc9bb] mt-6">
           Already have an account?{' '}
           <Link to="/login" className="font-medium text-[#efece6] hover:underline">
             Sign in

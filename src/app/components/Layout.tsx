@@ -2,10 +2,14 @@ import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import Header from './Header';
 import Footer from './Footer';
-import MobileBottomNav from './MobileBottomNav.tsx';
+import MobileBottomNavUser from './MobileBottomNavuser.tsx';
+import MobileBottomNavAdmin from './MobileBottomNavadmin.tsx';
+import { useAuth } from '../context/AuthContext';
 
 const Layout = () => {
   const location = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user && user.role === 'admin';
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -18,7 +22,11 @@ const Layout = () => {
         <Outlet />
       </main>
       {/* <Footer /> removed to prevent double footer in admin pages */}
-      <MobileBottomNav />
+      {isAdmin && location.pathname.startsWith('/admin') ? (
+        <MobileBottomNavAdmin />
+      ) : (
+        <MobileBottomNavUser />
+      )}
     </div>
   );
 };

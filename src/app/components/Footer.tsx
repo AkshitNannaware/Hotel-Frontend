@@ -22,7 +22,7 @@ const Footer = ({ isAdmin = false }) => {
             {/* ...existing code... (user footer content) */}
             <div>
               <h2 className="text-2xl mb-4 text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                King's Hideaway
+                On Earth
               </h2>
               <nav className="space-y-2">
                 {[
@@ -232,17 +232,12 @@ const Footer = ({ isAdmin = false }) => {
                   <Twitter className="w-4 h-4" />
                 </a>
               </div>
-              <Button className="bg-[#6b7262] text-[#232a22] hover:bg-[#efece6] hover:text-[#232a22] font-bold uppercase tracking-widest w-full">
-                <Link to="/admin/bookings" className="w-full h-full block text-center">
-                  Admin Bookings
-                </Link>
-              </Button>
             </div>
           </div>
         )}
         {/* Copyright */}
         <div className="mt-8 pt-6 border-t border-[#6c7564] text-center">
-          <p className="text-xs text-[#a9a492]">© {new Date().getFullYear()} King's Hideaway. All rights reserved.</p>
+          <p className="text-xs text-[#a9a492]">© {new Date().getFullYear()} On Earth. All rights reserved.</p>
         </div>
       </div>
     </footer>

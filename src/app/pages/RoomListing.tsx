@@ -335,7 +335,7 @@ const RoomListing = () => {
                               {room.location}
                             </p>
                           ) : (
-                            <p className="text-xs text-[#cfc9bb] mt-1">Modern cozy suite · 1 queen bed</p>
+                          <p className="text-xs text-[#cfc9bb] mt-1">Modern cozy suite · 1 queen bed</p>
                           )}
                         </div>
                         <div className="text-right">

@@ -7,6 +7,7 @@ interface User {
   phone: string;
   role: 'user' | 'admin';
   twoFactorEnabled?: boolean;
+  logoUrl?: string;
 }
 
 interface AuthContextType {

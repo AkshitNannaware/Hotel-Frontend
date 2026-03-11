@@ -11,13 +11,7 @@ interface NavItem {
   state?: { tab: string };
 }
 
-const userNavItems: NavItem[] = [
-  { label: 'Home', to: '/', icon: Home },
-  { label: 'Accomodation', to: '/rooms', icon: BedDouble },
-  { label: 'Services', to: '/services', icon: ConciergeBell },
-  { label: 'About Us', to: '/about', icon: Info },
-  { label: 'Book Now', to: '/select-dates', icon: CalendarCheck },
-];
+// Items shown in the ADMIN bottom navbar
 
 const adminNavItems: NavItem[] = [
   { label: 'Home', to: '/admin', icon: Home },
@@ -32,7 +26,8 @@ const MobileBottomNav = () => {
   const location = useLocation();
   const { user } = useAuth();
   const isAdmin = user && user.role === 'admin';
-  const navItems = isAdmin ? adminNavItems : userNavItems;
+  // const navItems = isAdmin ? adminNavItems : userNavItems;
+  const navItems = adminNavItems;
 
   // For admin, highlight based on search params or path
   let adminTab = '';
