@@ -5,6 +5,7 @@ import { FaBell, FaCheck, FaTimes, FaUserPlus, FaClipboardList } from 'react-ico
 import { FaIndianRupeeSign } from 'react-icons/fa6';
 import { MdSubscriptions } from 'react-icons/md';
 import { useNotifications } from '../hooks/useNotifications';
+import DefaultLogo from '../../../Gemini_Generated_Image_luttpjluttpjlutt.png';
 // Notification pop-up logic and data
 const notificationIcons = {
   admin: <FaClipboardList color="#eab308" size={20} />,
@@ -21,6 +22,7 @@ const Header = () => {
   const navigate = useNavigate();
   const [logoUrl, setLogoUrl] = useState<string>('');
   const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
+  const effectiveLogo = logoUrl || DefaultLogo;
 
   const handleLogout = () => {
     logout();
@@ -107,17 +109,17 @@ const Header = () => {
         {isAdminDashboard ? (
           <nav className="flex items-center justify-between lg:justify-center pt-2 relative">
             {/* Logo - Left side */}
-            {logoUrl && (
+            {effectiveLogo && (
               <div className="absolute left-0 lg:left-0">
                 <img 
-                  src={resolveLogoUrl(logoUrl)} 
+                  src={resolveLogoUrl(effectiveLogo)} 
                   alt="Logo" 
                   className="h-8 lg:h-10 object-contain"
                 />
               </div>
             )}
             {/* Mobile Icons - Hamburger Menu and Profile Icon */}
-            <div className={`lg:hidden flex items-center gap-3 ${logoUrl ? 'ml-20' : ''}`}>
+            <div className={`lg:hidden flex items-center gap-3 ${effectiveLogo ? 'ml-20' : ''}`}>
               <button
                 onClick={() => setMobileMenuOpen(true)}
                 className="p-2"
@@ -176,10 +178,10 @@ const Header = () => {
         ) : (
           <nav className="flex items-center justify-between lg:justify-center relative">
             {/* Logo - Left side */}
-            {logoUrl && (
+            {effectiveLogo && (
               <div className="absolute left-0 lg:left-0">
                 <img 
-                  src={resolveLogoUrl(logoUrl)} 
+                  src={resolveLogoUrl(effectiveLogo)} 
                   alt="Logo" 
                   className="h-8 lg:h-10 object-contain"
                 />
@@ -219,7 +221,7 @@ const Header = () => {
               )}
             </div>
             {/* Desktop Navigation - Hidden on Mobile */}
-            <div className={`hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold ${logoUrl ? 'ml-auto' : ''}`}>
+            <div className={`hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold ${effectiveLogo ? 'ml-auto' : ''}`}>
                 <Link to="/" className="hover:text-white transition-colors">Home</Link>
                 <Link to="/rooms" className="hover:text-white transition-colors">Accommodation</Link>
                 <Link to="/services" className="hover:text-white transition-colors">Services</Link>
