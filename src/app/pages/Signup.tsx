@@ -7,6 +7,18 @@ import { Label } from '../components/ui/label';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
+const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (score <= 2) return { score, label: 'Weak', color: '#ef4444' };
+  if (score <= 3) return { score, label: 'Medium', color: '#f59e0b' };
+  return { score, label: 'Strong', color: '#22c55e' };
+};
+
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +38,9 @@ const Signup = () => {
 
   const validationPatterns = {
     name: /^[a-zA-Z\s]{2,50}$/,
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    email: /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/,
+    phone: /^\+?[0-9]{10,15}$/,
+    password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
   };
 
   const validateField = (name: string, value: string): string => {
@@ -34,18 +48,25 @@ const Signup = () => {
       case 'name':
         if (!value.trim()) return 'Name is required';
         if (!validationPatterns.name.test(value))
-          return 'Name must be 2-50 characters, letters only';
+          return 'Name must be 2–50 characters, letters and spaces only';
         return '';
 
       case 'email':
         if (!value.trim()) return 'Email is required';
         if (!validationPatterns.email.test(value))
-          return 'Please enter a valid email';
+          return 'Enter a valid email (e.g. user@example.com)';
         return '';
 
       case 'phone':
         if (!value.trim()) return 'Phone number is required';
-        if (value.length < 8) return 'Invalid phone number';
+        if (!validationPatterns.phone.test(value))
+          return 'Enter a valid phone number (10–15 digits, optional + prefix)';
+        return '';
+
+      case 'password':
+        if (!value) return 'Password is required';
+        if (!validationPatterns.password.test(value))
+          return 'Min 8 chars with at least one uppercase, lowercase & number';
         return '';
 
       case 'confirmPassword':
@@ -65,8 +86,11 @@ const Signup = () => {
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 15) value = value.slice(0, 15);
+    // Allow digits and leading +
+    let value = e.target.value.replace(/[^\d+]/g, '');
+    // Only allow + at the start
+    if (value.indexOf('+') > 0) value = value.replace(/\+/g, '');
+    if (value.length > 16) value = value.slice(0, 16);
     setFormData(prev => ({ ...prev, phone: value }));
     if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
   };
@@ -149,12 +173,12 @@ const Signup = () => {
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="Enter your email"
-              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.email ? 'border-red-500' : ''}`}
+              placeholder="e.g. user@example.com"
+              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.email ? 'border-red-500' : 'border-[#3a463a]'}`}
               disabled={isLoading}
             />
             {errors.email && (
-              <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.email}</p>
+              <p className="text-xs sm:text-sm text-red-400 mt-1">{errors.email}</p>
             )}
           </div>
 
@@ -167,13 +191,15 @@ const Signup = () => {
               value={formData.phone}
               onChange={handlePhoneChange}
               onBlur={handleBlur}
-              placeholder="Enter your phone number"
-              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.phone ? 'border-red-500' : ''}`}
+              placeholder="e.g. +911234567890 or 9876543210"
+              className={`mt-2 h-12 sm:h-14 rounded-xl border-2 bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.phone ? 'border-red-500' : 'border-[#3a463a]'}`}
               disabled={isLoading}
+              maxLength={16}
             />
-            {errors.phone && (
-              <p className="text-xs sm:text-sm text-red-500 mt-1">{errors.phone}</p>
-            )}
+            {errors.phone
+              ? <p className="text-xs sm:text-sm text-red-400 mt-1">{errors.phone}</p>
+              : <p className="text-xs text-[#8a9e87] mt-1">10–15 digits, optional + country code (e.g. +91)</p>
+            }
           </div>
 
           {/* Password */}
@@ -185,8 +211,9 @@ const Signup = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Enter your password"
-                className="h-12 sm:h-14 pr-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400"
+                onBlur={handleBlur}
+                placeholder="Min 8 chars, uppercase, lowercase & number"
+                className={`h-12 sm:h-14 pr-12 rounded-xl border-2 bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.password ? 'border-red-500' : 'border-[#3a463a]'}`}
                 disabled={isLoading}
               />
               <button
@@ -198,6 +225,31 @@ const Signup = () => {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            {errors.password && (
+              <p className="text-xs sm:text-sm text-red-400 mt-1">{errors.password}</p>
+            )}
+            {formData.password && (() => {
+              const strength = getPasswordStrength(formData.password);
+              return (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className="h-1.5 flex-1 rounded-full transition-all duration-300"
+                        style={{ backgroundColor: i <= strength.score ? strength.color : '#3a463a' }} />
+                    ))}
+                  </div>
+                  <p className="text-xs" style={{ color: strength.color }}>
+                    Password strength: <span className="font-semibold">{strength.label}</span>
+                    {strength.label !== 'Strong' && (
+                      <span className="text-[#8a9e87]"> — add uppercase, numbers & special chars to strengthen</span>
+                    )}
+                  </p>
+                </div>
+              );
+            })()}
+            {!formData.password && (
+              <p className="text-xs text-[#8a9e87] mt-1">Min 8 chars with uppercase, lowercase & number</p>
+            )}
           </div>
 
           {/* Confirm Password */}

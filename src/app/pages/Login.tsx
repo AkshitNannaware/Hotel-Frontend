@@ -7,22 +7,55 @@ import { Label } from '../components/ui/label';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
+const emailPattern = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+const phonePattern = /^\+?[0-9]{10,15}$/;
+
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState<{ email?: string; phone?: string; password?: string }>({});
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const validateEmail = (value: string): string => {
+    if (!value.trim()) return 'Email is required';
+    if (!emailPattern.test(value)) return 'Enter a valid email (e.g. user@example.com)';
+    return '';
+  };
+
+  const validatePhone = (value: string): string => {
+    if (!value.trim()) return 'Phone number is required';
+    if (!phonePattern.test(value)) return 'Enter a valid phone number (10–15 digits, optional + prefix)';
+    return '';
+  };
+
+  const validatePassword = (value: string): string => {
+    if (!value) return 'Password is required';
+    if (value.length < 6) return 'Password must be at least 6 characters';
+    return '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const emailErr = loginMethod === 'email' ? validateEmail(email) : '';
+    const phoneErr = loginMethod === 'phone' ? validatePhone(phone) : '';
+    const passwordErr = validatePassword(password);
+
+    setErrors({ email: emailErr, phone: phoneErr, password: passwordErr });
+
+    if (emailErr || phoneErr || passwordErr) {
+      toast.error('Please fix the errors in the form');
+      return;
+    }
+
     const identifier = loginMethod === 'email' ? email : phone;
     const success = await login(identifier, password);
     if (success) {
       toast.success('Login successful!');
-      // Check user role from localStorage (set by AuthContext)
       const auth = localStorage.getItem('auth');
       let isAdmin = false;
       if (auth) {
@@ -50,11 +83,11 @@ const Login = () => {
             <p className="text-[#cfc9bb] text-base sm:text-lg">Sign in to continue your journey</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" noValidate>
             <div className="flex gap-2 p-1 bg-[#2f3a32] rounded-xl mb-6 sm:mb-8">
               <button
                 type="button"
-                onClick={() => setLoginMethod('email')}
+                onClick={() => { setLoginMethod('email'); setErrors({}); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl text-sm sm:text-base md:text-lg font-medium transition-all ${
                   loginMethod === 'email' ? 'bg-[#3f4a40] shadow-md text-[#efece6]' : 'text-[#cfc9bb] hover:text-[#efece6]'
                 }`}
@@ -64,7 +97,7 @@ const Login = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setLoginMethod('phone')}
+                onClick={() => { setLoginMethod('phone'); setErrors({}); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl text-sm sm:text-base md:text-lg font-medium transition-all ${
                   loginMethod === 'phone' ? 'bg-[#3f4a40] shadow-md text-[#efece6]' : 'text-[#cfc9bb] hover:text-[#efece6]'
                 }`}
@@ -80,12 +113,13 @@ const Login = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="e.g. user@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400"
-                  required
+                  onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
+                  onBlur={() => setErrors(prev => ({ ...prev, email: validateEmail(email) }))}
+                  className={`mt-2 h-12 sm:h-14 rounded-xl border-2 bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.email ? 'border-red-500' : 'border-[#3a463a]'}`}
                 />
+                {errors.email && <p className="text-xs sm:text-sm text-red-400 mt-1">{errors.email}</p>}
               </div>
             ) : (
               <div>
@@ -93,12 +127,21 @@ const Login = () => {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="Enter your phone number"
+                  placeholder="e.g. +911234567890 or 9876543210"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="mt-2 h-12 sm:h-14 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400"
-                  required
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^\d+]/g, '');
+                    setPhone(val);
+                    if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
+                  }}
+                  onBlur={() => setErrors(prev => ({ ...prev, phone: validatePhone(phone) }))}
+                  className={`mt-2 h-12 sm:h-14 rounded-xl border-2 bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.phone ? 'border-red-500' : 'border-[#3a463a]'}`}
+                  maxLength={16}
                 />
+                {errors.phone
+                  ? <p className="text-xs sm:text-sm text-red-400 mt-1">{errors.phone}</p>
+                  : <p className="text-xs text-[#8a9e87] mt-1">10–15 digits, optional + country code (e.g. +91)</p>
+                }
               </div>
             )}
 
@@ -110,9 +153,9 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 sm:h-14 pr-12 rounded-xl border-2 border-[#3a463a] bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400"
-                  required
+                  onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
+                  onBlur={() => setErrors(prev => ({ ...prev, password: validatePassword(password) }))}
+                  className={`h-12 sm:h-14 pr-12 rounded-xl border-2 bg-[#2e362e] text-[#efece6] placeholder:text-[#b6b6b6] text-base sm:text-lg px-4 sm:px-5 focus:ring-2 focus:ring-amber-400 ${errors.password ? 'border-red-500' : 'border-[#3a463a]'}`}
                 />
                 <button
                   type="button"
@@ -123,6 +166,7 @@ const Login = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {errors.password && <p className="text-xs sm:text-sm text-red-400 mt-1">{errors.password}</p>}
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 text-sm">

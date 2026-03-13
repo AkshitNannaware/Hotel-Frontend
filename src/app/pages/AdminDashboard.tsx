@@ -574,6 +574,8 @@ const AdminDashboard = () => {
     }
   };
 
+  const ADMIN_PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
   const handleSecuritySave = async () => {
     if (!securityForm.currentPassword) {
       setSecurityError('Please enter your current password.');
@@ -581,6 +583,10 @@ const AdminDashboard = () => {
     }
     if (!securityForm.newPassword || !securityForm.confirmPassword) {
       setSecurityError('Please enter and confirm your new password.');
+      return;
+    }
+    if (!ADMIN_PASSWORD_PATTERN.test(securityForm.newPassword)) {
+      setSecurityError('New password must be at least 8 characters with uppercase, lowercase & number.');
       return;
     }
     if (securityForm.newPassword !== securityForm.confirmPassword) {
@@ -665,6 +671,7 @@ const AdminDashboard = () => {
     serviceName: booking.serviceName,
     category: booking.category,
     priceRange: booking.priceRange,
+    totalPrice: booking.totalPrice != null ? Number(booking.totalPrice) : undefined,
     date: booking.date,
     time: booking.time,
     guests: booking.guests,
@@ -675,8 +682,8 @@ const AdminDashboard = () => {
     guestPhone: booking.guestPhone,
     status: ['pending', 'confirmed', 'cancelled'].includes(booking.status) ? booking.status : 'pending',
     bookingDate: booking.bookingDate,
-    // ADD THIS LINE TO FIX THE SYNC ISSUE
     paymentStatus: booking.paymentStatus || 'pending',
+    paymentMethod: booking.paymentMethod,
   });
 
   const updateIdVerification = async (bookingId: string, idVerified: 'pending' | 'approved' | 'rejected') => {
@@ -719,21 +726,22 @@ const AdminDashboard = () => {
     nextStatus: 'approved' | 'rejected'
   ) => {
     if (!booking.idProofUrl) {
+      toast.error('No ID proof uploaded for this booking.');
       return;
     }
 
-    if (booking.idVerified === 'approved' && nextStatus === 'rejected') {
-      setLoadError('Approved ID verification cannot be rejected.');
+    // Already in the requested state — no-op
+    if (booking.idVerified === nextStatus) {
+      toast.info(`ID is already ${nextStatus}.`);
       return;
     }
 
-    if (booking.idVerified && booking.idVerified !== nextStatus) {
+    // Confirm before changing an already-decided verification
+    if (booking.idVerified === 'approved' || booking.idVerified === 'rejected') {
       const confirmed = window.confirm(
-        `This ID is already marked as ${booking.idVerified}. Do you want to change it to ${nextStatus}?`
+        `ID is currently "${booking.idVerified}". Are you sure you want to change it to "${nextStatus}"?`
       );
-      if (!confirmed) {
-        return;
-      }
+      if (!confirmed) return;
     }
 
     updateIdVerification(booking.id, nextStatus);
@@ -883,6 +891,59 @@ const AdminDashboard = () => {
     };
     loadAdminData();
   }, [isAdmin]);
+
+  // Auto-refresh payments data whenever the payments tab is opened
+  const [paymentsRefreshing, setPaymentsRefreshing] = useState(false);
+  const refreshPaymentsData = async () => {
+    if (!isAdmin) return;
+    setPaymentsRefreshing(true);
+    try {
+      const [bookingsData, serviceBookingsData, usersData] = await Promise.all([
+        fetchJson('/api/admin/bookings'),
+        fetchJson('/api/admin/service-bookings'),
+        fetchJson('/api/admin/users'),
+      ]);
+      setBookingsState(
+        (bookingsData as any[]).map((booking) => ({
+          id: booking._id || booking.id,
+          roomId: booking.roomId,
+          userId: booking.userId,
+          guestName: booking.guestName,
+          guestEmail: booking.guestEmail,
+          checkIn: booking.checkIn,
+          checkOut: booking.checkOut,
+          bookingDate: booking.bookingDate,
+          status: booking.status,
+          paymentStatus: booking.paymentStatus,
+          idVerified: booking.idVerified || 'pending',
+          idProofUrl: booking.idProofUrl,
+          idProofType: booking.idProofType,
+          idProofUploadedAt: booking.idProofUploadedAt,
+          totalPrice: booking.totalPrice,
+        }))
+      );
+      setServiceBookingsState((serviceBookingsData as any[]).map(normalizeServiceBooking));
+      setUsersState(
+        (usersData as any[]).map((user: any) => ({
+          id: user._id || user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+        }))
+      );
+    } catch {
+      // silently ignore — stale data is still shown
+    } finally {
+      setPaymentsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'payments') {
+      refreshPaymentsData();
+    }
+  }, [activeTab]);
 
   // Load branding settings (logo, social links) from user profile
   useEffect(() => {
@@ -2316,13 +2377,19 @@ const AdminDashboard = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {booking.idVerified === 'pending' && (
-                    <>
-                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'approved')}>Approve</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>Reject</DropdownMenuItem>
-                    </>
+                  {/* ── ID Verification actions ── */}
+                  {booking.idProofUrl && booking.idVerified !== 'approved' && (
+                    <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'approved')}>
+                      ✅ Approve ID
+                    </DropdownMenuItem>
                   )}
-                  {/* Pay Now button if payment is not paid and checked-in */}
+                  {booking.idProofUrl && booking.idVerified !== 'rejected' && (
+                    <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>
+                      ❌ Reject ID
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* ── Pay Now (checked-in + unpaid) ── */}
                   {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
                     <DropdownMenuItem>
                       <div className="flex flex-col">
@@ -2356,6 +2423,23 @@ const AdminDashboard = () => {
                           </button>
                         </div>
                       </div>
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* ── Cancel Booking ── */}
+                  {booking.status !== 'cancelled' && booking.status !== 'checked-out' && (
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to cancel this booking?')) {
+                          onUpdateStatus(booking.id, 'cancelled');
+                          setBookingsState((prev) =>
+                            prev.map(b => b.id === booking.id ? { ...b, status: 'cancelled' } : b)
+                          );
+                        }
+                      }}
+                    >
+                      🚫 Cancel Booking
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -2475,13 +2559,19 @@ const AdminDashboard = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {booking.idVerified === 'pending' && (
-                    <>
-                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'approved')}>Approve</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>Reject</DropdownMenuItem>
-                    </>
+                  {/* ── ID Verification actions ── */}
+                  {booking.idProofUrl && booking.idVerified !== 'approved' && (
+                    <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'approved')}>
+                      ✅ Approve ID
+                    </DropdownMenuItem>
                   )}
-                  {/* Pay Now button if payment is not paid and checked-in */}
+                  {booking.idProofUrl && booking.idVerified !== 'rejected' && (
+                    <DropdownMenuItem onClick={() => onIdVerificationChange(booking, 'rejected')}>
+                      ❌ Reject ID
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* ── Pay Now (checked-in + unpaid) ── */}
                   {booking.status === 'checked-in' && booking.paymentStatus !== 'paid' && (
                     <DropdownMenuItem>
                       <div className="flex flex-col">
@@ -2515,6 +2605,23 @@ const AdminDashboard = () => {
                           </button>
                         </div>
                       </div>
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* ── Cancel Booking ── */}
+                  {booking.status !== 'cancelled' && booking.status !== 'checked-out' && (
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to cancel this booking?')) {
+                          onUpdateStatus(booking.id, 'cancelled');
+                          setBookingsState((prev) =>
+                            prev.map(b => b.id === booking.id ? { ...b, status: 'cancelled' } : b)
+                          );
+                        }
+                      }}
+                    >
+                      🚫 Cancel Booking
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -3219,14 +3326,16 @@ const AdminDashboard = () => {
                               playsInline
                               poster={displayImage || undefined}
                             />
-                          ) : displayImage ? (
+                          ) : (
                             <img
-                              src={displayImage}
+                              src={displayImage || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&h=400&fit=crop'}
                               alt={room.name}
                               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&h=400&fit=crop';
+                              }}
                             />
-                          ) : (
-                            <div className="h-full w-full bg-[#222a22]" />
                           )}
                           <div className="absolute top-3 left-3 rounded-full bg-[#1e2520]/80 px-3 py-1 text-[10px] text-[#d7d2c5] border border-[#5b6659]">
                             {room.available ? 'Available' : 'Occupied'}
@@ -4518,9 +4627,21 @@ const AdminDashboard = () => {
 
             {activeTab === 'payments' && (
               <div>
-                <h1 className="mt-0 sm:mt-15 text-3xl sm:text-4xl mb-0 sm:mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>
-                  Payment Management
-                </h1>
+                <div className="flex items-center justify-between mt-0 sm:mt-15 mb-0 sm:mb-8">
+                  <h1 className="text-3xl sm:text-4xl" style={{ fontFamily: "'Great Vibes', cursive" }}>
+                    Payment Management
+                  </h1>
+                  <button
+                    onClick={refreshPaymentsData}
+                    disabled={paymentsRefreshing}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#4b5e48] text-[#efece6] text-sm hover:bg-[#5a7056] disabled:opacity-60 transition-colors"
+                  >
+                    <svg className={`w-4 h-4 ${paymentsRefreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {paymentsRefreshing ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                </div>
                 <div className="bg-white rounded-3xl p-0 sm:p-8 shadow-sm">
                   {usersState.length === 0 ? (
                     <div className="text-center py-16 text-stone-600">No payment records yet.</div>
@@ -4549,22 +4670,27 @@ const AdminDashboard = () => {
                               .reduce((sum, b) => sum + (b.totalPrice || 0), 0);
                             const roomPending = roomTotal - roomPaid;
 
-                            // 2. Service Calculation Logic (Robust Update)
+                            // 2. Service Calculation Logic
                             const userServiceBookings = serviceBookingsState.filter(sb => sb.userId === user.id);
 
-                            const parsePrice = (range) => {
+                            const parsePrice = (range: any) => {
                               if (!range) return 0;
-                              // This matches numbers like "500" or "500.00"
                               const match = String(range).match(/\d+(\.\d+)?/);
                               return match ? parseFloat(match[0]) : 0;
                             };
 
-                            const serviceTotal = userServiceBookings.reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
+                            // Use totalPrice when available; fall back to priceRange
+                            const getServicePrice = (sb: any) =>
+                              sb.totalPrice != null && sb.totalPrice > 0
+                                ? Number(sb.totalPrice)
+                                : parsePrice(sb.priceRange);
 
-                            // IMPROVED: Case-insensitive check and trim to match 'paid', 'Paid', or 'PAID'
+                            const serviceTotal = userServiceBookings.reduce((sum, sb) => sum + getServicePrice(sb), 0);
+
+                            // Case-insensitive paid check
                             const servicePaid = userServiceBookings
                               .filter(sb => sb.paymentStatus && sb.paymentStatus.toString().toLowerCase().trim() === 'paid')
-                              .reduce((sum, sb) => sum + parsePrice(sb.priceRange), 0);
+                              .reduce((sum, sb) => sum + getServicePrice(sb), 0);
 
                             const servicePending = serviceTotal - servicePaid;
 
@@ -4954,18 +5080,48 @@ const AdminDashboard = () => {
                         <Input
                           type="password"
                           value={securityForm.newPassword}
+                          placeholder="Min 8 chars, A-Z, a-z, 0-9"
                           onChange={(e) => setSecurityForm(prev => ({ ...prev, newPassword: e.target.value }))}
                           className={settingsInputClass}
                         />
+                        {securityForm.newPassword && (() => {
+                          const score = [
+                            securityForm.newPassword.length >= 8,
+                            /[A-Z]/.test(securityForm.newPassword),
+                            /[a-z]/.test(securityForm.newPassword),
+                            /\d/.test(securityForm.newPassword),
+                            /[^A-Za-z0-9]/.test(securityForm.newPassword),
+                          ].filter(Boolean).length;
+                          const label = score <= 2 ? 'Weak' : score <= 3 ? 'Medium' : 'Strong';
+                          const color = score <= 2 ? '#ef4444' : score <= 3 ? '#f59e0b' : '#22c55e';
+                          return (
+                            <div className="mt-1.5">
+                              <div className="flex gap-1 mb-1">
+                                {[1,2,3,4,5].map(i => (
+                                  <div key={i} className="h-1 flex-1 rounded-full transition-all"
+                                    style={{ backgroundColor: i <= score ? color : '#3a463a' }} />
+                                ))}
+                              </div>
+                              <p className="text-xs" style={{ color }}>{label}</p>
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div>
                         <label className="text-sm text-[#cfc9bb]">Confirm Password</label>
                         <Input
                           type="password"
                           value={securityForm.confirmPassword}
+                          placeholder="Re-enter new password"
                           onChange={(e) => setSecurityForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                           className={settingsInputClass}
                         />
+                        {securityForm.confirmPassword && securityForm.confirmPassword === securityForm.newPassword && (
+                          <p className="text-xs text-green-400 mt-1">✓ Passwords match</p>
+                        )}
+                        {securityForm.confirmPassword && securityForm.confirmPassword !== securityForm.newPassword && (
+                          <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+                        )}
                       </div>
                       {securityError && (
                         <div className="rounded-xl border border-rose-300/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -5193,7 +5349,6 @@ const AdminDashboard = () => {
         </div>
       )}
       <MobileBottomNav />
-      <Footer isAdmin />
     </div>
   );
 };

@@ -190,9 +190,13 @@ const RoomDetails = () => {
             {location.state?.from === 'rooms' && (
               <div className="relative h-[40px] lg:h-[50vh]">
                 <img 
-                  src={resolveImageUrl(room.images[0])} 
+                  src={resolveImageUrl(room.images[0]) || 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&h=500&fit=crop'} 
                   alt={room.name} 
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&h=500&fit=crop';
+                  }}
                 />
                 <button 
                   onClick={() => navigate('/rooms')}

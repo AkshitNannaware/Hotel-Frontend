@@ -19,7 +19,7 @@ const Payment = () => {
   const { bookingId, serviceBookingId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { bookings, refreshBookings } = useBooking();
+  const { bookings, bookingsLoading, refreshBookings } = useBooking();
   const [serviceBooking, setServiceBooking] = useState<any | null>(null);
   const [serviceBookingLoading, setServiceBookingLoading] = useState(false);
   const [serviceBookingError, setServiceBookingError] = useState<string | null>(null);
@@ -440,6 +440,35 @@ const Payment = () => {
     );
   }
 
+  // Show loading screen while bookings are being fetched (e.g. after page refresh)
+  if (!isServicePayment && bookingsLoading) {
+    return (
+      <div className="min-h-screen bg-[#3f4a40] flex items-center justify-center">
+        <div className="text-center text-[#efece6]">
+          <div className="text-lg mb-2">Loading booking details…</div>
+          <div className="text-sm text-[#9aa191]">Please wait a moment.</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Booking not found after loading — handle direct URL access / stale links
+  if (!isServicePayment && !booking) {
+    return (
+      <div className="min-h-screen bg-[#3f4a40] flex items-center justify-center">
+        <div className="text-center text-[#efece6]">
+          <h2 className="text-2xl mb-3">Booking Not Found</h2>
+          <p className="text-sm text-[#9aa191] mb-6">
+            We couldn't find this booking. It may have been cancelled or the link is invalid.
+          </p>
+          <Button onClick={() => navigate('/profile')} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#e5ddca]">
+            Go to My Bookings
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     await handlePaymentWithMethod();
@@ -757,11 +786,11 @@ const Payment = () => {
                 <div className="mt-4 pt-4 border-t border-[#4b5246] text-sm text-[#d7d0bf] space-y-2">
                   <div className="flex justify-between">
                     <span>Grand Total</span>
-                    <span>₹{booking.totalPrice.toFixed(2)}</span>
+                    <span>₹{booking?.totalPrice !== undefined ? booking.totalPrice.toFixed(2) : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Due Now</span>
-                    <span>₹{booking.totalPrice.toFixed(2)}</span>
+                    <span>₹{booking?.totalPrice !== undefined ? booking.totalPrice.toFixed(2) : 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Due at Hotel</span>

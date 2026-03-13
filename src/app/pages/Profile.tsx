@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { User, Mail, Phone, Calendar, LogOut, Settings, Bell, CreditCard, Edit2, Save, X, AlertCircle, CheckCircle2, Award, Star, TrendingUp, MapPin, Gift, Shield, Menu } from 'lucide-react';
+import { User, Mail, Phone, Calendar, LogOut, Settings, Bell, CreditCard, Edit2, Save, X, AlertCircle, CheckCircle2, Award, Star, TrendingUp, MapPin, Gift, Shield, Menu, Download } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import Footer from '../components/Footer'; 
 
@@ -67,6 +67,112 @@ const Profile = () => {
   const resolveImageUrl = (imageUrl: string) => {
     if (!imageUrl) return 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=400';
     return imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl;
+  };
+
+  const handleDownloadReceipt = (booking: any, room: Room | undefined) => {
+    const nights =
+      booking.checkIn && booking.checkOut
+        ? Math.max(1, Math.round((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / 86400000))
+        : 1;
+    const checkInStr  = booking.checkIn  ? format(new Date(booking.checkIn),  'MMM dd, yyyy') : 'N/A';
+    const checkOutStr = booking.checkOut ? format(new Date(booking.checkOut), 'MMM dd, yyyy') : 'N/A';
+    const issuedDate  = format(new Date(), 'MMM dd, yyyy');
+    const roomType    = room?.type || 'Suite';
+    const total       = (booking.totalPrice ?? 0).toFixed(2);
+    const perNight    = booking.totalPrice && nights ? (booking.totalPrice / nights).toFixed(2) : '0.00';
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Receipt – ${booking.id}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:#3f4a40;color:#efece6;padding:40px 20px;min-height:100vh}
+    .card{max-width:700px;margin:0 auto;background:#3a4035;border:1px solid #4b5246;border-radius:24px;box-shadow:0 8px 40px rgba(0,0,0,.45);overflow:hidden}
+
+    /* ── Header ── */
+    .header{background:#2e3628;padding:36px 40px 28px;border-bottom:1px solid #4b5246;position:relative;overflow:hidden}
+    .header::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(75,92,72,.35) 0%,transparent 60%);pointer-events:none}
+    .hotel-name{font-family:'Playfair Display',serif;font-size:13px;letter-spacing:.35em;text-transform:uppercase;color:#c9c3b6;margin-bottom:12px}
+    .header h1{font-family:'Playfair Display',serif;font-size:26px;font-weight:600;color:#efece6;letter-spacing:.02em;margin-bottom:6px}
+    .header .sub{font-size:13px;color:#9aa191}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:#4b5e48;color:#d7d0bf;font-size:10px;font-weight:600;padding:4px 12px;border-radius:20px;margin-top:16px;letter-spacing:.12em;text-transform:uppercase;border:1px solid #5a7056}
+
+    /* ── Body ── */
+    .body{padding:36px 40px}
+    .section-title{font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:#7a9177;margin-bottom:18px;font-weight:600}
+    .divider{border:none;border-top:1px solid #4b5246;margin:28px 0}
+
+    /* ── Detail grid ── */
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 32px;margin-bottom:4px}
+    .field label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8a9e87;display:block;margin-bottom:5px}
+    .field span{font-size:14px;color:#efece6;font-weight:500}
+
+    /* ── Totals ── */
+    .totals{background:#2f3a32;border:1px solid #4b5246;border-radius:14px;padding:22px 24px}
+    .row{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#c9c3b6;margin-bottom:10px}
+    .row:last-child{margin-bottom:0}
+    .row.total{font-size:16px;font-weight:700;color:#efece6;padding-top:14px;margin-top:6px;border-top:1px solid #4b5246}
+    .row.total span:last-child{color:#d7d0bf}
+    .row .label{color:#9aa191}
+
+    /* ── Footer ── */
+    .footer{padding:20px 40px;background:#2a332a;border-top:1px solid #4b5246;text-align:center;font-size:11px;color:#7a9177;letter-spacing:.04em}
+
+    @media print{
+      body{background:#3f4a40;padding:0}
+      .card{box-shadow:none;border-radius:0;border:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="hotel-name">On Earth Hotel</div>
+      <h1>Booking Receipt</h1>
+      <div class="sub">Issued on ${issuedDate}</div>
+      <div class="badge">✓ &nbsp;Payment Confirmed</div>
+    </div>
+
+    <div class="body">
+      <div class="section-title">Booking Details</div>
+      <div class="grid">
+        <div class="field"><label>Booking ID</label><span>${booking.id}</span></div>
+        <div class="field"><label>Guest Name</label><span>${booking.guestName || user?.name || 'N/A'}</span></div>
+        <div class="field"><label>Check-in</label><span>${checkInStr}</span></div>
+        <div class="field"><label>Check-out</label><span>${checkOutStr}</span></div>
+        <div class="field"><label>Room Type</label><span>${roomType}</span></div>
+        <div class="field"><label>Nights</label><span>${nights}</span></div>
+        <div class="field"><label>Guests</label><span>${booking.guests ?? 1}</span></div>
+        <div class="field"><label>Rooms</label><span>${booking.rooms ?? 1}</span></div>
+        ${booking.guestEmail || user?.email ? `<div class="field"><label>Email</label><span>${booking.guestEmail || user?.email}</span></div>` : ''}
+        ${booking.guestPhone || user?.phone ? `<div class="field"><label>Phone</label><span>${booking.guestPhone || user?.phone}</span></div>` : ''}
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title">Payment Summary</div>
+      <div class="totals">
+        <div class="row"><span class="label">${roomType} × ${nights} night${nights > 1 ? 's' : ''}</span><span>₹${perNight} / night</span></div>
+        <div class="row"><span class="label">Subtotal</span><span>₹${total}</span></div>
+        <div class="row"><span class="label">Taxes &amp; Fees</span><span>Included</span></div>
+        <div class="row total"><span>Total Paid</span><span>₹${total}</span></div>
+      </div>
+    </div>
+
+    <div class="footer">Thank you for choosing On Earth Hotel &nbsp;·&nbsp; We look forward to welcoming you &nbsp;·&nbsp; Official payment receipt</div>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      setTimeout(() => win.print(), 400);
+    }
   };
   
   const [roomsState, setRoomsState] = React.useState<Room[]>([]);
@@ -311,6 +417,8 @@ const Profile = () => {
     setIsEditing(false);
   };
 
+  const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
   const handlePasswordUpdate = async () => {
     if (!securityForm.currentPassword) {
       setSecurityError('Please enter your current password.');
@@ -318,6 +426,10 @@ const Profile = () => {
     }
     if (!securityForm.newPassword) {
       setSecurityError('Please enter a new password.');
+      return;
+    }
+    if (!PASSWORD_PATTERN.test(securityForm.newPassword)) {
+      setSecurityError('New password must be at least 8 characters with uppercase, lowercase & number.');
       return;
     }
     if (securityForm.newPassword !== securityForm.confirmPassword) {
@@ -900,6 +1012,17 @@ const Profile = () => {
                                 >
                                   View Details
                                 </Button>
+                                {booking.paymentStatus === 'paid' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDownloadReceipt(booking, room)}
+                                    className="rounded-lg border-[#4b5246] bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6]"
+                                  >
+                                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                                    Receipt
+                                  </Button>
+                                )}
                                 {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.idVerified !== 'approved')) && (
                                   <Button
                                     size="sm"
@@ -1355,11 +1478,34 @@ const Profile = () => {
                               <Input
                                 type="password"
                                 value={securityForm.newPassword}
+                                placeholder="Min 8 chars, A-Z, a-z, 0-9"
                                 onChange={(e) =>
                                   setSecurityForm((prev) => ({ ...prev, newPassword: e.target.value }))
                                 }
                                 className="mt-1 border-[#4b5246] focus:border-[#c9c3b6] focus:ring-[#c9c3b6] bg-[#2f3530] text-[#efece6]"
                               />
+                              {securityForm.newPassword && (() => {
+                                const score = [
+                                  securityForm.newPassword.length >= 8,
+                                  /[A-Z]/.test(securityForm.newPassword),
+                                  /[a-z]/.test(securityForm.newPassword),
+                                  /\d/.test(securityForm.newPassword),
+                                  /[^A-Za-z0-9]/.test(securityForm.newPassword),
+                                ].filter(Boolean).length;
+                                const label = score <= 2 ? 'Weak' : score <= 3 ? 'Medium' : 'Strong';
+                                const color = score <= 2 ? '#ef4444' : score <= 3 ? '#f59e0b' : '#22c55e';
+                                return (
+                                  <div className="mt-1.5">
+                                    <div className="flex gap-1 mb-1">
+                                      {[1,2,3,4,5].map(i => (
+                                        <div key={i} className="h-1 flex-1 rounded-full transition-all"
+                                          style={{ backgroundColor: i <= score ? color : '#3a463a' }} />
+                                      ))}
+                                    </div>
+                                    <p className="text-xs" style={{ color }}>{label}</p>
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <div>
                               <label className="text-xs font-medium text-[#c9c3b6] uppercase tracking-wider">
@@ -1368,11 +1514,18 @@ const Profile = () => {
                               <Input
                                 type="password"
                                 value={securityForm.confirmPassword}
+                                placeholder="Re-enter new password"
                                 onChange={(e) =>
                                   setSecurityForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
                                 }
                                 className="mt-1 border-[#4b5246] focus:border-[#c9c3b6] focus:ring-[#c9c3b6] bg-[#2f3530] text-[#efece6]"
                               />
+                              {securityForm.confirmPassword && securityForm.confirmPassword === securityForm.newPassword && (
+                                <p className="text-xs text-green-400 mt-1">✓ Passwords match</p>
+                              )}
+                              {securityForm.confirmPassword && securityForm.confirmPassword !== securityForm.newPassword && (
+                                <p className="text-xs text-red-400 mt-1">Passwords do not match</p>
+                              )}
                             </div>
                           </div>
                           {securityError && (

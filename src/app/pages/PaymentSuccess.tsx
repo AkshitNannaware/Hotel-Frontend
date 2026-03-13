@@ -198,7 +198,111 @@ const PaymentSuccess = () => {
   }
 
   const handleDownloadInvoice = () => {
-    alert('Invoice download started (demo)');
+    if (!booking) return;
+
+    const nights =
+      booking.checkIn && booking.checkOut
+        ? Math.max(1, Math.round((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / 86400000))
+        : 1;
+    const checkInStr = booking.checkIn ? format(new Date(booking.checkIn), 'MMM dd, yyyy') : 'N/A';
+    const checkOutStr = booking.checkOut ? format(new Date(booking.checkOut), 'MMM dd, yyyy') : 'N/A';
+    const issuedDate = format(new Date(), 'MMM dd, yyyy');
+    const roomType = room?.type || 'Suite';
+    const pricePerNight = booking.totalPrice && nights ? (booking.totalPrice / nights).toFixed(2) : '0.00';
+    const totalPrice = booking.totalPrice?.toFixed(2) ?? '0.00';
+
+    const receiptHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt – ${booking.id}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #3f4a40; color: #efece6; padding: 40px 20px; min-height: 100vh; }
+    .card { max-width: 700px; margin: 0 auto; background: #3a4035; border: 1px solid #4b5246; border-radius: 24px; box-shadow: 0 8px 40px rgba(0,0,0,0.45); overflow: hidden; }
+
+    /* Header */
+    .header { background: #2e3628; padding: 36px 40px 28px; border-bottom: 1px solid #4b5246; position: relative; overflow: hidden; }
+    .header::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(75,92,72,0.35) 0%, transparent 60%); pointer-events: none; }
+    .hotel-name { font-family: 'Playfair Display', serif; font-size: 13px; letter-spacing: 0.35em; text-transform: uppercase; color: #c9c3b6; margin-bottom: 12px; }
+    .header h1 { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 600; color: #efece6; letter-spacing: 0.02em; margin-bottom: 6px; }
+    .header .sub { font-size: 13px; color: #9aa191; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; background: #4b5e48; color: #d7d0bf; font-size: 10px; font-weight: 600; padding: 4px 12px; border-radius: 20px; margin-top: 16px; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid #5a7056; }
+
+    /* Body */
+    .body { padding: 36px 40px; }
+    .section-title { font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; color: #7a9177; margin-bottom: 18px; font-weight: 600; }
+    .divider { border: none; border-top: 1px solid #4b5246; margin: 28px 0; }
+
+    /* Detail grid */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 32px; margin-bottom: 4px; }
+    .field label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #8a9e87; display: block; margin-bottom: 5px; }
+    .field span { font-size: 14px; color: #efece6; font-weight: 500; }
+
+    /* Totals */
+    .totals { background: #2f3a32; border: 1px solid #4b5246; border-radius: 14px; padding: 22px 24px; }
+    .totals-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #c9c3b6; margin-bottom: 10px; }
+    .totals-row:last-child { margin-bottom: 0; }
+    .totals-row.total { font-size: 16px; font-weight: 700; color: #efece6; padding-top: 14px; margin-top: 6px; border-top: 1px solid #4b5246; }
+    .totals-row.total span:last-child { color: #d7d0bf; }
+    .totals-row .label { color: #9aa191; }
+
+    /* Footer */
+    .footer { padding: 20px 40px; background: #2a332a; border-top: 1px solid #4b5246; text-align: center; font-size: 11px; color: #7a9177; letter-spacing: 0.04em; }
+
+    @media print {
+      body { background: #3f4a40; padding: 0; }
+      .card { box-shadow: none; border-radius: 0; border: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="hotel-name">On Earth Hotel</div>
+      <h1>Booking Receipt</h1>
+      <div class="sub">Issued on ${issuedDate}</div>
+      <div class="badge">✓ &nbsp;Payment Confirmed</div>
+    </div>
+
+    <div class="body">
+      <div class="section-title">Booking Details</div>
+      <div class="grid">
+        <div class="field"><label>Booking ID</label><span>${booking.id}</span></div>
+        <div class="field"><label>Guest Name</label><span>${booking.guestName || 'N/A'}</span></div>
+        <div class="field"><label>Check-in</label><span>${checkInStr}</span></div>
+        <div class="field"><label>Check-out</label><span>${checkOutStr}</span></div>
+        <div class="field"><label>Room Type</label><span>${roomType}</span></div>
+        <div class="field"><label>Guests</label><span>${booking.guests ?? 1}</span></div>
+        <div class="field"><label>Nights</label><span>${nights}</span></div>
+        <div class="field"><label>Rooms</label><span>${booking.rooms ?? 1}</span></div>
+        ${booking.guestEmail ? `<div class="field"><label>Email</label><span>${booking.guestEmail}</span></div>` : ''}
+        ${booking.guestPhone ? `<div class="field"><label>Phone</label><span>${booking.guestPhone}</span></div>` : ''}
+      </div>
+      <div class="divider"></div>
+      <div class="section-title">Payment Summary</div>
+      <div class="totals">
+        <div class="totals-row"><span class="label">Room (${roomType}) × ${nights} night${nights > 1 ? 's' : ''}</span><span>₹${pricePerNight} / night</span></div>
+        <div class="totals-row"><span class="label">Subtotal</span><span>₹${totalPrice}</span></div>
+        <div class="totals-row"><span class="label">Taxes &amp; Fees</span><span>Included</span></div>
+        <div class="totals-row total"><span>Total Paid</span><span>₹${totalPrice}</span></div>
+      </div>
+    </div>
+
+    <div class="footer">Thank you for choosing On Earth Hotel &nbsp;·&nbsp; We look forward to welcoming you &nbsp;·&nbsp; Official payment receipt</div>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(receiptHTML);
+      win.document.close();
+      // Short delay so the page fully renders before print dialog opens
+      setTimeout(() => win.print(), 400);
+    }
   };
 
   // If service payment success, show service details

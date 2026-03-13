@@ -28,6 +28,7 @@ import Footer from '../components/Footer';
 const AMENITY_LIST = ['WiFi', 'AC', 'Pool Access', 'Parking', 'Room Service', 'TV', 'Gym', 'Balcony'];
 const ROOM_TYPES = ['Single', 'Double', 'Suite', 'Deluxe'];
 const PRICE_MAX = 5000;
+const FALLBACK_ROOM_IMAGE = 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&h=400&fit=crop';
 
 const RoomListing = () => {
   const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
@@ -503,16 +504,18 @@ const RoomListing = () => {
                           muted
                           loop
                           playsInline
-                          poster={resolveImageUrl(room.images[0] || '') || undefined}
-                        />
-                      ) : resolveImageUrl(room.images[0] || '') ? (
-                        <img
-                          src={resolveImageUrl(room.images[0] || '')}
-                          alt={room.name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          poster={resolveImageUrl(room.images[0] || '') || FALLBACK_ROOM_IMAGE}
                         />
                       ) : (
-                        <div className="h-full w-full bg-[#222a22]" />
+                        <img
+                          src={resolveImageUrl(room.images[0] || '') || FALLBACK_ROOM_IMAGE}
+                          alt={room.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = FALLBACK_ROOM_IMAGE;
+                          }}
+                        />
                       )}
                       <div className="absolute top-3 left-3 rounded-full bg-[#1e2520]/80 px-3 py-1 text-[10px] text-[#d7d2c5] border border-[#5b6659]">
                         {room.available ? 'Available' : 'Limited'}
