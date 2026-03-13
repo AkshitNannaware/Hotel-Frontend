@@ -219,6 +219,8 @@ const AdminDashboard = () => {
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   const [serviceDeleteLoading, setServiceDeleteLoading] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
+  const [roomDeleteLoading, setRoomDeleteLoading] = useState(false);
   const [isOfferFormOpen, setIsOfferFormOpen] = useState(false);
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('all');
@@ -1197,17 +1199,28 @@ const AdminDashboard = () => {
     setIsRoomFormOpen(true);
   };
 
-  const handleDeleteRoom = async (roomId: string) => {
+  const handleDeleteRoom = (roomId: string) => {
+    setRoomToDelete(roomId);
+  };
+
+  const confirmDeleteRoom = async () => {
+    if (!roomToDelete) return;
+    setRoomDeleteLoading(true);
     try {
-      await fetchJson(`/api/admin/rooms/${roomId}`, { method: 'DELETE' });
-      setRoomsState((prev) => prev.filter((room) => room.id !== roomId));
-      if (editingRoomId === roomId) {
+      await fetchJson(`/api/admin/rooms/${roomToDelete}`, { method: 'DELETE' });
+      setRoomsState((prev) => prev.filter((room) => room.id !== roomToDelete));
+      if (editingRoomId === roomToDelete) {
         setEditingRoomId(null);
         setIsRoomFormOpen(false);
         resetRoomForm();
       }
+      toast.success('Room deleted successfully');
     } catch (error) {
       setLoadError('Failed to delete room');
+      toast.error('Failed to delete room');
+    } finally {
+      setRoomDeleteLoading(false);
+      setRoomToDelete(null);
     }
   };
 
@@ -2754,7 +2767,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pt-10 pl-0">
+    <div className="admin-theme min-h-screen bg-[#3f4a40] text-[#f5f1e8] relative overflow-hidden pl-0 overscroll-x-none">
       {/* Background Gradients */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -2777,11 +2790,12 @@ const AdminDashboard = () => {
           </button>
         )} */}
 
-        {/* Overlay for mobile when sidebar is open */}
-        {isMobile && isSidebarOpen && (
+        {/* Overlay — closes sidebar when clicking outside (mobile + desktop) */}
+        {isSidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/30 overscroll-x-none"
             onClick={() => setIsSidebarOpen(false)}
+            onMouseDown={(e) => e.preventDefault()}
           />
         )}
 
@@ -3157,8 +3171,8 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'rooms' && (
-              <div>
-                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-0 sm:mb-8">
+              <div className="px-5 py-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-0 sm:mb-8">
                   <h1 className="text-3xl sm:text-4xl" style={{ fontFamily: "'Great Vibes', cursive" }}>Manage Rooms</h1>
                   <Button onClick={handleAddRoomClick} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] min-h-[44px] px-4 py-2 text-sm sm:text-base">
                     <Plus className="w-5 h-5 mr-2" />
@@ -3400,15 +3414,39 @@ const AdminDashboard = () => {
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
-                              onClick={() => handleDeleteRoom(room.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
+                                  onClick={() => handleDeleteRoom(room.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Room</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete <strong>{room.name}</strong>? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel onClick={() => setRoomToDelete(null)} disabled={roomDeleteLoading}>
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={confirmDeleteRoom}
+                                    disabled={roomDeleteLoading}
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                  >
+                                    {roomDeleteLoading ? 'Deleting...' : 'Delete'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </div>
                       </div>
@@ -3420,7 +3458,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'services' && (
               <div>
-                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Services</h1>
                     <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel offerings</p>
@@ -3677,7 +3715,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'offers' && (
               <div>
-                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-bold text-stone-900" style={{ fontFamily: "'Great Vibes', cursive" }}>Offers</h1>
                     <p className="text-stone-600 mt-1 text-sm">Create and publish seasonal promotions.</p>
@@ -3858,7 +3896,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'bookings' && (
               <div>
-                <div className="mt-0 sm:mt-15 flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between mb-0 sm:mb-8">
+                <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between mb-0 sm:mb-8">
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold" style={{ fontFamily: "'Great Vibes', cursive" }}>All Bookings</h1>
                   <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center flex-wrap">
                     <select
@@ -4217,21 +4255,21 @@ const AdminDashboard = () => {
                   </div>
                   
                   {/* Desktop Table View */}
-                  <div className="hidden lg:block overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0" style={{ paddingBottom: 16, minWidth: '100%' }}>
-                    <table className="w-full min-w-[800px] sm:min-w-full">
+                  <div className="hidden lg:block overflow-x-auto custom-scrollbar -mx-2 sm:-mx-3 sm:mx-0" style={{ paddingBottom: 16 }}>
+                    <table className="w-full min-w-[1200px]">
                       <thead>
                         <tr className="border-b border-stone-200">
-                          <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Guest Details</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Phone No.</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Room</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Dates</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Status</th>
-                          <th className="text-left py-3 px-4 text-stone-600">ID Proof</th>
-                          <th className="text-left py-3 px-4 text-stone-600">ID Status</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Payment</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Amount</th>
-                          <th className="text-left py-3 px-4 text-stone-600">Actions</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Booking ID</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Guest Details</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Phone No.</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Room</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Dates</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Status</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">ID Proof</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">ID Status</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Payment</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Amount</th>
+                          <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -4279,7 +4317,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'service-bookings' && (
               <div>
-                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Service Bookings</h1>
                     <p className="text-[#cbbfa8] mt-1 text-sm">Manage hotel service reservations</p>
@@ -4474,50 +4512,57 @@ const AdminDashboard = () => {
                   </form>
                 )}
 
+                {/* Category tabs — always visible */}
+                <div className="flex flex-wrap gap-3 mb-6">
+                  {serviceCategories.map((category) => {
+                    const isActive = activeServiceBookingCategory === category.key;
+                    const count = filteredServiceBookings.filter(b => b.category === category.key).length;
+                    return (
+                      <button
+                        key={category.key}
+                        type="button"
+                        onClick={() => setActiveServiceBookingCategory(category.key)}
+                        className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide border transition-colors flex items-center gap-1.5 ${isActive
+                          ? 'bg-amber-500 text-stone-900 border-amber-400'
+                          : 'bg-[#2f3931] text-[#d7d2c5] border-[#5b6659] hover:bg-[#364036]'
+                          }`}
+                      >
+                        {category.label}
+                        {count > 0 && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isActive ? 'bg-stone-900/20' : 'bg-[#5b6659]/60'}`}>
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {filteredServiceBookings.length === 0 ? (
                   <div className="text-center py-12 bg-stone-50 rounded-2xl border border-dashed border-stone-300">
                     <p className="text-stone-600">No service bookings yet</p>
                   </div>
                 ) : (
                   <div>
-                    <div className="flex flex-wrap gap-3 mb-6">
-                      {serviceCategories.map((category) => {
-                        const isActive = activeServiceBookingCategory === category.key;
-                        return (
-                          <button
-                            key={category.key}
-                            type="button"
-                            onClick={() => setActiveServiceBookingCategory(category.key)}
-                            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide border transition-colors ${isActive
-                              ? 'bg-amber-500 text-stone-900 border-amber-400'
-                              : 'bg-[#2f3931] text-[#d7d2c5] border-[#5b6659] hover:bg-[#364036]'
-                              }`}
-                          >
-                            {category.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-
                     {serviceBookingsForActiveCategory.length === 0 ? (
                       <p className="text-sm text-[#cbbfa8] py-8">No service bookings in this category</p>
                     ) : (
                       <div className="bg-white rounded-3xl p-8 shadow-sm">
-                        <div className="overflow-x-auto" style={{ paddingBottom: 16, minWidth: '100%' }}>
-                          <table className="w-full">
+                        <div className="overflow-x-auto custom-scrollbar" style={{ paddingBottom: 16 }}>
+                          <table className="w-full min-w-[1000px]">
                             <thead>
                               <tr className="border-b border-stone-200">
-                                <th className="text-left py-3 px-4 text-stone-600">Booking ID</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Guest Details</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Phone No.</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Service</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Date</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Time</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Guests</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Status</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Payment</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Amount</th>
-                                <th className="text-left py-3 px-4 text-stone-600">Actions</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Booking ID</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Guest Details</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Phone No.</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Service</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Date</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Time</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Guests</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Status</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Payment</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Amount</th>
+                                <th className="text-left py-3 px-4 text-stone-600 whitespace-nowrap">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -4569,36 +4614,35 @@ const AdminDashboard = () => {
                                   )}
                                 </td>
                                 <td className="py-4 px-4">
-                                  {booking.status === 'pending' ? (
-                                    <div className="flex flex-wrap gap-2">
+                                  <div className="flex flex-col gap-1.5">
+                                    {booking.status !== 'confirmed' && (
                                       <Button
                                         type="button"
                                         size="sm"
                                         variant="outline"
-                                        className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
+                                        className="bg-green-50 text-green-700 hover:bg-green-100 border-green-200 whitespace-nowrap"
                                         onClick={() => handleServiceBookingActionClick(booking.id, 'approve')}
                                       >
-                                        Approve
+                                        ✅ Approve
                                       </Button>
+                                    )}
+                                    {booking.status !== 'cancelled' && (
                                       <Button
                                         type="button"
                                         size="sm"
                                         variant="outline"
-                                        className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                                        className="bg-red-50 text-red-700 hover:bg-red-100 border-red-200 whitespace-nowrap"
                                         onClick={() => handleServiceBookingActionClick(booking.id, 'reject')}
                                       >
-                                        Reject
+                                        ❌ Reject
                                       </Button>
-                                    </div>
-                                  ) : (
-                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                                      booking.status === 'confirmed' 
-                                        ? 'bg-green-100 text-green-800' 
-                                        : 'bg-red-100 text-red-800'
-                                    }`}>
-                                      {booking.status === 'confirmed' ? 'Approved' : 'Rejected'}
-                                    </span>
-                                  )}
+                                    )}
+                                    {booking.status === 'cancelled' && (
+                                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                        Rejected
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -4627,7 +4671,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'payments' && (
               <div>
-                <div className="flex items-center justify-between mt-0 sm:mt-15 mb-0 sm:mb-8">
+                <div className="flex items-center justify-between mb-0 sm:mb-8">
                   <h1 className="text-3xl sm:text-4xl" style={{ fontFamily: "'Great Vibes', cursive" }}>
                     Payment Management
                   </h1>
@@ -4746,7 +4790,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'guests' && (
               <div>
-                <h1 className="mt-0 sm:mt-15 text-3xl sm:text-4xl mb-0 sm:mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
+                <h1 className="text-3xl sm:text-4xl mb-0 sm:mb-8" style={{ fontFamily: "'Great Vibes', cursive" }}>Guest Management</h1>
 
                 {/* Users List */}
                 <div className="bg-[#232b23] rounded-3xl p-0 sm:p-8 shadow-lg border border-[#3a463a] text-[#f5f1e8]">
@@ -4790,142 +4834,142 @@ const AdminDashboard = () => {
 
             {activeTab === 'contacts' && (
               <div>
-                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-0 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                   <div>
-                    <h1 className="text-3xl sm:text-4xl mb-2" style={{ fontFamily: "'Great Vibes', cursive" }}>Contact Messages</h1>
-                    <p className="text-stone-600">Manage customer inquiries and feedback</p>
+                    <h1 className="text-3xl sm:text-4xl mb-1 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>Contact Messages</h1>
+                    <p className="text-[#a9b3a2] text-sm">Manage customer inquiries and feedback</p>
                   </div>
                   {contactStatsState && (
-                    <div className="flex flex-wrap gap-4">
-                      <div className="bg-white rounded-2xl px-6 py-3 shadow-sm">
-                        <div className="text-sm text-stone-500">Total</div>
-                        <div className="text-2xl font-bold">{contactStatsState.total}</div>
+                    <div className="flex flex-wrap gap-3">
+                      <div className="bg-[#2f3a32]/90 border border-[#5b6659] rounded-2xl px-5 py-3">
+                        <div className="text-xs text-[#a9b3a2] uppercase tracking-widest mb-0.5">Total</div>
+                        <div className="text-2xl font-bold text-[#efece6]">{contactStatsState.total}</div>
                       </div>
-                      <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-3">
-                        <div className="text-sm text-red-600">New</div>
-                        <div className="text-2xl font-bold text-red-700">{contactStatsState.new}</div>
+                      <div className="bg-[#2f3a32]/90 border border-[#5b6659] rounded-2xl px-5 py-3">
+                        <div className="text-xs text-[#d7d2c5] uppercase tracking-widest mb-0.5">New</div>
+                        <div className="text-2xl font-bold text-[#d9c47c]">{contactStatsState.new}</div>
                       </div>
-                      <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-3">
-                        <div className="text-sm text-green-600">Replied</div>
-                        <div className="text-2xl font-bold text-green-700">{contactStatsState.replied}</div>
+                      <div className="bg-[#2f3a32]/90 border border-[#5b6659] rounded-2xl px-5 py-3">
+                        <div className="text-xs text-[#a9b3a2] uppercase tracking-widest mb-0.5">Replied</div>
+                        <div className="text-2xl font-bold text-[#efece6]">{contactStatsState.replied}</div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="bg-white rounded-3xl p-8 shadow-sm">
+                <div className="space-y-4">
                   {contactsState.length === 0 ? (
-                    <div className="text-center py-16">
-                      <MessageSquare className="w-16 h-16 mx-auto mb-4 text-stone-400" />
-                      <h3 className="text-2xl mb-2">No contact messages</h3>
-                      <p className="text-stone-600">Customer inquiries will appear here</p>
+                    <div className="rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 text-center py-16">
+                      <MessageSquare className="w-16 h-16 mx-auto mb-4 text-[#5b6659]" />
+                      <h3 className="text-2xl mb-2 text-[#efece6]">No contact messages</h3>
+                      <p className="text-[#a9b3a2]">Customer inquiries will appear here</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {contactsState.map((contact) => {
-                        const statusColors = {
-                          new: 'bg-red-100 text-red-800 border-red-200',
-                          read: 'bg-blue-100 text-blue-800 border-blue-200',
-                          replied: 'bg-green-100 text-green-800 border-green-200',
-                          archived: 'bg-stone-100 text-stone-800 border-stone-200',
-                        };
+                    contactsState.map((contact) => {
+                      const statusBadge = {
+                        new:      'bg-[#243026] text-[#d9c47c] border-[#5b6659]',
+                        read:     'bg-[#243026] text-[#d7d2c5] border-[#5b6659]',
+                        replied:  'bg-[#243026] text-[#a9b3a2] border-[#5b6659]',
+                        archived: 'bg-[#243026] text-[#6b7a6a] border-[#5b6659]',
+                      };
 
-                        return (
-                          <div
-                            key={contact._id}
-                            className={`border-2 rounded-3xl p-6 transition-all ${contact.status === 'new' ? 'border-red-200 bg-red-50/30' : 'border-stone-200 bg-white'
-                              }`}
-                          >
-                            <div className="flex items-start gap-6">
-                              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${contact.status === 'new' ? 'bg-red-100' : 'bg-stone-100'
-                                }`}>
-                                <Mail className={`w-7 h-7 ${contact.status === 'new' ? 'text-red-600' : 'text-stone-600'}`} />
+                      return (
+                        <div
+                          key={contact._id}
+                          className="group rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 p-5 shadow-xl transition-all hover:border-[#8a9e87] hover:shadow-2xl"
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Icon */}
+                            <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#243026] border border-[#5b6659]">
+                              <Mail className="w-5 h-5 text-[#8a9e87]" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              {/* Header row */}
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <h3 className="text-base font-semibold text-[#efece6] mb-1">{contact.name}</h3>
+                                  <div className="flex flex-wrap gap-3 text-xs text-[#a9b3a2]">
+                                    <span className="flex items-center gap-1">
+                                      <Mail className="w-3 h-3" />
+                                      {contact.email}
+                                    </span>
+                                    {contact.phone && (
+                                      <span className="flex items-center gap-1">
+                                        <Phone className="w-3 h-3" />
+                                        {contact.phone}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {contact.subject && (
+                                    <div className="mt-1.5 text-xs font-semibold text-[#cfc9bb] uppercase tracking-wide">
+                                      Subject: {contact.subject}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className={`ml-3 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${statusBadge[contact.status]}`}>
+                                  {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
+                                </span>
                               </div>
 
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex-1">
-                                    <h3 className="text-xl font-bold text-stone-800 mb-1">{contact.name}</h3>
-                                    <div className="flex flex-wrap gap-3 text-sm text-stone-600">
-                                      <span className="flex items-center gap-1">
-                                        <Mail className="w-4 h-4" />
-                                        {contact.email}
-                                      </span>
-                                      {contact.phone && (
-                                        <span className="flex items-center gap-1">
-                                          <Phone className="w-4 h-4" />
-                                          {contact.phone}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {contact.subject && (
-                                      <div className="mt-2 text-sm font-semibold text-stone-700">
-                                        Subject: {contact.subject}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 ${statusColors[contact.status]}`}>
-                                    {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
-                                  </span>
-                                </div>
+                              {/* Message body */}
+                              <div className="bg-[#1e2520]/80 border border-[#5b6659] rounded-xl p-3.5 mb-3">
+                                <p className="text-[#cfc9bb] whitespace-pre-wrap leading-relaxed text-sm">{contact.message}</p>
+                              </div>
 
-                                <div className="bg-stone-50 rounded-2xl p-4 mb-4 border border-stone-200">
-                                  <p className="text-stone-700 whitespace-pre-wrap leading-relaxed">{contact.message}</p>
+                              {/* Footer */}
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="text-[11px] text-[#6b7a6a]">
+                                  Received: {new Date(contact.createdAt).toLocaleDateString()} at{' '}
+                                  {new Date(contact.createdAt).toLocaleTimeString()}
                                 </div>
-
-                                <div className="flex items-center justify-between">
-                                  <div className="text-sm text-stone-500">
-                                    Received: {new Date(contact.createdAt).toLocaleDateString()} at{' '}
-                                    {new Date(contact.createdAt).toLocaleTimeString()}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    {contact.status === 'new' && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => updateContactStatus(contact._id, 'read')}
-                                        className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
-                                      >
-                                        <Eye className="w-4 h-4 mr-1" />
-                                        Mark Read
-                                      </Button>
-                                    )}
-                                    {(contact.status === 'new' || contact.status === 'read') && (
-                                      <Button
-                                        size="sm"
-                                        onClick={() => updateContactStatus(contact._id, 'replied')}
-                                        className="rounded-xl bg-green-600 hover:bg-green-700"
-                                      >
-                                        <CheckCircle className="w-4 h-4 mr-1" />
-                                        Mark Replied
-                                      </Button>
-                                    )}
-                                    {contact.status !== 'archived' && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => updateContactStatus(contact._id, 'archived')}
-                                        className="rounded-xl"
-                                      >
-                                        Archive
-                                      </Button>
-                                    )}
+                                <div className="flex gap-2 flex-wrap">
+                                  {contact.status === 'new' && (
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => deleteContact(contact._id)}
-                                      className="rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                                      onClick={() => updateContactStatus(contact._id, 'read')}
+                                      className="rounded-lg bg-transparent border-[#5b6659] text-[#d7d2c5] hover:bg-[#243026] hover:border-[#8a9e87] text-xs"
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <Eye className="w-3.5 h-3.5 mr-1" />
+                                      Mark Read
                                     </Button>
-                                  </div>
+                                  )}
+                                  {(contact.status === 'new' || contact.status === 'read') && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => updateContactStatus(contact._id, 'replied')}
+                                      className="rounded-lg bg-[#3a5c44] hover:bg-[#4a6e55] text-[#efece6] text-xs border border-[#5b6659]"
+                                    >
+                                      <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                                      Mark Replied
+                                    </Button>
+                                  )}
+                                  {contact.status !== 'archived' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => updateContactStatus(contact._id, 'archived')}
+                                      className="rounded-lg bg-transparent border-[#5b6659] text-[#a9b3a2] hover:bg-[#243026] hover:border-[#8a9e87] text-xs"
+                                    >
+                                      Archive
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => deleteContact(contact._id)}
+                                    className="rounded-lg bg-transparent border-[#5b6659] text-[#a9b3a2] hover:bg-[#243026] hover:border-[#8a9e87]"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -4933,7 +4977,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'newsletter' && (
               <div>
-                <div className="mt-0 sm:mt-15 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
                   <div>
                     <h1 className="text-3xl sm:text-4xl font-serif text-[#f6edda]" style={{ fontFamily: "'Great Vibes', cursive" }}>Newsletter Subscriptions</h1>
                     <p className="text-[#cbbfa8] mt-1 text-sm">Manage newsletter subscribers and export the latest list</p>
@@ -5002,7 +5046,7 @@ const AdminDashboard = () => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="border-rose-300/40 text-rose-200 hover:bg-rose-500/10"
+                                  className="bg-transparent border-[#c67e6a]/50 text-[#e8967e] hover:bg-[#3d2020] hover:border-[#c67e6a]"
                                   onClick={() => handleDeleteNewsletterSubscription(sub._id)}
                                 >
                                   <Trash2 className="w-4 h-4 mr-1" />
@@ -5021,7 +5065,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'settings' && (
               <div>
-                <h1 className=" mt-15 text-4xl mb-2 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>Settings</h1>
+                <h1 className="text-4xl mb-2 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>Settings</h1>
                 <p className="text-[#cfc9bb] mb-8">Configure system settings</p>
                 {settingsSavedAt && (
                   <div className="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">

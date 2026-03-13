@@ -27,6 +27,29 @@ const Booking = () => {
   const [idProof, setIdProof] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [saveToProfile, setSaveToProfile] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const PHONE_PATTERN = /^\d{10,15}$/;
+
+  const validateEmail = (value: string): string => {
+    if (!value.trim()) return 'Email is required';
+    if (!EMAIL_PATTERN.test(value.trim())) return 'Enter a valid email (e.g. name@example.com)';
+    return '';
+  };
+
+  const validatePhone = (value: string): string => {
+    if (!value.trim()) return 'Phone number is required';
+    if (!PHONE_PATTERN.test(value.trim())) return 'Enter a valid 10–15 digit phone number';
+    return '';
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 15);
+    setGuestPhone(digits);
+    if (phoneError) setPhoneError(validatePhone(digits));
+  };
   const [room, setRoom] = useState<Room | null>(null);
   const [roomLoadError, setRoomLoadError] = useState<string | null>(null);
   const fallbackRoomImage = 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=1200';
@@ -213,6 +236,11 @@ const Booking = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailErr = validateEmail(guestEmail);
+    const phoneErr = validatePhone(guestPhone);
+    setEmailError(emailErr);
+    setPhoneError(phoneErr);
+    if (emailErr || phoneErr) return;
     if (!idProof) {
       toast.error('Please upload a government ID');
       return;
@@ -387,13 +415,18 @@ const Booking = () => {
                       <Input
                         id="guestEmail"
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder="e.g. name@example.com"
                         value={guestEmail}
-                        onChange={(e) => setGuestEmail(e.target.value)}
-                        className="pl-10 h-11 rounded-xl bg-[#343a30] border-[#4b5246] text-[#efece6] placeholder:text-[#9aa191]"
+                        onChange={(e) => { setGuestEmail(e.target.value); if (emailError) setEmailError(validateEmail(e.target.value)); }}
+                        onBlur={() => setEmailError(validateEmail(guestEmail))}
+                        className={`pl-10 h-11 rounded-xl bg-[#343a30] text-[#efece6] placeholder:text-[#9aa191] border ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-[#4b5246]'}`}
                         required
                       />
                     </div>
+                    {emailError
+                      ? <p className="text-xs text-red-400 mt-1">{emailError}</p>
+                      : <p className="text-xs text-[#8a9e87] mt-1">Enter a valid email address</p>
+                    }
                   </div>
 
                   <div>
@@ -405,13 +438,19 @@ const Booking = () => {
                       <Input
                         id="guestPhone"
                         type="tel"
-                        placeholder="Enter your phone number"
-                        value={guestPhone.replace(/^\+/, '')}
-                        onChange={(e) => setGuestPhone(e.target.value.replace(/^\+/, ''))}
-                        className="pl-10 h-11 rounded-xl bg-[#343a30] border-[#4b5246] text-[#efece6] placeholder:text-[#9aa191]"
+                        placeholder="e.g. 9876543210"
+                        value={guestPhone}
+                        onChange={handlePhoneChange}
+                        onBlur={() => setPhoneError(validatePhone(guestPhone))}
+                        className={`pl-10 h-11 rounded-xl bg-[#343a30] text-[#efece6] placeholder:text-[#9aa191] border ${phoneError ? 'border-red-500 focus:ring-red-500' : 'border-[#4b5246]'}`}
+                        maxLength={15}
                         required
                       />
                     </div>
+                    {phoneError
+                      ? <p className="text-xs text-red-400 mt-1">{phoneError}</p>
+                      : <p className="text-xs text-[#8a9e87] mt-1">10–15 digits only (no spaces or dashes)</p>
+                    }
                   </div>
 
                   <div>

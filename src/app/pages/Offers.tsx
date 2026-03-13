@@ -153,75 +153,95 @@ const Offers = () => {
             </div>
           )}
 
-          <div className="space-y-8">
-            {activeOffers.map((offer, index) => {
-              const isReversed = index % 2 === 1;
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {activeOffers.map((offer) => {
               const imageUrl = resolveImageUrl(offer.image);
               const expiryLabel = formatExpiry(offer.expiryDate);
               return (
                 <div
                   key={offer.id}
-                  className="rounded-[2rem] border border-[#5b6659] bg-[#2f3a32]/90 p-4 sm:p-6 shadow-2xl"
+                  className="group flex flex-col rounded-3xl border border-[#5b6659] bg-[#2a3529]/90 shadow-xl overflow-hidden hover:border-[#8a9e87] hover:shadow-2xl transition-all duration-300"
                 >
-                  <div
-                    className={`flex flex-col ${isReversed ? 'md:flex-row-reverse' : 'md:flex-row'} gap-6 items-stretch`}
-                  >
-                    <div className="relative md:w-1/2">
-                      <div className="h-64 sm:h-72 md:h-full rounded-[1.6rem] overflow-hidden border border-[#5b6659] bg-[#1f261f]">
-                        {imageUrl ? (
-                          <img src={imageUrl} alt={offer.title} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full bg-[#232b24]" />
-                        )}
+                  {/* Image */}
+                  <div className="relative h-52 overflow-hidden bg-[#1f261f]">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={offer.title}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center bg-[#232b24]">
+                        <span className="text-[#5b6659] text-sm">No image</span>
                       </div>
-                      {offer.badgeText && (
-                        <div className="absolute top-4 left-4 rounded-full border border-[#5b6659] bg-[#1e2520]/80 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[#d7d2c5]">
-                          {offer.badgeText}
-                        </div>
+                    )}
+                    {/* Badge */}
+                    {offer.badgeText && (
+                      <div className="absolute top-3 left-3 rounded-full bg-[#d9c47c]/90 text-[#1f241f] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em]">
+                        {offer.badgeText}
+                      </div>
+                    )}
+                    {/* Expiry pill */}
+                    {expiryLabel && (
+                      <div className="absolute top-3 right-3 rounded-full bg-[#1e2520]/80 border border-[#5b6659] px-3 py-1 text-[10px] text-[#d7d2c5] tracking-wide">
+                        Expires {expiryLabel}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Body */}
+                  <div className="flex flex-col flex-1 p-5 gap-3">
+                    <div>
+                      <h2
+                        className="text-xl text-[#efece6] leading-snug"
+                        style={{ fontFamily: "'Playfair Display', serif" }}
+                      >
+                        {offer.title}
+                      </h2>
+                      {offer.subtitle && (
+                        <p className="text-xs text-[#a9b3a2] mt-1 uppercase tracking-wide">{offer.subtitle}</p>
                       )}
                     </div>
 
-                    <div className="md:w-1/2 flex flex-col justify-between gap-6">
-                      <div>
-                        <h2
-                          className="text-2xl sm:text-3xl text-[#efece6]"
-                          style={{ fontFamily: "'Playfair Display', serif" }}
-                        >
-                          {offer.title}
-                        </h2>
-                        {offer.subtitle && (
-                          <p className="text-sm text-[#cfc9bb] mt-2">{offer.subtitle}</p>
-                        )}
-                        <div className="flex items-center gap-2 text-xs text-[#d7d2c5] mt-4">
-                          <div className="flex items-center gap-1 text-[#d9c47c]">
-                            {Array.from({ length: 5 }).map((_, idx) => (
-                              <Star key={idx} className="w-3.5 h-3.5 fill-current" />
-                            ))}
-                          </div>
-                          <span>{offer.rating.toFixed(1)} Reviews</span>
-                          {offer.reviewCount > 0 && (
-                            <span className="text-[#a9b3a2]">{offer.reviewCount} reviews</span>
-                          )}
-                        </div>
-                        <p className="text-sm text-[#cfc9bb] mt-4 leading-relaxed">
-                          {offer.description || 'Reward yourself with a seasonal retreat and curated extras.'}
-                        </p>
+                    {/* Rating */}
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-0.5 text-[#d9c47c]">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <Star key={idx} className={`w-3 h-3 ${idx < Math.round(offer.rating) ? 'fill-current' : 'opacity-30'}`} />
+                        ))}
                       </div>
+                      <span className="text-xs text-[#d7d2c5]">{offer.rating.toFixed(1)}</span>
+                      {offer.reviewCount > 0 && (
+                        <span className="text-xs text-[#a9b3a2]">· {offer.reviewCount} reviews</span>
+                      )}
+                    </div>
 
-                      <div className="flex flex-wrap items-center gap-4">
-                        <div>
-                          <div className="text-lg text-[#efece6]">₹{offer.price.toFixed(0)}</div>
-                          <div className="text-[11px] text-[#cfc9bb]">
-                            {expiryLabel ? `Expiry ${expiryLabel}` : 'Limited availability'}
-                          </div>
+                    {/* Description */}
+                    <p className="text-sm text-[#cfc9bb] leading-relaxed line-clamp-3 flex-1">
+                      {offer.description || 'Reward yourself with a seasonal retreat and curated extras.'}
+                    </p>
+
+                    {/* Divider */}
+                    <div className="h-px bg-[#3d4f40] mt-1" />
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-1">
+                      <div>
+                        <div className="text-xl font-semibold text-[#efece6]">₹{offer.price.toFixed(0)}</div>
+                        <div className="text-[10px] text-[#a9b3a2] mt-0.5">
+                          {expiryLabel ? `Valid till ${expiryLabel}` : 'Limited availability'}
                         </div>
-                        <Link to="/rooms">
-                          <Button className="rounded-full border border-[#5b6659] bg-transparent text-[#efece6] hover:bg-white/10">
-                            {offer.ctaText || 'Check availability'}
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                          </Button>
-                        </Link>
                       </div>
+                      <Link to="/rooms">
+                        <Button
+                          size="sm"
+                          className="rounded-full bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] font-medium text-xs px-4"
+                        >
+                          {offer.ctaText || 'Book Now'}
+                          <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </div>
