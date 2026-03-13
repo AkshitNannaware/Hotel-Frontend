@@ -2073,6 +2073,34 @@ const AdminDashboard = () => {
   const handleSaveBooking = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    // Date validation
+    if (bookingForm.checkIn && bookingForm.checkOut) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxAllowed = new Date();
+      maxAllowed.setDate(maxAllowed.getDate() + 30);
+      maxAllowed.setHours(23, 59, 59, 999);
+      const checkInDate = new Date(bookingForm.checkIn);
+      const checkOutDate = new Date(bookingForm.checkOut);
+
+      if (checkInDate < today) {
+        toast.error('Check-in date cannot be in the past');
+        return;
+      }
+      if (checkInDate > maxAllowed) {
+        toast.error('Check-in date cannot be more than 30 days in the future');
+        return;
+      }
+      if (checkOutDate <= checkInDate) {
+        toast.error('Checkout date must be after check-in date');
+        return;
+      }
+      if (checkOutDate > maxAllowed) {
+        toast.error('Check-out date cannot be more than 30 days in the future');
+        return;
+      }
+    }
+
     try {
       const payload = {
         roomId: bookingForm.roomId,
@@ -3847,7 +3875,16 @@ const AdminDashboard = () => {
                           placeholder="Check-In Date"
                           type="date"
                           value={bookingForm.checkIn}
-                          onChange={(event) => setBookingForm({ ...bookingForm, checkIn: event.target.value })}
+                          min={new Date().toISOString().split('T')[0]}
+                          max={(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })()}
+                          onChange={(event) => {
+                            const newCheckIn = event.target.value;
+                            setBookingForm((prev) => ({
+                              ...prev,
+                              checkIn: newCheckIn,
+                              checkOut: prev.checkOut && newCheckIn && prev.checkOut <= newCheckIn ? '' : prev.checkOut,
+                            }));
+                          }}
                           required
                         />
                       </div>
@@ -3858,6 +3895,8 @@ const AdminDashboard = () => {
                           placeholder="Check-Out Date"
                           type="date"
                           value={bookingForm.checkOut}
+                          min={(() => { const base = bookingForm.checkIn ? new Date(bookingForm.checkIn) : new Date(); base.setDate(base.getDate() + 1); return base.toISOString().split('T')[0]; })()}
+                          max={(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })()}
                           onChange={(event) => setBookingForm({ ...bookingForm, checkOut: event.target.value })}
                           required
                         />

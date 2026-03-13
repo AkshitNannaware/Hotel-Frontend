@@ -230,17 +230,55 @@ const Home = () => {
     }
   };
 
-  const handleSearch = () => {
-    const params = new URLSearchParams();
-    if (destination) params.set('search', destination);
-    if (checkIn) params.set('checkIn', checkIn);
-    if (checkOut) params.set('checkOut', checkOut);
-    if (guests) params.set('guests', guests);
-    if (rooms) params.set('rooms', rooms);
-    
-    const queryString = params.toString();
-    window.location.href = `/rooms${queryString ? `?${queryString}` : ''}`;
-  };
+  // Date restriction helpers
+  const todayStr = new Date().toISOString().split('T')[0];
+  const homMaxDate = new Date();
+  homMaxDate.setDate(homMaxDate.getDate() + 30);
+  const homMaxDateStr = homMaxDate.toISOString().split('T')[0];
+  const homCheckOutMin = (() => {
+    const base = checkIn ? new Date(checkIn) : new Date();
+    base.setDate(base.getDate() + 1);
+    return base.toISOString().split('T')[0];
+  })();
+
+  const handleSearch = () => {
+    if (checkIn && checkOut) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxAllowed = new Date();
+      maxAllowed.setDate(maxAllowed.getDate() + 30);
+      maxAllowed.setHours(23, 59, 59, 999);
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+
+      if (checkInDate < today) {
+        toast.error('Check-in date cannot be in the past');
+        return;
+      }
+      if (checkInDate > maxAllowed) {
+        toast.error('Check-in date cannot be more than 30 days in the future');
+        return;
+      }
+      if (checkOutDate <= checkInDate) {
+        toast.error('Checkout date must be after check-in date');
+        return;
+      }
+      if (checkOutDate > maxAllowed) {
+        toast.error('Check-out date cannot be more than 30 days in the future');
+        return;
+      }
+    }
+
+    const params = new URLSearchParams();
+    if (destination) params.set('search', destination);
+    if (checkIn) params.set('checkIn', checkIn);
+    if (checkOut) params.set('checkOut', checkOut);
+    if (guests) params.set('guests', guests);
+    if (rooms) params.set('rooms', rooms);
+    
+    const queryString = params.toString();
+    window.location.href = `/rooms${queryString ? `?${queryString}` : ''}`;
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -270,7 +308,7 @@ const Home = () => {
 					</div>
 
 					<div className="w-full max-w-4xl mb-4 md:mb-24 pb-30">
-						<div className="hidden md:block bg-stone-900/60 backdrop-blur-md border border-white/20 rounded-2xl p-6 md:p-8 shadow-2xl">
+							<div className="hidden md:block bg-stone-900/60 backdrop-blur-md border border-white/20 rounded-2xl p-6 md:p-8 shadow-2xl">
 							<div className="hidden md:flex items-end gap-4">
 								<div className="flex-1">
 									<div className="flex items-center gap-2 mb-2">
@@ -280,7 +318,14 @@ const Home = () => {
 									<Input
 										type="date"
 										value={checkIn}
-										onChange={(e) => setCheckIn(e.target.value)}
+										min={todayStr}
+										max={homMaxDateStr}
+										onChange={(e) => {
+											setCheckIn(e.target.value);
+											if (checkOut && e.target.value && checkOut <= e.target.value) {
+												setCheckOut('');
+											}
+										}}
 										onKeyDown={handleKeyDown}
 										className="bg-white/10 border-white/30 text-white placeholder:text-white/50 h-12 rounded-lg"
 									/>
@@ -294,6 +339,8 @@ const Home = () => {
 									<Input
 										type="date"
 										value={checkOut}
+										min={homCheckOutMin}
+										max={homMaxDateStr}
 										onChange={(e) => setCheckOut(e.target.value)}
 										onKeyDown={handleKeyDown}
 										className="bg-white/10 border-white/30 text-white placeholder:text-white/50 h-12 rounded-lg"
@@ -338,7 +385,14 @@ const Home = () => {
 										<Input
 											type="date"
 											value={checkIn}
-											onChange={(e) => setCheckIn(e.target.value)}
+											min={todayStr}
+											max={homMaxDateStr}
+											onChange={(e) => {
+												setCheckIn(e.target.value);
+												if (checkOut && e.target.value && checkOut <= e.target.value) {
+													setCheckOut('');
+												}
+											}}
 											onKeyDown={handleKeyDown}
 											className="h-5 border-0 bg-transparent p-0 text-[11px] text-[#e9ecdf] focus-visible:ring-0"
 										/>
@@ -351,6 +405,8 @@ const Home = () => {
 										<Input
 											type="date"
 											value={checkOut}
+											min={homCheckOutMin}
+											max={homMaxDateStr}
 											onChange={(e) => setCheckOut(e.target.value)}
 											onKeyDown={handleKeyDown}
 											className="h-5 border-0 bg-transparent p-0 text-[11px] text-[#e9ecdf] focus-visible:ring-0"

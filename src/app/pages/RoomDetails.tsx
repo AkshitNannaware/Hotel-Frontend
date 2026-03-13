@@ -27,6 +27,18 @@ const RoomDetails = () => {
   const [guests, setGuests] = useState('1');
   const [roomCount, setRoomCount] = useState('1');
 
+  // Date restriction helpers
+  const todayStr = new Date().toISOString().split('T')[0];
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 30);
+  const maxDateStr = maxDate.toISOString().split('T')[0];
+  // Checkout min: the day after check-in (or tomorrow if no check-in selected)
+  const checkOutMinDate = (() => {
+    const base = checkIn ? new Date(checkIn) : new Date();
+    base.setDate(base.getDate() + 1);
+    return base.toISOString().split('T')[0];
+  })();
+
   const resolveImageUrl = (imageUrl: string) => {
     if (!imageUrl) return '';
     return imageUrl.startsWith('/uploads/') ? `${API_BASE}${imageUrl}` : imageUrl;
@@ -95,14 +107,42 @@ const RoomDetails = () => {
     if (!room) return;
     const nights = calculateNights();
 
-
     if (!checkIn || !checkOut) {
       toast.error('Please select check-in and check-out dates');
       return;
     }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const maxAllowed = new Date();
+    maxAllowed.setDate(maxAllowed.getDate() + 30);
+    maxAllowed.setHours(23, 59, 59, 999);
+
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    if (checkInDate < today) {
+      toast.error('Check-in date cannot be in the past');
+      return;
+    }
+
+    if (checkInDate > maxAllowed) {
+      toast.error('Check-in date cannot be more than 30 days in the future');
+      return;
+    }
+
+    if (checkOutDate <= checkInDate) {
+      toast.error('Checkout date must be after check-in date');
+      return;
+    }
+
+    if (checkOutDate > maxAllowed) {
+      toast.error('Check-out date cannot be more than 30 days in the future');
+      return;
+    }
+
     if (nights <= 0) {
-      toast.error('Check-out date must be after check-in date');
+      toast.error('Checkout date must be after check-in date');
       return;
     }
 
@@ -240,8 +280,16 @@ const RoomDetails = () => {
                       <Label className="text-[10px] uppercase tracking-widest text-[#9aa191]">Check In</Label>
                       <Input 
                         type="date" 
-                        value={checkIn} 
-                        onChange={(e) => setCheckIn(e.target.value)}
+                        value={checkIn}
+                        min={todayStr}
+                        max={maxDateStr}
+                        onChange={(e) => {
+                          setCheckIn(e.target.value);
+                          // Reset checkout if it's no longer valid
+                          if (checkOut && e.target.value && checkOut <= e.target.value) {
+                            setCheckOut('');
+                          }
+                        }}
                         className="bg-[#2a3026] border-[#4b5246] rounded-xl h-12"
                       />
                     </div>
@@ -249,7 +297,9 @@ const RoomDetails = () => {
                       <Label className="text-[10px] uppercase tracking-widest text-[#9aa191]">Check Out</Label>
                       <Input 
                         type="date" 
-                        value={checkOut} 
+                        value={checkOut}
+                        min={checkOutMinDate}
+                        max={maxDateStr}
                         onChange={(e) => setCheckOut(e.target.value)}
                         className="bg-[#2a3026] border-[#4b5246] rounded-xl h-12"
                       />

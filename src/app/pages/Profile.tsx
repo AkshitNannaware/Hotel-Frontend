@@ -430,7 +430,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#3f4a40] text-[white] py-12 lg:py-16 overflow-y-scroll relative pt-10 md:pt-0">
+    <div className="min-h-screen bg-[#3f4a40] text-[white] py-12 lg:py-16 overflow-y-scroll relative pt-10 md:pt-1">
       {/* Background Gradients */}
       <div 
         className="absolute inset-0 pointer-events-none"
