@@ -19,6 +19,7 @@ const Home = () => {
   const discoverRef = useRef<HTMLDivElement | null>(null);
   const [accommodationIndex, setAccommodationIndex] = useState(0);
   const [roomsState, setRoomsState] = useState<Room[]>([]);
+  const [accommodationLocationSearch, setAccommodationLocationSearch] = useState('');
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsError, setRoomsError] = useState<string | null>(null);
   const [servicesState, setServicesState] = useState<any[]>([]);
@@ -53,6 +54,7 @@ const Home = () => {
           maxGuests: room.maxGuests || 1,
           size: room.size || 0,
           available: room.available ?? true,
+          location: room.location || '',
         }));
         setRoomsState(normalized);
       } catch (error) {
@@ -92,23 +94,27 @@ const Home = () => {
     loadServices();
   }, [API_BASE]);
 
-  useEffect(() => {
-    if (roomsState.length === 0) {
+  const filteredAccommodations = roomsState.filter((room) =>
+    room.location?.toLowerCase().includes(accommodationLocationSearch.trim().toLowerCase())
+  );
+
+  useEffect(() => {
+    if (filteredAccommodations.length === 0) {
       setAccommodationIndex(0);
       return;
     }
-    if (accommodationIndex >= roomsState.length) {
+    if (accommodationIndex >= filteredAccommodations.length) {
       setAccommodationIndex(0);
     }
-  }, [accommodationIndex, roomsState.length]);
+  }, [accommodationIndex, filteredAccommodations.length]);
 
-  const accommodationsCount = roomsState.length;
-  const activeAccommodation = accommodationsCount ? roomsState[accommodationIndex] : null;
+  const accommodationsCount = filteredAccommodations.length;
+  const activeAccommodation = accommodationsCount ? filteredAccommodations[accommodationIndex] : null;
   const prevAccommodation = accommodationsCount
-    ? roomsState[(accommodationIndex - 1 + accommodationsCount) % accommodationsCount]
+    ? filteredAccommodations[(accommodationIndex - 1 + accommodationsCount) % accommodationsCount]
     : null;
   const nextAccommodation = accommodationsCount
-    ? roomsState[(accommodationIndex + 1) % accommodationsCount]
+    ? filteredAccommodations[(accommodationIndex + 1) % accommodationsCount]
     : null;
 
   const resolveRoomImage = (room: Room | null) => {
@@ -556,6 +562,17 @@ const Home = () => {
           <h2 className="mt-3 text-3xl md:text-5xl font-serif text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
             Our accommodations
           </h2>
+          <div className="mx-auto mt-5 max-w-md">
+            <div className="relative">
+              <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c9c3b6]" />
+              <Input
+                value={accommodationLocationSearch}
+                onChange={(e) => setAccommodationLocationSearch(e.target.value)}
+                placeholder="Search by location (e.g. Goa, Mumbai)"
+                className="h-11 rounded-xl border border-[#5b6659] bg-[#2f3a32]/90 pl-10 text-[#efece6] placeholder:text-[#c9c3b6]"
+              />
+            </div>
+          </div>
         </div>
 
         {roomsLoading && (
@@ -569,10 +586,14 @@ const Home = () => {
           </div>
         )}
 
-        {roomsState.length === 0 && !roomsLoading ? (
+        {roomsState.length === 0 && !roomsLoading ? (
           <div className="rounded-3xl border border-stone-200 bg-white p-8 text-center text-[#efece6]">
             No rooms are available yet. Please check back soon.
           </div>
+        ) : accommodationsCount === 0 && !roomsLoading ? (
+          <div className="rounded-3xl border border-stone-200 bg-white p-8 text-center text-[#efece6]">
+            No rooms found for this location.
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-6 items-center">
             <div className="hidden lg:block">
@@ -675,9 +696,9 @@ const Home = () => {
           </div>
         )}
 
-        {roomsState.length > 0 && (
+        {accommodationsCount > 0 && (
           <div className="mt-6 flex items-center justify-center gap-3">
-            {roomsState.map((_, index) => (
+            {filteredAccommodations.map((_, index) => (
               <button
                 key={`accommodation-dot-${index}`}
                 type="button"

@@ -3,15 +3,24 @@ import { Link } from 'react-router';
 import { Facebook, Instagram, MessageCircle, Youtube, Twitter } from 'lucide-react';
 import { Button } from './ui/button';
 
+import { useEffect, useState } from 'react';
+
 const Footer = ({ isAdmin = false }) => {
-  // Accept brandingSettings as prop for social links
-  // Fallbacks for demo
-  const brandingSettings = {
+  const [branding, setBranding] = useState({
+    address: '',
+    phone: '',
+    email: '',
     facebook: 'https://facebook.com/yourpage',
     instagram: 'https://instagram.com/yourpage',
     youtube: 'https://youtube.com/yourchannel',
     twitter: 'https://twitter.com/yourprofile',
-  };
+  });
+  useEffect(() => {
+    fetch('http://localhost:5000/api/branding')
+      .then(res => res.json())
+      .then(data => setBranding(prev => ({ ...prev, ...data })))
+      .catch(() => {});
+  }, []);
   return (
     <footer className="relative overflow-hidden bg-[#3a4a3e] text-[#efece6]">
       <div className="absolute inset-0 opacity-60" style={{ backgroundImage: 'linear-gradient(180deg, rgba(7,12,9,0.7) 0%, rgba(7,12,9,0.2) 35%, rgba(7,12,9,0.6) 100%), radial-gradient(circle at 15% 80%, rgba(90,110,90,0.35), transparent 55%), radial-gradient(circle at 85% 15%, rgba(90,110,90,0.25), transparent 50%)' }} />
@@ -30,6 +39,7 @@ const Footer = ({ isAdmin = false }) => {
                   { label: 'Services', to: '/services' },
                   { label: 'About', to: '/about' },
                   { label: 'Contact', to: '/contact' },
+                  { label: 'Blog', to: '/blog' },
                 ].map((item) => (
                   <Link
                     key={item.label}
@@ -64,10 +74,9 @@ const Footer = ({ isAdmin = false }) => {
                 Contact
               </h3>
               <ul className="space-y-2 text-sm text-[#d2cdbf]">
-                <li>Maldives 962 31 Sliac</li>
-                <li>Sielnica Slovakia</li>
-                <li className="pt-2">+8801222222222</li>
-                <li>youremail@domain.com</li>
+                {branding.address && <li>{branding.address}</li>}
+                {branding.phone && <li className="pt-2">{branding.phone}</li>}
+                {branding.email && <li>{branding.email}</li>}
               </ul>
             </div>
             <div>
@@ -76,7 +85,7 @@ const Footer = ({ isAdmin = false }) => {
               </h3>
               <div className="flex gap-3 mb-4">
                 <a
-                  href={brandingSettings.facebook}
+                  href={branding.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
@@ -84,7 +93,7 @@ const Footer = ({ isAdmin = false }) => {
                   <Facebook className="w-4 h-4" />
                 </a>
                 <a
-                  href={brandingSettings.instagram}
+                  href={branding.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
@@ -92,7 +101,7 @@ const Footer = ({ isAdmin = false }) => {
                   <Instagram className="w-4 h-4" />
                 </a>
                 <a
-                  href={brandingSettings.youtube}
+                  href={branding.youtube}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
@@ -100,7 +109,7 @@ const Footer = ({ isAdmin = false }) => {
                   <Youtube className="w-4 h-4" />
                 </a>
                 <a
-                  href={brandingSettings.twitter}
+                  href={branding.twitter}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
@@ -187,11 +196,12 @@ const Footer = ({ isAdmin = false }) => {
             </div>
             <div>
               <h3 className="text-lg mb-4 text-[#efece6]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Admin Contact
+                Hotel Info
               </h3>
               <ul className="space-y-2 text-sm text-[#d2cdbf]">
-                <li>admin@kingshideaway.com</li>
-                <li>+8801222222222</li>
+                {branding.address && <li>{branding.address}</li>}
+                {branding.phone && <li className="pt-2">{branding.phone}</li>}
+                {branding.email && <li>{branding.email}</li>}
               </ul>
             </div>
             <div>
@@ -200,7 +210,7 @@ const Footer = ({ isAdmin = false }) => {
               </h3>
               <div className="flex gap-3 mb-4">
                 <a
-                  href={brandingSettings.facebook}
+                  href={branding.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
@@ -208,7 +218,7 @@ const Footer = ({ isAdmin = false }) => {
                   <Facebook className="w-4 h-4" />
                 </a>
                 <a
-                  href={brandingSettings.instagram}
+                  href={branding.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
@@ -216,7 +226,7 @@ const Footer = ({ isAdmin = false }) => {
                   <Instagram className="w-4 h-4" />
                 </a>
                 <a
-                  href={brandingSettings.youtube}
+                  href={branding.youtube}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
@@ -224,7 +234,7 @@ const Footer = ({ isAdmin = false }) => {
                   <Youtube className="w-4 h-4" />
                 </a>
                 <a
-                  href={brandingSettings.twitter}
+                  href={branding.twitter}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"

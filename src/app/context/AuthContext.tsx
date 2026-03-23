@@ -6,6 +6,7 @@ interface User {
   email: string;
   phone: string;
   role: 'user' | 'admin';
+  address?: string;
   twoFactorEnabled?: boolean;
   logoUrl?: string;
 }

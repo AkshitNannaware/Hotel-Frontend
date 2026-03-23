@@ -46,26 +46,16 @@ const Header = () => {
   const popupNotifications = notifications.filter((n) => !dismissedIds.has(n._id));
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Load logo URL from user profile
+  // Load logo URL for branding (public fetch, not just admin)
   useEffect(() => {
     const loadLogo = async () => {
-      if (!user || user.role !== 'admin') return;
       try {
-        const auth = localStorage.getItem('auth');
-        if (!auth) return;
-        const parsed = JSON.parse(auth);
-        const token = parsed.token;
-        if (!token) return;
-        const response = await fetch(`${API_BASE}/api/admin/profile`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+        // Fetch branding/logo from public endpoint
+        const response = await fetch(`${API_BASE}/api/branding`);
         if (response.ok) {
-          const userData = await response.json();
-          if (userData.logoUrl) {
-            setLogoUrl(userData.logoUrl);
+          const data = await response.json();
+          if (data.logoUrl) {
+            setLogoUrl(data.logoUrl);
           }
         }
       } catch (error) {
@@ -73,7 +63,7 @@ const Header = () => {
       }
     };
     loadLogo();
-  }, [user, API_BASE]);
+  }, [API_BASE]);
 
   const resolveLogoUrl = (url: string) => {
     if (!url) return '';
@@ -103,18 +93,18 @@ const Header = () => {
 
   if (hideHeader) return null;
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-transparent lg:bg-black/95 border-b border-transparent lg:border-black">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-transparent lg:bg-black/100 border-b border-transparent lg:border-black">
       <div className="max-w-7xl mx-auto px-4 py-4 lg:px-6 lg:py-6 lg:pb-8">
         {/* Admin Dashboard Header */}
         {isAdminDashboard ? (
-          <nav className="flex items-center justify-between lg:justify-center pt-2 relative">
+          <nav className="flex items-center justify-between lg:justify-center pt- relative">
             {/* Logo - Left side */}
             {effectiveLogo && (
-              <div className="absolute left-0 lg:left-0">
+              <div className="absolute left-0 lg:left-0 lg:pt-2.5">
                 <img 
                   src={resolveLogoUrl(effectiveLogo)} 
                   alt="Logo" 
-                  className="h-8 lg:h-10 object-contain"
+                  className="h-20 lg:h-15 lg:w-55 object-contain"
                 />
               </div>
             )}
@@ -179,11 +169,11 @@ const Header = () => {
           <nav className="flex items-center justify-between lg:justify-center relative">
             {/* Logo - Left side */}
             {effectiveLogo && (
-              <div className="absolute left-0 lg:left-0">
+              <div className="absolute left-0 lg:left-0 lg:pt-2.5">
                 <img 
                   src={resolveLogoUrl(effectiveLogo)} 
                   alt="Logo" 
-                  className="h-8 lg:h-10 object-contain"
+                  className="h-20 lg:h-15 lg:w-55 object-contain "
                 />
               </div>
             )}

@@ -26,7 +26,7 @@ const updateBookingStatus = async (
     toast.error(err.message || 'Failed to update booking status');
   }
 };
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNavadmin';
 // import { useSwipeable } from 'react-swipeable';
@@ -63,7 +63,8 @@ import {
   Search,
   LogIn,
   DoorOpen,
-  MapPin
+  MapPin,
+  FileText
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { MoreVertical } from 'lucide-react';
@@ -178,6 +179,17 @@ type AdminServiceBooking = {
   bookingDate?: string | Date;
   totalPrice?: number;
   paymentStatus?: 'pending' | 'paid' | 'failed';
+  paymentMethod?: 'cash' | 'online';
+};
+
+type AdminBlog = {
+  id: string;
+  title: string;
+  summary: string;
+  content: string;
+  author: string;
+  image?: string;
+  createdAt?: string | Date;
 };
 
 const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
@@ -285,6 +297,14 @@ const AdminDashboard = () => {
   });
 
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [blogsState, setBlogsState] = useState<AdminBlog[]>([]);
+  const [blogSubmitting, setBlogSubmitting] = useState(false);
+  const [blogForm, setBlogForm] = useState({
+    title: '',
+    summary: '',
+    content: '',
+    author: user?.name || '',
+  });
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [bookingIdProofFile, setBookingIdProofFile] = useState<File | null>(null);
   const [bookingIdProofType, setBookingIdProofType] = useState('passport');
@@ -293,6 +313,7 @@ const AdminDashboard = () => {
   const [serviceImageFile, setServiceImageFile] = useState<File | null>(null);
   const [serviceVideoFile, setServiceVideoFile] = useState<File | null>(null);
   const [offerImageFile, setOfferImageFile] = useState<File | null>(null);
+  const [blogImageFile, setBlogImageFile] = useState<File | null>(null);
   const [isServiceBookingFormOpen, setIsServiceBookingFormOpen] = useState(false);
   const [activeServiceCategory, setActiveServiceCategory] = useState<AdminService['category']>('restaurant');
   const [activeServiceBookingCategory, setActiveServiceBookingCategory] = useState<AdminService['category']>('restaurant');
@@ -320,18 +341,73 @@ const AdminDashboard = () => {
     paymentStatus: 'pending' as const,
   });
 
+  const fetchBlogs = async () => {
+    try {
+      const blogsData = await fetchJson('/api/admin/blogs');
+      setBlogsState(
+        (blogsData as any[]).map((blog) => ({
+          id: blog._id || blog.id,
+          title: blog.title || '',
+          summary: blog.summary || '',
+          content: blog.content || '',
+          author: blog.author || '',
+          image: blog.image || '',
+          createdAt: blog.createdAt || blog.date,
+        }))
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load blogs');
+    }
+  };
+
+  const createBlogPost = async (blogData: FormData) => {
+    try {
+      const newBlog = await fetchJson('/api/admin/blogs', {
+        method: 'POST',
+        body: blogData,
+        isFormData: true,
+      }) as { blog: any };
+      const created = {
+        id: newBlog.blog._id || newBlog.blog.id,
+        title: newBlog.blog.title || '',
+        summary: newBlog.blog.summary || '',
+        content: newBlog.blog.content || '',
+        author: newBlog.blog.author || '',
+        image: newBlog.blog.image || '',
+        createdAt: newBlog.blog.createdAt || newBlog.blog.date,
+      };
+      setBlogsState((prev) => [created, ...prev]);
+      toast.success('Blog post created successfully');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create blog post');
+    }
+  };
+
+
+  const userAddress = (user as { address?: string } | null)?.address || '';
+
   const [profileSettings, setProfileSettings] = useState({
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
+    address: userAddress,
   });
 
   useEffect(() => {
+    const nextAddress = (user as { address?: string } | null)?.address || '';
     setProfileSettings({
       name: user?.name || '',
       email: user?.email || '',
       phone: user?.phone || '',
+      address: nextAddress,
     });
+  }, [user]);
+
+  useEffect(() => {
+    setBlogForm((prev) => ({
+      ...prev,
+      author: prev.author || user?.name || '',
+    }));
   }, [user]);
 
   const [securityForm, setSecurityForm] = useState({
@@ -362,6 +438,7 @@ const AdminDashboard = () => {
   const [brandingLogoFile, setBrandingLogoFile] = useState<File | null>(null);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [settingsSavedAt, setSettingsSavedAt] = useState<string | null>(null);
+  const roomFormRef = useRef<HTMLFormElement | null>(null);
   const [serviceBookingConfirmDialog, setServiceBookingConfirmDialog] = useState<{
     show: boolean;
     bookingId: string | null;
@@ -376,6 +453,12 @@ const AdminDashboard = () => {
   const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', phone: '', password: '', role: 'user' });
   const [createUserError, setCreateUserError] = useState('');
   const [createUserLoading, setCreateUserLoading] = useState(false);
+
+  const scrollRoomFormIntoView = () => {
+    requestAnimationFrame(() => {
+      roomFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
 
   const handleNavSelect = (tab: string) => {
     setActiveTab(tab);
@@ -555,6 +638,7 @@ const AdminDashboard = () => {
           name: profileSettings.name,
           email: profileSettings.email,
           phone: profileSettings.phone,
+          address: profileSettings.address,
           logoUrl: logoUrl,
           facebook: brandingSettings.facebook,
           instagram: brandingSettings.instagram,
@@ -950,6 +1034,12 @@ const AdminDashboard = () => {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'blogs') {
+      fetchBlogs();
+    }
+  }, [activeTab]);
+
   // Load branding settings (logo, social links) from user profile
   useEffect(() => {
     const loadBrandingSettings = async () => {
@@ -1182,6 +1272,7 @@ const AdminDashboard = () => {
     setEditingRoomId(null);
     resetRoomForm();
     setIsRoomFormOpen(true);
+    scrollRoomFormIntoView();
   };
 
   const handleEditRoomClick = (room: Room) => {
@@ -1200,6 +1291,7 @@ const AdminDashboard = () => {
     });
     setRoomImageFiles([]);
     setIsRoomFormOpen(true);
+    scrollRoomFormIntoView();
   };
 
   const handleDeleteRoom = (roomId: string) => {
@@ -2861,6 +2953,7 @@ const AdminDashboard = () => {
               { id: 'bookings', icon: Calendar, label: 'Bookings' },
               { id: 'service-bookings', icon: ClipboardList, label: 'Service Bookings' },
               { id: 'payments', icon: FaIndianRupeeSign, label: 'Payments' },
+              { id: 'blogs', icon: FileText, label: 'Create Blog' },
               { id: 'contact-messages', icon: Mail, label: 'Contact Messages', section: 'contacts' },
               { id: 'newsletter', icon: MdSubscriptions, label: 'News Letter', section: 'newsletter' },
               { id: 'guests', icon: Users, label: 'Guests' },
@@ -3185,7 +3278,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {isRoomFormOpen && (
-                  <form onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-4 sm:p-8 shadow-lg mb-0 sm:mb-10 border border-[#3a463a] text-[#f5f1e8]">
+                  <form ref={roomFormRef} onSubmit={handleRoomSubmit} className="max-w-xl mx-auto bg-[#232b23] rounded-2xl p-4 sm:p-8 shadow-lg mb-0 sm:mb-10 border border-[#3a463a] text-[#f5f1e8]">
                     <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">{editingRoomId ? 'Update Room' : 'Add Room'}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <Input
@@ -3319,7 +3412,7 @@ const AdminDashboard = () => {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 sm:gap-6">
-                  {roomsState.slice(0, 5).map((room) => {
+                  {roomsState.map((room) => {
                     const imageUrl = room.images[0];
                     const displayImage = imageUrl?.startsWith('/uploads/')
                       ? `${API_BASE}${imageUrl}`
@@ -3410,6 +3503,7 @@ const AdminDashboard = () => {
 
                           <div className="mt-4 flex gap-2">
                             <Button
+                              type="button"
                               size="sm"
                               variant="outline"
                               className="flex-1 rounded-full border border-[#5b6659] bg-transparent text-[#efece6] hover:bg-white/10"
@@ -3421,6 +3515,7 @@ const AdminDashboard = () => {
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
+                                  type="button"
                                   size="sm"
                                   variant="outline"
                                   className="flex-1 rounded-full border border-rose-300/40 bg-transparent text-rose-200 hover:bg-rose-500/10"
@@ -4979,6 +5074,147 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            {activeTab === 'blogs' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                  <div>
+                    <h1 className="text-3xl sm:text-4xl mb-1 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
+                      Create Blog
+                    </h1>
+                    <p className="text-[#a9b3a2] text-sm">Publish hotel stories, updates, and announcements.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-[#5b6659] bg-transparent text-[#d7d2c5] hover:bg-[#2f3a32]"
+                    onClick={fetchBlogs}
+                  >
+                    Refresh Blogs
+                  </Button>
+                </div>
+
+                <form
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    const payload = {
+                      title: blogForm.title.trim(),
+                      summary: blogForm.summary.trim(),
+                      content: blogForm.content.trim(),
+                      author: blogForm.author.trim(),
+                    };
+                    if (!payload.title || !payload.summary || !payload.content || !payload.author) {
+                      toast.error('Please fill title, summary, content and author');
+                      return;
+                    }
+                    const formData = new FormData();
+                    formData.append('title', payload.title);
+                    formData.append('summary', payload.summary);
+                    formData.append('content', payload.content);
+                    formData.append('author', payload.author);
+                    if (blogImageFile) {
+                      formData.append('image', blogImageFile);
+                    }
+                    setBlogSubmitting(true);
+                    try {
+                      await createBlogPost(formData);
+                      setBlogForm((prev) => ({ ...prev, title: '', summary: '', content: '' }));
+                      setBlogImageFile(null);
+                    } finally {
+                      setBlogSubmitting(false);
+                    }
+                  }}
+                  className="rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 p-5 sm:p-6 mb-6"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="text-sm text-[#cfc9bb]">Title</label>
+                      <Input
+                        value={blogForm.title}
+                        onChange={(e) => setBlogForm((prev) => ({ ...prev, title: e.target.value }))}
+                        placeholder="Enter blog title"
+                        className={settingsInputClass}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-[#cfc9bb]">Author</label>
+                      <Input
+                        value={blogForm.author}
+                        onChange={(e) => setBlogForm((prev) => ({ ...prev, author: e.target.value }))}
+                        placeholder="Author name"
+                        className={settingsInputClass}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-4">
+                    <label className="text-sm text-[#cfc9bb]">Summary</label>
+                    <Textarea
+                      value={blogForm.summary}
+                      onChange={(e) => setBlogForm((prev) => ({ ...prev, summary: e.target.value }))}
+                      placeholder="Short summary for preview cards"
+                      className={`${settingsInputClass} min-h-[90px]`}
+                      required
+                    />
+                  </div>
+                  <div className="mb-5">
+                    <label className="text-sm text-[#cfc9bb]">Content</label>
+                    <Textarea
+                      value={blogForm.content}
+                      onChange={(e) => setBlogForm((prev) => ({ ...prev, content: e.target.value }))}
+                      placeholder="Write the full blog content"
+                      className={`${settingsInputClass} min-h-[160px]`}
+                      required
+                    />
+                  </div>
+                  <div className="mb-5">
+                    <label className="text-sm text-[#cfc9bb]">Blog Image (optional)</label>
+                    <Input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      onChange={(e) => setBlogImageFile(e.target.files?.[0] || null)}
+                      className={settingsInputClass}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]"
+                    disabled={blogSubmitting}
+                  >
+                    {blogSubmitting ? 'Publishing...' : 'Publish Blog'}
+                  </Button>
+                </form>
+
+                <div className="rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 p-5 sm:p-6">
+                  <h2 className="text-xl text-[#efece6] mb-4">Recent Blogs</h2>
+                  {blogsState.length === 0 ? (
+                    <p className="text-[#a9b3a2] text-sm">No blog posts yet.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {blogsState.map((blog) => (
+                        <div key={blog.id} className="rounded-xl border border-[#465045] bg-[#273027] p-4">
+                          {blog.image && (
+                            <img
+                              src={`${API_BASE}${blog.image}`}
+                              alt={blog.title}
+                              className="w-full h-40 object-cover rounded-lg mb-3 border border-[#465045]"
+                            />
+                          )}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1">
+                            <h3 className="text-[#efece6] font-semibold">{blog.title}</h3>
+                            <span className="text-xs text-[#a9b3a2]">
+                              {blog.createdAt ? new Date(blog.createdAt).toLocaleDateString() : ''}
+                            </span>
+                          </div>
+                          <p className="text-[#d7d2c5] text-sm mb-1">By {blog.author}</p>
+                          <p className="text-[#b9c2b2] text-sm">{blog.summary}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'newsletter' && (
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-0 sm:mb-8">
@@ -5085,6 +5321,15 @@ const AdminDashboard = () => {
                         <Input
                           value={profileSettings.name}
                           onChange={(e) => setProfileSettings(prev => ({ ...prev, name: e.target.value }))}
+                          className={settingsInputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[#cfc9bb]">Address</label>
+                        <Input
+                          type="Enter hotel address"
+                          value={profileSettings.address}
+                          onChange={(e) => setProfileSettings(prev => ({ ...prev, address: e.target.value }))}
                           className={settingsInputClass}
                         />
                       </div>
@@ -5397,6 +5642,7 @@ const AdminDashboard = () => {
         </div>
       )}
       <MobileBottomNav />
+      <Footer isAdmin={true} />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import Home from './pages/Home.tsx';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 
+
 import RoomListing from './pages/RoomListing';
 import RoomDetails from './pages/RoomDetails';
 import Booking from './pages/Booking';
@@ -17,6 +18,7 @@ import CheckIn from './pages/CheckIn';
 import CheckOut from './pages/CheckOut';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import Blog from './pages/Blog';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentFailed from './pages/PaymentFailed';
 import AdminDashboard from './pages/AdminDashboard';
@@ -45,6 +47,7 @@ export const router = createBrowserRouter([
       { path: 'checkout/:bookingId', Component: CheckOut },
       { path: 'contact', Component: Contact },
       { path: 'about', Component: About },
+      { path: 'blog', Component: Blog },
       // Admin routes as children of Layout
       { path: 'admin', Component: AdminDashboard },
       { path: 'admin-signup', Component: AdminSignup },
