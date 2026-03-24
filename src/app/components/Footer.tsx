@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router';
-import { Facebook, Instagram, MessageCircle, Youtube, Twitter } from 'lucide-react';
+import { Facebook, Instagram, MessageCircle, Twitter, Linkedin, Youtube } from 'lucide-react';
 import { Button } from './ui/button';
 
 import { useEffect, useState } from 'react';
@@ -14,12 +14,13 @@ const Footer = ({ isAdmin = false }) => {
     instagram: 'https://instagram.com/yourpage',
     youtube: 'https://youtube.com/yourchannel',
     twitter: 'https://twitter.com/yourprofile',
+    whatsapp: 'https://wa.me/yourphonenumber',
   });
   useEffect(() => {
     fetch('http://localhost:5000/api/branding')
       .then(res => res.json())
       .then(data => setBranding(prev => ({ ...prev, ...data })))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
   return (
     <footer className="relative overflow-hidden bg-[#3a4a3e] text-[#efece6]">
@@ -77,6 +78,18 @@ const Footer = ({ isAdmin = false }) => {
                 {branding.address && <li>{branding.address}</li>}
                 {branding.phone && <li className="pt-2">{branding.phone}</li>}
                 {branding.email && <li>{branding.email}</li>}
+                {branding.whatsapp && (
+                  <li className="pt-2">
+                    <a
+                      href={branding.whatsapp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-white transition-colors"
+                    >
+                      WhatsApp
+                    </a>
+                  </li>
+                )}
               </ul>
             </div>
             <div>
@@ -246,8 +259,42 @@ const Footer = ({ isAdmin = false }) => {
           </div>
         )}
         {/* Copyright */}
-        <div className="mt-8 pt-6 border-t border-[#6c7564] text-center">
-          <p className="text-xs text-[#a9a492]">© {new Date().getFullYear()} On Earth. All rights reserved.</p>
+        <div className="mt-8 pt-6 border-t border-[#6c7564] justify-between items-center flex-col md:flex-row flex">
+          <p className="text-lg text-[#a9a492] mr-4">© {new Date().getFullYear()} Alphanexis Technologies PVT.Ltd . All rights reserved.</p>
+          <div className="flex gap-3 ml-4">
+            <a
+              href="https://www.linkedin.com/company/alphanexis/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
+            >
+              <Linkedin className="w-4 h-4" />
+            </a>
+            <a
+              href="https://instagram.com/yourpage"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
+            >
+              <Instagram className="w-4 h-4" />
+            </a>
+            <a
+              href="https://www.facebook.com/people/AlphaNexis/61562936054548/?rdid=vrnyFSNe5naB2gz7&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1My4zij8wm%2F"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
+            >
+              <Facebook className="w-4 h-4" />
+            </a>
+            <a
+              href="https://wa.me/8817617752"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-9 h-9 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#efece6] hover:text-white transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+            </a>
+          </div>
         </div>
       </div>
     </footer>
