@@ -14,7 +14,6 @@ const Footer = ({ isAdmin = false }) => {
     instagram: 'https://instagram.com/yourpage',
     youtube: 'https://youtube.com/yourchannel',
     twitter: 'https://twitter.com/yourprofile',
-    whatsapp: 'https://wa.me/yourphonenumber',
   });
   useEffect(() => {
     fetch('http://localhost:5000/api/branding')
@@ -78,18 +77,6 @@ const Footer = ({ isAdmin = false }) => {
                 {branding.address && <li>{branding.address}</li>}
                 {branding.phone && <li className="pt-2">{branding.phone}</li>}
                 {branding.email && <li>{branding.email}</li>}
-                {branding.whatsapp && (
-                  <li className="pt-2">
-                    <a
-                      href={branding.whatsapp}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-white transition-colors"
-                    >
-                      WhatsApp
-                    </a>
-                  </li>
-                )}
               </ul>
             </div>
             <div>
