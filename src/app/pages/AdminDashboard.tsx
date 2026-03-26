@@ -298,6 +298,7 @@ const AdminDashboard = () => {
 
   const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
   const [blogsState, setBlogsState] = useState<AdminBlog[]>([]);
+  const [isBlogFormOpen, setIsBlogFormOpen] = useState(false);
   const [blogSubmitting, setBlogSubmitting] = useState(false);
   const [blogForm, setBlogForm] = useState({
     title: '',
@@ -305,6 +306,14 @@ const AdminDashboard = () => {
     content: '',
     author: user?.name || '',
   });
+  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
+  const [editedBlogForm, setEditedBlogForm] = useState({
+    title: '',
+    summary: '',
+    content: '',
+    author: '',
+  });
+  const [editingBlogImageFile, setEditingBlogImageFile] = useState<File | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [bookingIdProofFile, setBookingIdProofFile] = useState<File | null>(null);
   const [bookingIdProofType, setBookingIdProofType] = useState('passport');
@@ -380,6 +389,45 @@ const AdminDashboard = () => {
       toast.success('Blog post created successfully');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create blog post');
+    }
+  };
+
+  const updateBlogPost = async (blogId: string, blogData: FormData) => {
+    try {
+      const updatedBlog = await fetchJson(`/api/admin/blogs/${blogId}`, {
+        method: 'PUT',
+        body: blogData,
+        isFormData: true,
+      }) as { blog: any };
+      const updated = {
+        id: updatedBlog.blog._id || updatedBlog.blog.id,
+        title: updatedBlog.blog.title || '',
+        summary: updatedBlog.blog.summary || '',
+        content: updatedBlog.blog.content || '',
+        author: updatedBlog.blog.author || '',
+        image: updatedBlog.blog.image || '',
+        createdAt: updatedBlog.blog.createdAt || updatedBlog.blog.date,
+      };
+      setBlogsState((prev) =>
+        prev.map((blog) => (blog.id === blogId ? updated : blog))
+      );
+      toast.success('Blog post updated successfully');
+      setEditingBlogId(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update blog post');
+    }
+  };
+
+  const deleteBlogPost = async (blogId: string) => {
+    if (!confirm('Are you sure you want to delete this blog post?')) return;
+    try {
+      await fetchJson(`/api/admin/blogs/${blogId}`, {
+        method: 'DELETE',
+      });
+      setBlogsState((prev) => prev.filter((blog) => blog.id !== blogId));
+      toast.success('Blog post deleted successfully');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete blog post');
     }
   };
 
@@ -5075,138 +5123,280 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'blogs' && (
-              <div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                  <div>
-                    <h1 className="text-3xl sm:text-4xl mb-1 text-[#efece6]" style={{ fontFamily: "'Great Vibes', cursive" }}>
-                      Create Blog
-                    </h1>
-                    <p className="text-[#a9b3a2] text-sm">Publish hotel stories, updates, and announcements.</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="border-[#5b6659] bg-transparent text-[#d7d2c5] hover:bg-[#2f3a32]"
-                    onClick={fetchBlogs}
-                  >
-                    Refresh Blogs
+              <div className="px-5 py-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-0 sm:mb-8">
+                  <h1 className="text-3xl sm:text-4xl" style={{ fontFamily: "'Great Vibes', cursive" }}>Create Blog</h1>
+                  <Button onClick={() => setIsBlogFormOpen(!isBlogFormOpen)} className="bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] min-h-[44px] px-4 py-2 text-sm sm:text-base">
+                    {isBlogFormOpen ? 'Cancel' : 'Create Blog Post'}
                   </Button>
                 </div>
 
-                <form
-                  onSubmit={async (event) => {
-                    event.preventDefault();
-                    const payload = {
-                      title: blogForm.title.trim(),
-                      summary: blogForm.summary.trim(),
-                      content: blogForm.content.trim(),
-                      author: blogForm.author.trim(),
-                    };
-                    if (!payload.title || !payload.summary || !payload.content || !payload.author) {
-                      toast.error('Please fill title, summary, content and author');
-                      return;
-                    }
-                    const formData = new FormData();
-                    formData.append('title', payload.title);
-                    formData.append('summary', payload.summary);
-                    formData.append('content', payload.content);
-                    formData.append('author', payload.author);
-                    if (blogImageFile) {
-                      formData.append('image', blogImageFile);
-                    }
-                    setBlogSubmitting(true);
-                    try {
-                      await createBlogPost(formData);
-                      setBlogForm((prev) => ({ ...prev, title: '', summary: '', content: '' }));
-                      setBlogImageFile(null);
-                    } finally {
-                      setBlogSubmitting(false);
-                    }
-                  }}
-                  className="rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 p-5 sm:p-6 mb-6"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Title</label>
+                {isBlogFormOpen && (
+                  <form
+                    onSubmit={async (event) => {
+                      event.preventDefault();
+                      const payload = {
+                        title: blogForm.title.trim(),
+                        summary: blogForm.summary.trim(),
+                        content: blogForm.content.trim(),
+                        author: blogForm.author.trim(),
+                      };
+                      if (!payload.title || !payload.summary || !payload.content || !payload.author) {
+                        toast.error('Please fill title, summary, content and author');
+                        return;
+                      }
+                      const formData = new FormData();
+                      formData.append('title', payload.title);
+                      formData.append('summary', payload.summary);
+                      formData.append('content', payload.content);
+                      formData.append('author', payload.author);
+                      if (blogImageFile) {
+                        formData.append('image', blogImageFile);
+                      }
+                      setBlogSubmitting(true);
+                      try {
+                        await createBlogPost(formData);
+                        setBlogForm((prev) => ({ ...prev, title: '', summary: '', content: '' }));
+                        setBlogImageFile(null);
+                        setIsBlogFormOpen(false);
+                      } finally {
+                        setBlogSubmitting(false);
+                      }
+                    }}
+                    className="max-w-2xl mx-auto bg-[#232b23] rounded-2xl p-4 sm:p-8 shadow-lg mb-0 sm:mb-10 border border-[#3a463a] text-[#f5f1e8]"
+                  >
+                    <h2 className="text-2xl font-serif mb-6 text-center tracking-wide">Add Blog Post</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <Input
                         value={blogForm.title}
                         onChange={(e) => setBlogForm((prev) => ({ ...prev, title: e.target.value }))}
-                        placeholder="Enter blog title"
-                        className={settingsInputClass}
+                        placeholder="Blog title"
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 h-12 sm:h-10 text-base sm:text-sm"
                         required
                       />
-                    </div>
-                    <div>
-                      <label className="text-sm text-[#cfc9bb]">Author</label>
                       <Input
                         value={blogForm.author}
                         onChange={(e) => setBlogForm((prev) => ({ ...prev, author: e.target.value }))}
                         placeholder="Author name"
-                        className={settingsInputClass}
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 h-12 sm:h-10 text-base sm:text-sm"
                         required
                       />
                     </div>
-                  </div>
-                  <div className="mb-4">
-                    <label className="text-sm text-[#cfc9bb]">Summary</label>
-                    <Textarea
-                      value={blogForm.summary}
-                      onChange={(e) => setBlogForm((prev) => ({ ...prev, summary: e.target.value }))}
-                      placeholder="Short summary for preview cards"
-                      className={`${settingsInputClass} min-h-[90px]`}
-                      required
-                    />
-                  </div>
-                  <div className="mb-5">
-                    <label className="text-sm text-[#cfc9bb]">Content</label>
-                    <Textarea
-                      value={blogForm.content}
-                      onChange={(e) => setBlogForm((prev) => ({ ...prev, content: e.target.value }))}
-                      placeholder="Write the full blog content"
-                      className={`${settingsInputClass} min-h-[160px]`}
-                      required
-                    />
-                  </div>
-                  <div className="mb-5">
-                    <label className="text-sm text-[#cfc9bb]">Blog Image (optional)</label>
-                    <Input
-                      type="file"
-                      accept="image/png,image/jpeg,image/jpg,image/webp"
-                      onChange={(e) => setBlogImageFile(e.target.files?.[0] || null)}
-                      className={settingsInputClass}
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="rounded-xl bg-[#c9a35d] text-[#2a3429] hover:bg-[#b8934d]"
-                    disabled={blogSubmitting}
-                  >
-                    {blogSubmitting ? 'Publishing...' : 'Publish Blog'}
-                  </Button>
-                </form>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-[#e6e6e6] mb-2">Summary</label>
+                      <Textarea
+                        value={blogForm.summary}
+                        onChange={(e) => setBlogForm((prev) => ({ ...prev, summary: e.target.value }))}
+                        placeholder="Short summary for preview cards"
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 min-h-[90px]"
+                        required
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-[#e6e6e6] mb-2">Content</label>
+                      <Textarea
+                        value={blogForm.content}
+                        onChange={(e) => setBlogForm((prev) => ({ ...prev, content: e.target.value }))}
+                        placeholder="Write the full blog content"
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 min-h-[160px]"
+                        required
+                      />
+                    </div>
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-[#e6e6e6] mb-2">
+                        Upload Blog Image (optional)
+                      </label>
+                      <Input
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        onChange={(e) => setBlogImageFile(e.target.files?.[0] || null)}
+                        className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer h-12 sm:h-10"
+                      />
+                      {blogImageFile && (
+                        <p className="mt-2 text-xs text-[#b6b6b6]">Selected: {blogImageFile.name}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="submit"
+                        className="flex-1 bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] min-h-[44px] px-4 py-2 text-sm sm:text-base font-medium"
+                        disabled={blogSubmitting}
+                      >
+                        {blogSubmitting ? 'Publishing...' : 'Publish Blog Post'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsBlogFormOpen(false)}
+                        className="flex-1 bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] min-h-[44px] px-4 py-2 text-sm sm:text-base border-none"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                )}
 
-                <div className="rounded-2xl border border-[#5b6659] bg-[#2f3a32]/90 p-5 sm:p-6">
-                  <h2 className="text-xl text-[#efece6] mb-4">Recent Blogs</h2>
+                <div className="px-5 py-6">
+                  <h2 className="text-2xl font-serif text-[#f5f1e8] mb-6">Uploaded Blogs</h2>
                   {blogsState.length === 0 ? (
-                    <p className="text-[#a9b3a2] text-sm">No blog posts yet.</p>
+                    <div className="text-center py-12">
+                      <p className="text-[#b6b6b6] text-sm">No blog posts yet.</p>
+                    </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {blogsState.map((blog) => (
-                        <div key={blog.id} className="rounded-xl border border-[#465045] bg-[#273027] p-4">
-                          {blog.image && (
-                            <img
-                              src={`${API_BASE}${blog.image}`}
-                              alt={blog.title}
-                              className="w-full h-40 object-cover rounded-lg mb-3 border border-[#465045]"
-                            />
+                        <div key={blog.id} className="rounded-xl border border-[#465045] bg-[#273027] p-4 sm:p-5 hover:border-[#5a6e59] transition-colors">
+                          {editingBlogId === blog.id ? (
+                            // Edit Mode
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                const payload = {
+                                  title: editedBlogForm.title.trim(),
+                                  summary: editedBlogForm.summary.trim(),
+                                  content: editedBlogForm.content.trim(),
+                                  author: editedBlogForm.author.trim(),
+                                };
+                                if (!payload.title || !payload.summary || !payload.content || !payload.author) {
+                                  toast.error('Please fill all required fields');
+                                  return;
+                                }
+                                const formData = new FormData();
+                                formData.append('title', payload.title);
+                                formData.append('summary', payload.summary);
+                                formData.append('content', payload.content);
+                                formData.append('author', payload.author);
+                                if (editingBlogImageFile) {
+                                  formData.append('image', editingBlogImageFile);
+                                }
+                                setBlogSubmitting(true);
+                                try {
+                                  await updateBlogPost(blog.id, formData);
+                                  setEditingBlogImageFile(null);
+                                } finally {
+                                  setBlogSubmitting(false);
+                                }
+                              }}
+                              className="space-y-4 bg-[#232b23] rounded-lg p-4 border border-[#3a463a]"
+                            >
+                              <h3 className="text-lg font-medium text-[#f5f1e8]">Edit Blog Post</h3>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Input
+                                  value={editedBlogForm.title}
+                                  onChange={(e) => setEditedBlogForm((prev) => ({ ...prev, title: e.target.value }))}
+                                  placeholder="Blog title"
+                                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 h-10 text-sm"
+                                  required
+                                />
+                                <Input
+                                  value={editedBlogForm.author}
+                                  onChange={(e) => setEditedBlogForm((prev) => ({ ...prev, author: e.target.value }))}
+                                  placeholder="Author name"
+                                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 h-10 text-sm"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-[#e6e6e6] mb-2">Summary</label>
+                                <Textarea
+                                  value={editedBlogForm.summary}
+                                  onChange={(e) => setEditedBlogForm((prev) => ({ ...prev, summary: e.target.value }))}
+                                  placeholder="Short summary for preview cards"
+                                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 min-h-[70px] text-sm"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-[#e6e6e6] mb-2">Content</label>
+                                <Textarea
+                                  value={editedBlogForm.content}
+                                  onChange={(e) => setEditedBlogForm((prev) => ({ ...prev, content: e.target.value }))}
+                                  placeholder="Write the full blog content"
+                                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] placeholder:text-[#b6b6b6] focus:ring-amber-400 min-h-[100px] text-sm"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-[#e6e6e6] mb-2">Update Image (optional)</label>
+                                <Input
+                                  type="file"
+                                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                                  onChange={(e) => setEditingBlogImageFile(e.target.files?.[0] || null)}
+                                  className="bg-[#2e362e] border border-[#3a463a] text-[#f5f1e8] file:bg-[#232b23] file:text-[#f5f1e8] file:border-none file:rounded file:px-3 file:py-1 cursor-pointer h-10"
+                                />
+                                {editingBlogImageFile && (
+                                  <p className="mt-2 text-xs text-[#b6b6b6]">Selected: {editingBlogImageFile.name}</p>
+                                )}
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  type="submit"
+                                  className="flex-1 bg-[#d7d0bf] text-[#1f241f] hover:bg-[#efece6] h-10 text-sm font-medium"
+                                  disabled={blogSubmitting}
+                                >
+                                  {blogSubmitting ? 'Updating...' : 'Update'}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  className="flex-1 bg-[#e6e1d6] text-[#232b23] hover:bg-[#efece6] h-10 text-sm font-medium border-none"
+                                  onClick={() => {
+                                    setEditingBlogId(null);
+                                    setEditingBlogImageFile(null);
+                                  }}
+                                  disabled={blogSubmitting}
+                                  variant="outline"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </form>
+                          ) : (
+                            // View Mode
+                            <>
+                              {blog.image && (
+                                <img
+                                  src={`${API_BASE}${blog.image}`}
+                                  alt={blog.title}
+                                  className="w-full h-40 object-cover rounded-lg mb-3 border border-[#465045]"
+                                />
+                              )}
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                <h3 className="text-[#f5f1e8] font-semibold text-lg">{blog.title}</h3>
+                                <span className="text-xs text-[#b6b6b6] whitespace-nowrap">
+                                  {blog.createdAt ? new Date(blog.createdAt).toLocaleDateString() : ''}
+                                </span>
+                              </div>
+                              <p className="text-[#d7d2c5] text-sm mb-1">By {blog.author}</p>
+                              <p className="text-[#b9c2b2] text-sm mb-4 line-clamp-2">{blog.summary}</p>
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  className="flex-1 bg-[#3b82f6] text-white hover:bg-blue-700 h-10 text-sm font-medium"
+                                  onClick={() => {
+                                    setEditingBlogId(blog.id);
+                                    setEditedBlogForm({
+                                      title: blog.title,
+                                      summary: blog.summary,
+                                      content: blog.content,
+                                      author: blog.author,
+                                    });
+                                    setEditingBlogImageFile(null);
+                                  }}
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  type="button"
+                                  className="flex-1 bg-[#ef4444] text-white hover:bg-red-700 h-10 text-sm font-medium"
+                                  onClick={() => deleteBlogPost(blog.id)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </Button>
+                              </div>
+                            </>
                           )}
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1">
-                            <h3 className="text-[#efece6] font-semibold">{blog.title}</h3>
-                            <span className="text-xs text-[#a9b3a2]">
-                              {blog.createdAt ? new Date(blog.createdAt).toLocaleDateString() : ''}
-                            </span>
-                          </div>
-                          <p className="text-[#d7d2c5] text-sm mb-1">By {blog.author}</p>
-                          <p className="text-[#b9c2b2] text-sm">{blog.summary}</p>
                         </div>
                       ))}
                     </div>
