@@ -74,19 +74,9 @@ const Header = () => {
       <div className="w-full px-3 py-2 lg:px-20 lg:py-1 lg:pb-2 bg-black">
         {/* Admin Dashboard Header */}
         {isAdminDashboard ? (
-          <nav className="flex items-center justify-between lg:justify-center relative">
-            {/* Logo - Left side */}
-            {effectiveLogo && (
-              <div className="flex items-center shrink-0">
-                <img 
-                  src={effectiveLogo} 
-                  alt="Logo" 
-                  className="h-12 sm:h-14 lg:h-16 w-auto object-contain"
-                />
-              </div>
-            )}
-            {/* Mobile Icons - Hamburger Menu and Profile Icon */}
-            <div className="lg:hidden flex items-center gap-3">
+          <nav className="flex items-center justify-between lg:justify-center relative min-h-16">
+            {/* Mobile: hamburger on left */}
+            <div className="lg:hidden flex items-center">
               <button
                 onClick={() => setMobileMenuOpen(true)}
                 className="p-2"
@@ -94,6 +84,21 @@ const Header = () => {
               >
                 <Menu size={22} color="#fbbf24" />
               </button>
+            </div>
+
+            {/* Logo: centered on mobile, normal on desktop */}
+            {effectiveLogo && (
+              <div className="flex items-center shrink-0 absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0">
+                <img
+                  src={effectiveLogo}
+                  alt="Logo"
+                  className="h-12 sm:h-14 lg:h-16 w-auto object-contain"
+                />
+              </div>
+            )}
+
+            {/* Mobile: profile/login on right */}
+            <div className="lg:hidden flex items-center">
               {user ? (
                 <button
                   className="relative p-2"
@@ -105,15 +110,13 @@ const Header = () => {
                 >
                   <User size={22} color="#fbbf24" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border-2 border-[#232b23]">{unreadCount}</span>
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border-2 border-[#232b23]">
+                      {unreadCount}
+                    </span>
                   )}
                 </button>
               ) : (
-                <Link
-                  to="/login"
-                  className="relative p-2"
-                  aria-label="Login"
-                >
+                <Link to="/login" className="relative p-2" aria-label="Login">
                   <LogIn size={22} color="#fbbf24" />
                 </Link>
               )}
@@ -143,19 +146,31 @@ const Header = () => {
             </div>
           </nav>
         ) : (
-          <nav className="flex items-center justify-between bg-black lg:justify-center relative">
-            {/* Logo - Left side */}
+          <nav className="flex items-center justify-between bg-black lg:justify-center relative min-h-16">
+            {/* Mobile: hamburger on left */}
+            <div className="lg:hidden flex items-center">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="p-2"
+                aria-label="Open menu"
+              >
+                <Menu size={22} color="#fbbf24" />
+              </button>
+            </div>
+
+            {/* Logo: centered on mobile, normal on desktop */}
             {effectiveLogo && (
-              <div className="flex items-center shrink-0">
-                <img 
-                  src={effectiveLogo} 
-                  alt="Logo" 
-                  className="h-12 sm:h-14 lg:h-15 w-auto object-containn pr-20"
+              <div className="flex items-center shrink-0 absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0">
+                <img
+                  src={effectiveLogo}
+                  alt="Logo"
+                  className="h-12 sm:h-14 lg:h-15 w-auto object-contain"
                 />
               </div>
             )}
-            {/* Mobile Icons - Hamburger Menu and Profile Icon */}
-            <div className="lg:hidden flex items-center gap-3">
+
+            {/* Mobile: profile/login on right */}
+            <div className="lg:hidden flex items-center">
               {user ? (
                 <button
                   className="relative p-2"
@@ -167,15 +182,13 @@ const Header = () => {
                 >
                   <User size={22} color="#fbbf24" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border-2 border-white">{unreadCount}</span>
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border-2 border-white">
+                      {unreadCount}
+                    </span>
                   )}
                 </button>
               ) : (
-                <Link
-                  to="/login"
-                  className="relative p-2"
-                  aria-label="Login"
-                >
+                <Link to="/login" className="relative p-2" aria-label="Login">
                   <LogIn size={22} color="#fbbf24" />
                 </Link>
               )}
