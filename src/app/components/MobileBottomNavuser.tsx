@@ -46,7 +46,7 @@ const MobileBottomNav = () => {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#3f4a40] border-t border-[#232325] flex justify-between px-2 py-1 md:hidden">
+    <nav className="fixed bottom-[-1px] left-0 right-[-1px] z-50 bg-[#3f4a40] border-t border-[#232325] flex justify-between px-2 py-1 md:hidden">
       {navItems.map(({ label, to, icon: Icon, state }) => {
         let active = location.pathname === to;
         if (isAdmin && location.pathname === '/admin') {
@@ -66,7 +66,7 @@ const MobileBottomNav = () => {
             className={`flex flex-col items-center flex-1 py-1 px-1 text-xs ${active ? 'text-white' : 'text-[#b0b0b0]'} transition-colors`}
           >
             <Icon className={`w-6 h-6 mb-0.5 ${active ? 'text-white' : 'text-[#b0b0b0]'}`} />
-            <span>{label}</span>
+            <span className="whitespace-nowrap">{label}</span>
           </Link>
         );
       })}
