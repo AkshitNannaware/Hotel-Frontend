@@ -293,9 +293,9 @@ const Home = () => {
   };
 
 	return (
-		<div className="min-h-screen bg-[#3f4a40]">
+		<div className="bg-[#3f4a40]">
 			{/* Hero Section */}
-			<section className="relative min-h-[100svh] sm:min-h-screen bg-stone-900">
+			<section className="relative sm:min-h-screen bg-stone-900">
 				<video
 					src={heroImage}
 					autoPlay
@@ -304,16 +304,14 @@ const Home = () => {
 					playsInline
 					className="absolute inset-0 h-full w-full object-cover"
 				/>
-				<div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/30 to-[#203126]/85" />
-
 				<div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[100svh] sm:min-h-screen flex flex-col justify-end md:justify-center items-center pt-15">
 					<div className="text-center mb-auto mt-24 sm:mt-36 md:mt-52 px-3">
-						<h2 className="text-3xl md:text-5xl lg:text-7xl text-white italic tracking-wide whitespace-nowrap pb-10 " style={{ fontFamily: "'Great Vibes', cursive" }}>
+						<h2 className="text-[40px] md:text-5xl lg:text-7xl text-white italic tracking-wide whitespace-nowrap pb-10 " style={{ fontFamily: "'Great Vibes', cursive" }}>
 							Experience Nature in Luxury
 						</h2>
 					</div>
 
-					<div className="w-full max-w-4xl mb-4 md:mb-24 pb-30">
+					<div className="w-full max-w-4xl mb-50 md:mb-24 pb-30">
 							<div className="hidden md:block bg-stone-900/60 backdrop-blur-md border border-white/20 rounded-2xl p-6 md:p-8 shadow-2xl">
 							<div className="hidden md:flex items-end gap-4">
 								<div className="flex-1">

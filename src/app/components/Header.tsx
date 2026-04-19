@@ -5,8 +5,7 @@ import { FaBell, FaCheck, FaTimes, FaUserPlus, FaClipboardList } from 'react-ico
 import { FaIndianRupeeSign } from 'react-icons/fa6';
 import { MdSubscriptions } from 'react-icons/md';
 import { useNotifications } from '../hooks/useNotifications';
-import DefaultLogo from '../../../Gemini_Generated_Image_luttpjluttpjlutt.png';
-// Notification pop-up logic and data
+import DefaultLogo from '/logo onearth.png';
 const notificationIcons = {
   admin: <FaClipboardList color="#eab308" size={20} />,
   user: <FaUserPlus color="#3b82f6" size={20} />,
@@ -20,9 +19,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [logoUrl, setLogoUrl] = useState<string>('');
-  const API_BASE = (import.meta.env?.VITE_API_URL as string | undefined) || 'http://localhost:5000';
-  const effectiveLogo = logoUrl || DefaultLogo;
+  const effectiveLogo = DefaultLogo;
 
   const handleLogout = () => {
     logout();
@@ -46,29 +43,9 @@ const Header = () => {
   const popupNotifications = notifications.filter((n) => !dismissedIds.has(n._id));
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Load logo URL for branding (public fetch, not just admin)
-  useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        // Fetch branding/logo from public endpoint
-        const response = await fetch(`${API_BASE}/api/branding`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.logoUrl) {
-            setLogoUrl(data.logoUrl);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to load logo:', error);
-      }
-    };
-    loadLogo();
-  }, [API_BASE]);
 
-  const resolveLogoUrl = (url: string) => {
-    if (!url) return '';
-    return url.startsWith('/uploads/') ? `${API_BASE}${url}` : url;
-  };
+
+
 
   // Close profile popover when clicking outside
   useEffect(() => {
@@ -94,22 +71,22 @@ const Header = () => {
   if (hideHeader) return null;
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full bg-transparent lg:bg-black/100 border-b border-transparent lg:border-black">
-      <div className="max-w-7xl mx-auto px-4 py-4 lg:px-6 lg:py-6 lg:pb-8">
+      <div className="w-full px-3 py-2 lg:px-20 lg:py-1 lg:pb-2 bg-black">
         {/* Admin Dashboard Header */}
         {isAdminDashboard ? (
-          <nav className="flex items-center justify-between lg:justify-center pt- relative">
+          <nav className="flex items-center justify-between lg:justify-center relative">
             {/* Logo - Left side */}
             {effectiveLogo && (
-              <div className="absolute left-0 lg:left-0 lg:pt-2.5">
+              <div className="flex items-center shrink-0">
                 <img 
-                  src={resolveLogoUrl(effectiveLogo)} 
+                  src={effectiveLogo} 
                   alt="Logo" 
-                  className="h-20 lg:h-15 lg:w-55 object-contain"
+                  className="h-12 sm:h-14 lg:h-16 w-auto object-contain"
                 />
               </div>
             )}
             {/* Mobile Icons - Hamburger Menu and Profile Icon */}
-            <div className={`lg:hidden flex items-center gap-3 ${effectiveLogo ? 'ml-20' : ''}`}>
+            <div className="lg:hidden flex items-center gap-3">
               <button
                 onClick={() => setMobileMenuOpen(true)}
                 className="p-2"
@@ -142,7 +119,7 @@ const Header = () => {
               )}
             </div>
             {/* Desktop Navigation - Hidden on Mobile */}
-            <div className={`hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold ${logoUrl ? 'ml-auto' : ''}`}>
+            <div className="hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold ml-auto">
             <span onClick={() => navigate('/admin', { state: { tab: 'dashboard' } })} className="hover:text-white transition-colors cursor-pointer">Home</span>
             <span onClick={() => navigate('/admin', { state: { tab: 'rooms' } })} className="hover:text-white transition-colors cursor-pointer">Manage Rooms</span>
               <span onClick={() => navigate('/admin', { state: { tab: 'bookings' } })}>Bookings</span>
@@ -166,26 +143,19 @@ const Header = () => {
             </div>
           </nav>
         ) : (
-          <nav className="flex items-center justify-between lg:justify-center relative">
+          <nav className="flex items-center justify-between bg-black lg:justify-center relative">
             {/* Logo - Left side */}
             {effectiveLogo && (
-              <div className="absolute left-0 lg:left-0 lg:pt-2.5">
+              <div className="flex items-center shrink-0">
                 <img 
-                  src={resolveLogoUrl(effectiveLogo)} 
+                  src={effectiveLogo} 
                   alt="Logo" 
-                  className="h-20 lg:h-15 lg:w-55 object-contain "
+                  className="h-12 sm:h-14 lg:h-15 w-auto object-containn pr-20"
                 />
               </div>
             )}
             {/* Mobile Icons - Hamburger Menu and Profile Icon */}
-            <div className={`lg:hidden flex items-center gap-3 ${logoUrl ? 'ml-20' : ''}`}>
-              <button
-                onClick={() => setMobileMenuOpen(true)}
-                className="p-2"
-                aria-label="Open menu"
-              >
-                <Menu size={22} color="#fbbf24" />
-              </button>
+            <div className="lg:hidden flex items-center gap-3">
               {user ? (
                 <button
                   className="relative p-2"
@@ -211,11 +181,12 @@ const Header = () => {
               )}
             </div>
             {/* Desktop Navigation - Hidden on Mobile */}
-            <div className={`hidden lg:flex items-center gap-12 text-sm uppercase tracking-widest text-white/90 font-bold ${effectiveLogo ? 'ml-auto' : ''}`}>
+            <div className={`hidden lg:flex items-center gap-7 pt-1 text-sm uppercase tracking-widest text-white/90 font-bold ${effectiveLogo ? 'ml-auto' : ''}`}>
                 <Link to="/" className="hover:text-white transition-colors">Home</Link>
                 <Link to="/rooms" className="hover:text-white transition-colors">Accommodation</Link>
                 <Link to="/services" className="hover:text-white transition-colors">Services</Link>
                 <Link to="/offers" className="hover:text-white transition-colors">Offers</Link>
+                <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
                 <Link to="/about" className="hover:text-white transition-colors">About Us</Link>
                 {user ? (
                   <>

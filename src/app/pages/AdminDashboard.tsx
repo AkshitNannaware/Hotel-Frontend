@@ -5681,7 +5681,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
+                  {/* <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
                     <h3 className="text-xl mb-4 text-[#efece6]">Billing & Payments</h3>
                     <div className="space-y-4">
                       <div>
@@ -5704,7 +5704,7 @@ const AdminDashboard = () => {
                         Save Billing
                       </Button>
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="bg-[#2f3a32]/90 rounded-3xl p-6 shadow-sm border border-[#5b6659]">
                     <h3 className="text-xl mb-4 text-[#efece6]">Theme & Branding</h3>
