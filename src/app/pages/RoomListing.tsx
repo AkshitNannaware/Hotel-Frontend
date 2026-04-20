@@ -198,7 +198,7 @@ const RoomListing = () => {
 
   return (
     <div className="min-h-screen bg-[#3f4a40] text-[#efece6]">
-      <section className="relative overflow-hidden pt-13">
+      <section className="relative overflow-hidden">
         <div
           className="absolute inset-0"
           style={{

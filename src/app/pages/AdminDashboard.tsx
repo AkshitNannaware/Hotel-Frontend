@@ -1,4 +1,3 @@
-// Update booking status (e.g., for check-out or payment)
 const updateBookingStatus = async (
   bookingId: string,
   status: string,
@@ -2419,14 +2418,6 @@ const AdminDashboard = () => {
     onIdVerificationChange: (booking: AdminBooking, status: 'approved' | 'rejected') => void;
     onUpdateStatus: (id: string, status: string, paymentStatus?: string, paymentMethod?: 'cash' | 'online') => void;
   }) => {
-    // Swipe functionality disabled: react-swipeable removed for build compatibility
-    // const swipeHandlers = useSwipeable({
-    //   onSwipedLeft: () => setSwipedBookingId(booking.id),
-    //   onSwipedRight: () => setSwipedBookingId(null),
-    //   trackMouse: false,
-    // });
-
-    // Desktop view
     if (!isMobile) {
       return (
         <tr className="border-b border-stone-100 hover:bg-stone-50">
