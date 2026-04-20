@@ -85,7 +85,7 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#3f4a40] text-[#efece6] relative overflow-hidden pt-10 md:pt-0">
+    <div className="min-h-screen bg-[#3f4a40] text-[#efece6] relative overflow-hidden">
       {/* Background Gradients */}
       <div 
         className="absolute inset-0"
@@ -96,7 +96,7 @@ const Contact = () => {
       <div className="absolute inset-0 opacity-20 bg-[linear-gradient(90deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:220px_100%]" />
       <div className="absolute inset-0 opacity-25 bg-[linear-gradient(180deg,rgba(235,230,220,0.08)_1px,transparent_1px)] bg-[size:100%_160px]" />
 
-      <div className="relative max-w-6xl mx-auto px-4 py-16">
+      <div className="relative max-w-6xl mx-auto px-4 pt-10 pb-16">
         <div className="mb-12">
           <h1 className="text-4xl sm:text-5xl mb-4 tracking-tight" style={{ fontFamily: "'Great Vibes', cursive" }}>Contact Us</h1>
           <div className="h-px w-24 bg-[#5b6255] mb-4" />
