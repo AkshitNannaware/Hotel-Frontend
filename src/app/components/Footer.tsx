@@ -30,7 +30,7 @@ const Footer = ({ isAdmin = false }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
               {/* On Earth Section */}
               <div>
-                <h2 className="text-xl sm:text-3xl mb-5 text-[#efece6] font-serif tracking-wide pb-3 border-b border-[#5b6255]" style={{ fontFamily: "'Great Vibes', cursive" }}>
+                <h2 className="text-3xl sm:text-3xl mb-5 text-[#efece6] font-serif tracking-wide pb-3 border-b border-[#5b6255]" style={{ fontFamily: "'Great Vibes', cursive" }}>
                   On Earth
                 </h2>
                 <nav className="space-y-2">
