@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BedDouble, ConciergeBell, Info, CalendarCheck, ClipboardList, DollarSign, LucideProps } from 'lucide-react';
+import { Home, BedDouble, ConciergeBell, Info, Phone, LucideProps } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 // Define a proper type for the navigation items
@@ -17,18 +17,8 @@ const userNavItems: NavItem[] = [
   { label: 'Accomodation', to: '/rooms', icon: BedDouble },
   { label: 'Services', to: '/services', icon: ConciergeBell },
   { label: 'About Us', to: '/about', icon: Info },
-  { label: 'Book Now', to: '/select-dates', icon: CalendarCheck },
+  { label: 'Contact Us', to: '/contact', icon: Phone },
 ];
-
-// Items shown in the ADMIN bottom navbar
-// const adminNavItems: NavItem[] = [
-//   { label: 'Home', to: '/admin', icon: Home },
-//   { label: 'Rooms', to: '/admin', state: { tab: 'rooms' }, icon: BedDouble },
-//   { label: 'Bookings', to: '/admin', state: { tab: 'bookings' }, icon: ClipboardList },
-//   { label: 'Services', to: '/admin', state: { tab: 'services' }, icon: ConciergeBell },
-//   { label: 'Service Bookings', to: '/admin', state: { tab: 'service-bookings' }, icon: ClipboardList },
-//   { label: 'Payments', to: '/admin', state: { tab: 'payments' }, icon: DollarSign },
-// ];
 
 const MobileBottomNav = () => {
   const location = useLocation();

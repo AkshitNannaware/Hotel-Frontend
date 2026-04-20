@@ -10,10 +10,9 @@ const Footer = ({ isAdmin = false }) => {
     address: '',
     phone: '',
     email: '',
-    facebook: 'https://facebook.com/yourpage',
-    instagram: 'https://instagram.com/yourpage',
+    facebook: 'https://www.facebook.com/profile.php?id=61574319958891',
+    instagram: 'https://www.instagram.com/onearth_hotel',
     youtube: 'https://youtube.com/yourchannel',
-    twitter: 'https://twitter.com/yourprofile',
   });
   useEffect(() => {
     fetch('http://localhost:5000/api/branding')
@@ -132,15 +131,6 @@ const Footer = ({ isAdmin = false }) => {
                     title="YouTube"
                   >
                     <Youtube className="w-4 h-4" />
-                  </a>
-                  <a
-                    href={branding.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#d7d0bf] hover:bg-[#5b6255] text-[#c9c3b6] hover:text-[#efece6] transition-all duration-200"
-                    title="Twitter"
-                  >
-                    <Twitter className="w-4 h-4" />
                   </a>
                 </div>
               </div>
@@ -269,24 +259,15 @@ const Footer = ({ isAdmin = false }) => {
                   >
                     <Youtube className="w-4 h-4" />
                   </a>
-                  <a
-                    href={branding.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 rounded-full border border-[#6c7564] flex items-center justify-center hover:border-[#d7d0bf] hover:bg-[#5b6255] text-[#c9c3b6] hover:text-[#efece6] transition-all duration-200"
-                    title="Twitter"
-                  >
-                    <Twitter className="w-4 h-4" />
-                  </a>
                 </div>
               </div>
             </div>
           </div>
         )}
         {/* Copyright */}
-        <div className={`mt-8 pt-5 ${isAdmin ? 'border-t border-[#5b6255]' : 'border-t border-[#6c7564]'} justify-between items-center flex-col md:flex-row flex gap-6 md:gap-0`}>
+        <div className={`mt-8 mb-10 pl-[-20px] pt-5 ${isAdmin ? 'border-t border-[#5b6255]' : 'border-t border-[#6c7564]'} justify-between items-center flex-col md:flex-row flex gap-6 md:gap-0`}>
           <p className={`text-sm sm:text-base ${isAdmin ? 'text-[#c9c3b6]' : 'text-[#a9a492]'}`}>© {new Date().getFullYear()} Developed By. Alphanexis Technologies PVT.Ltd.</p>
-          <div className="flex gap-3">
+          <div className="flex gap-3 pr-32">
             <a
               href="https://www.linkedin.com/company/alphanexis/"
               target="_blank"

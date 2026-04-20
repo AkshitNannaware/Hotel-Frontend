@@ -4,6 +4,7 @@ import Header from './Header';
 import Footer from './Footer';
 import MobileBottomNavUser from './MobileBottomNavuser.tsx';
 import MobileBottomNavAdmin from './MobileBottomNavadmin.tsx';
+import FloatingBookNow from './FloatingBookNow';
 import { useAuth } from '../context/AuthContext';
 
 const Layout = () => {
@@ -21,6 +22,7 @@ const Layout = () => {
       <main className="flex-1 pt-16">
         <Outlet />
       </main>
+      <FloatingBookNow to="/rooms" label="Book Now" />
       {/* <Footer /> removed to prevent double footer in admin pages */}
       {isAdmin && location.pathname.startsWith('/admin') ? (
         <MobileBottomNavAdmin />
