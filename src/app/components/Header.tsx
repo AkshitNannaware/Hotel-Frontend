@@ -71,7 +71,7 @@ const Header = () => {
   if (hideHeader) return null;
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full bg-transparent lg:bg-black/100 border-b border-transparent lg:border-black">
-      <div className="w-full px-3 py-2 lg:px-20 lg:py-1 lg:pb-2 bg-black">
+      <div className="w-full px-3 py-2 lg:px-30 lg:py-1 lg:pb-2 bg-black">
         {/* Admin Dashboard Header */}
         {isAdminDashboard ? (
           <nav className="flex items-center justify-between lg:justify-center relative">
